@@ -1,0 +1,2608 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>数学Aラボ</title>
+<meta name="description" content="数学Aの授業で使える、場合の数・確率・図形の性質・整数を、さわって動かして見られるアプリ">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* 見た目：方眼ノート（紙・墨・緑青・朱）。分子ラボ3Dとそろえる */
+:root {
+  --bg: #f1ede4; --panel: #fbf9f4; --ink: #24282b; --muted: #6d6b63; --line: #d6d0c2; --chip: #ebe6da;
+  --accent: #2c6352; --accent-ink: #fbf9f4; --accent-soft: rgba(44, 99, 82, .16);
+  --warm: #b8502c; --warm-soft: rgba(184, 80, 44, .16);
+  --blue: #2f5f9e; --blue-soft: rgba(47, 95, 158, .16);
+  --gold: #b88a12; --violet: #7a4fa3;
+  --stage-1: #fdfcf8; --stage-2: #ece7dc; --grid: rgba(36, 40, 43, .06);
+  --font-display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif;
+  --font-data: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --r: 6px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #18201c; --panel: #1f2924; --ink: #ebe8dd; --muted: #a3a89b; --line: #36443c; --chip: #28342e;
+    --accent: #8cc5a6; --accent-ink: #18201c; --accent-soft: rgba(140, 197, 166, .2);
+    --warm: #eda26b; --warm-soft: rgba(237, 162, 107, .2);
+    --blue: #8fb5e8; --blue-soft: rgba(143, 181, 232, .2);
+    --gold: #e3c15a; --violet: #c3a3e6;
+    --stage-1: #26332d; --stage-2: #141b17; --grid: rgba(235, 232, 221, .06);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #18201c; --panel: #1f2924; --ink: #ebe8dd; --muted: #a3a89b; --line: #36443c; --chip: #28342e;
+  --accent: #8cc5a6; --accent-ink: #18201c; --accent-soft: rgba(140, 197, 166, .2);
+  --warm: #eda26b; --warm-soft: rgba(237, 162, 107, .2);
+  --blue: #8fb5e8; --blue-soft: rgba(143, 181, 232, .2);
+  --gold: #e3c15a; --violet: #c3a3e6;
+  --stage-1: #26332d; --stage-2: #141b17; --grid: rgba(235, 232, 221, .06);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background-color: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.6;
+  display: flex; flex-direction: column; overflow: hidden;
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: .5; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+sub, sup { font-size: .68em; line-height: 0; }
+
+/* 上のバー */
+.top {
+  display: flex; align-items: center; gap: 14px; padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px));
+  border-bottom: 1.5px solid var(--ink); background: var(--panel);
+}
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 20px; letter-spacing: .04em; margin: 0; white-space: nowrap; }
+.brand b { color: var(--warm); }
+.secnav { display: flex; gap: 2px; overflow-x: auto; min-width: 0; scrollbar-width: none; }
+.secnav::-webkit-scrollbar { display: none; }
+.secnav button { border: 0; background: transparent; padding: 6px 12px; font-size: 14.5px; color: var(--muted); white-space: nowrap; font-weight: 700; }
+.secnav button:hover { color: var(--ink); }
+.secnav button[aria-current="true"] { color: var(--ink); box-shadow: inset 0 -2.5px 0 var(--warm); }
+.secnav .ico { margin-right: 4px; }
+
+/* 全体の配置：左に一覧、まん中にステージ、右に説明 */
+.app {
+  flex: 1; min-height: 0; display: grid; gap: 12px;
+  grid-template-columns: 230px minmax(0, 1fr) 350px;
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px));
+}
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
+.lib { display: flex; flex-direction: column; overflow: auto; padding: 10px; gap: 4px; }
+.lib h2 { font-family: var(--font-display); font-size: 15px; margin: 4px 6px 6px; color: var(--muted); letter-spacing: .06em; }
+.item { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; border-radius: 4px; padding: 8px 10px; }
+.item:hover { background: var(--chip); }
+.item b { display: block; font-weight: 700; font-size: 15px; }
+.item small { display: block; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.item[aria-current="true"] { border-color: var(--ink); background: var(--panel); box-shadow: 2px 2px 0 var(--ink); }
+.item .num { font-family: var(--font-data); color: var(--warm); font-size: 12px; margin-right: 6px; }
+
+.stage-wrap {
+  position: relative; border-radius: var(--r); overflow: hidden; min-height: 0; border: 1px solid var(--line);
+  background: radial-gradient(120% 90% at 40% 35%, var(--stage-1), var(--stage-2));
+}
+.stage-wrap.is-max { position: fixed; inset: 0; z-index: 50; border-radius: 0; }
+.stage { position: absolute; inset: 0; }
+.stage-tools { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 3; }
+.ibtn { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 4px 9px; font-size: 13px; font-weight: 700; }
+.ibtn:hover { border-color: var(--ink); }
+.stage-hint { position: absolute; left: 10px; bottom: 8px; font-size: 12.5px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 2px 8px; pointer-events: none; z-index: 2; max-width: calc(100% - 20px); }
+
+/* 説明カード */
+.card { display: flex; flex-direction: column; overflow: hidden; }
+.card-head { padding: 14px 16px 8px; border-bottom: 1px solid var(--line); }
+.card-head .cat { font-size: 12px; color: var(--muted); letter-spacing: .06em; }
+.card-head h2 { font-family: var(--font-display); font-size: 22px; margin: 0; line-height: 1.3; }
+.card-body { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px 16px; }
+.readout {
+  border: 1.5px solid var(--ink); border-radius: 3px; background: var(--bg); padding: 10px 12px; margin-bottom: 12px;
+  font-size: 15px; line-height: 1.7; min-height: 48px;
+}
+.readout .big { font-family: var(--font-data); font-size: 20px; font-weight: 600; }
+.readout .eq { font-family: var(--font-data); }
+.readout .hl { color: var(--warm); font-weight: 700; }
+.readout .ac { color: var(--accent); font-weight: 700; }
+.readout .bl { color: var(--blue); font-weight: 700; }
+.readout .mt { color: var(--muted); font-size: 13px; }
+.readout hr { border: 0; border-top: 1px dashed var(--line); margin: 6px 0; }
+.ctrl { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.ctrl .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ctrl label.sl { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: center; font-size: 14px; }
+.ctrl label.sl output { font-family: var(--font-data); font-weight: 600; min-width: 3.2em; text-align: right; }
+.ctrl input[type="range"] { width: 100%; accent-color: var(--accent); }
+.ctrl .lab { font-size: 12px; color: var(--muted); letter-spacing: .04em; width: 100%; margin-bottom: -2px; }
+.btn { border: 1px solid var(--ink); background: var(--panel); border-radius: 4px; padding: 6px 12px; font-size: 14px; font-weight: 700; }
+.btn:hover { background: var(--chip); }
+.btn.main { background: var(--accent); color: var(--accent-ink); border-color: var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+.btn.main:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 5px 10px; font-size: 13.5px; font-weight: 500; }
+.seg button[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--panel); font-weight: 700; }
+.tgl { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 5px 10px; font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; }
+.tgl::before { content: ""; width: 12px; height: 12px; border: 1.5px solid var(--muted); border-radius: 2px; }
+.tgl[aria-pressed="true"] { border-color: var(--ink); font-weight: 700; }
+.tgl[aria-pressed="true"]::before { background: var(--tc, var(--accent)); border-color: var(--tc, var(--accent)); }
+.tabs { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+.tabs button { border: 0; background: transparent; padding: 6px 14px; font-weight: 700; color: var(--muted); }
+.tabs button[aria-selected="true"] { color: var(--ink); box-shadow: inset 0 -2.5px 0 var(--accent); }
+.text p { margin: 0 0 10px; }
+.text ul { margin: 0 0 10px; padding-left: 1.2em; }
+.text li { margin-bottom: 4px; }
+.text .formula { font-family: var(--font-data); background: var(--chip); border-left: 3px solid var(--warm); padding: 6px 10px; margin: 8px 0 12px; display: block; }
+.text b { color: var(--warm); }
+.fr { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; line-height: 1.15; font-family: var(--font-data); margin: 0 2px; }
+.fr > i { font-style: normal; padding: 0 3px; }
+.fr > i:first-child { border-bottom: 1.5px solid currentColor; }
+.ov { text-decoration: overline; }
+
+/* ステージの SVG */
+.sv { width: 100%; height: 100%; display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+.sv text { font-family: var(--font-body); fill: var(--ink); }
+.sv .mono { font-family: var(--font-data); }
+.sv .disp { font-family: var(--font-display); font-weight: 800; }
+.sv .mut { fill: var(--muted); }
+.sv .tw { fill: var(--warm); } .sv .ta { fill: var(--accent); } .sv .tb { fill: var(--blue); }
+.ink { stroke: var(--ink); fill: none; stroke-width: 2; }
+.thin { stroke: var(--muted); fill: none; stroke-width: 1.2; }
+.dash { stroke-dasharray: 6 5; }
+.s-ac { stroke: var(--accent); } .s-wm { stroke: var(--warm); } .s-bl { stroke: var(--blue); } .s-gd { stroke: var(--gold); } .s-vi { stroke: var(--violet); }
+.f-ac { fill: var(--accent); } .f-wm { fill: var(--warm); } .f-bl { fill: var(--blue); } .f-gd { fill: var(--gold); } .f-vi { fill: var(--violet); }
+.f-acs { fill: var(--accent-soft); } .f-wms { fill: var(--warm-soft); } .f-bls { fill: var(--blue-soft); }
+.f-pn { fill: var(--panel); } .f-ink { fill: var(--ink); } .f-chip { fill: var(--chip); } .f-none { fill: none; }
+.handle { cursor: grab; }
+.handle .dot { fill: var(--warm); stroke: var(--panel); stroke-width: 3; }
+.handle .hit { fill: transparent; }
+.handle:hover .dot, .handle.on .dot { stroke: var(--ink); }
+.pointlbl { font-family: var(--font-display) !important; font-weight: 800; font-size: 22px; paint-order: stroke; stroke: var(--stage-1); stroke-width: 5px; stroke-linejoin: round; }
+.tag { font-size: 14px; paint-order: stroke; stroke: var(--stage-1); stroke-width: 4px; stroke-linejoin: round; }
+.anim { transition: transform .55s cubic-bezier(.3, .7, .2, 1), opacity .4s; }
+.pop { animation: pop .35s ease-out both; }
+@keyframes pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: scale(1); } }
+.pop { transform-box: fill-box; transform-origin: center; }
+.fadein { animation: fadein .4s ease-out both; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+/* HTMLで描くステージ（クイズなど） */
+.hstage { position: absolute; inset: 0; overflow: auto; padding: 22px; }
+.quiz { max-width: 640px; margin: 0 auto; }
+.quiz .qn { font-family: var(--font-data); color: var(--muted); font-size: 13px; }
+.quiz .qtext { font-size: 20px; font-weight: 700; margin: 6px 0 14px; line-height: 1.6; }
+.quiz .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.quiz .choice { border: 1.5px solid var(--ink); background: var(--panel); border-radius: 4px; padding: 14px 10px; font-size: 19px; font-family: var(--font-data); font-weight: 600; box-shadow: 2px 2px 0 var(--ink); }
+.quiz .choice:hover:not(:disabled) { background: var(--chip); }
+.quiz .choice.right { background: var(--accent); color: var(--accent-ink); opacity: 1; }
+.quiz .choice.wrong { border-color: var(--warm); color: var(--warm); opacity: 1; }
+.quiz .explain { margin-top: 16px; border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; }
+.quiz a.btn { color: var(--ink); }
+.quiz .bar { height: 6px; background: var(--chip); margin: 8px 0 16px; }
+.quiz .bar i { display: block; height: 100%; background: var(--accent); transition: width .3s; }
+.quiz .fig { display: flex; justify-content: center; margin: 0 0 12px; }
+.quiz .fig svg { max-width: 300px; width: 100%; height: auto; }
+.stamp { display: inline-grid; place-items: center; font-family: var(--font-display); font-weight: 800; color: var(--warm); border: 3px solid var(--warm); border-radius: 50%; width: 96px; height: 96px; font-size: 26px; transform: rotate(-12deg); box-shadow: inset 0 0 0 3px var(--panel), inset 0 0 0 5px var(--warm); }
+.center { text-align: center; }
+
+/* スマホ・タブレット */
+.libsel { display: none; }
+@media (max-width: 1100px) { .app { grid-template-columns: 200px minmax(0, 1fr) 310px; } }
+@media (max-width: 900px) {
+  body { height: 100dvh; }
+  .top { padding: 4px 10px; gap: 6px; }
+  .brand { font-size: 16px; }
+  .secnav button { padding: 6px 8px; font-size: 13.5px; }
+  .secnav .ico { display: none; }
+  .app { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 8px; }
+  .lib { flex: none; flex-direction: row; overflow-x: auto; padding: 5px 6px; gap: 4px; scrollbar-width: none; }
+  .lib::-webkit-scrollbar { display: none; }
+  .lib h2 { display: none; }
+  .item { flex: 0 0 auto; width: auto; padding: 4px 10px; white-space: nowrap; }
+  .item b { font-size: 13.5px; }
+  .item small { display: none; }
+  .item[aria-current="true"] { box-shadow: none; }
+  .stage-wrap { flex: 1 1 54%; min-height: 220px; }
+  .card { flex: 1 1 46%; min-height: 0; }
+  .card-head { padding: 6px 12px 4px; display: flex; align-items: baseline; gap: 8px; }
+  .card-head h2 { font-size: 17px; }
+  .card-body { padding: 8px 12px 12px; }
+  .readout { font-size: 14px; padding: 6px 10px; margin-bottom: 8px; }
+  .readout .big { font-size: 17px; }
+  .stage-hint { display: none; }
+  .quiz .qtext { font-size: 17px; }
+  .quiz .choice { font-size: 16px; padding: 10px 6px; }
+  .hstage { padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .anim { transition: none; } .pop, .fadein { animation: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 class="brand">数学A<b>ラボ</b></h1>
+  <nav class="secnav" id="secnav" aria-label="分野"></nav>
+</header>
+<main class="app">
+  <aside class="panel lib" id="lib" aria-label="えらぶ"></aside>
+  <section class="stage-wrap" id="stageWrap" aria-label="ステージ">
+    <div class="stage" id="stage"></div>
+    <div class="stage-tools"><button type="button" class="ibtn" id="maxBtn" title="全画面（プロジェクター用）">⛶ 全画面</button></div>
+    <div class="stage-hint" id="hint"></div>
+  </section>
+  <aside class="panel card" id="card" aria-label="説明">
+    <div class="card-head"><div class="cat" id="cardCat"></div><h2 id="cardTitle"></h2></div>
+    <div class="card-body">
+      <div class="readout" id="readout" aria-live="polite"></div>
+      <div class="ctrl" id="ctrl"></div>
+      <div class="tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-t="point">ポイント</button><button type="button" role="tab" aria-selected="false" data-t="detail">くわしく</button></div>
+      <div class="text" id="text"></div>
+    </div>
+  </aside>
+</main>
+<script>
+"use strict";
+/* ===== 共通の部品 ===== */
+const $ = (sel, root = document) => root.querySelector(sel);
+function h(tag, props, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(props || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") el.className = v;
+    else if (k === "style") el.style.cssText = v;
+    else if (k === "html") el.innerHTML = v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return el;
+}
+const NS = "http://www.w3.org/2000/svg";
+function s(tag, attrs, parent) {
+  const el = document.createElementNS(NS, tag);
+  for (const k in attrs || {}) {
+    if (k === "text") el.textContent = attrs[k];
+    else if (attrs[k] != null) el.setAttribute(k, attrs[k]);
+  }
+  if (parent) parent.appendChild(el);
+  return el;
+}
+function setA(el, attrs) { for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
+function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); return el; }
+function svgPt(svg, e) {
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  const q = p.matrixTransform(svg.getScreenCTM().inverse());
+  return { x: q.x, y: q.y };
+}
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rnd = n => Math.floor(Math.random() * n);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = rnd(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const deg = r => r * 180 / Math.PI;
+const fmt = (v, d = 1) => { const t = (Math.round(v * 10 ** d) / 10 ** d).toFixed(d); return t === "-0.0" ? "0.0" : t; };
+
+/* 数の計算 */
+function fact(n) { let r = 1; for (let i = 2; i <= n; i++) r *= i; return r; }
+function nPr(n, r) { if (r < 0 || r > n) return 0; let v = 1; for (let i = 0; i < r; i++) v *= n - i; return v; }
+function nCr(n, r) { if (r < 0 || r > n) return 0; r = Math.min(r, n - r); let v = 1; for (let i = 1; i <= r; i++) v = v * (n - r + i) / i; return Math.round(v); }
+function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; }
+function lcm(a, b) { return a / gcd(a, b) * b; }
+function factorize(n) { const f = []; for (let p = 2; p * p <= n; p++) { let e = 0; while (n % p === 0) { n /= p; e++; } if (e) f.push([p, e]); } if (n > 1) f.push([n, 1]); return f; }
+const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+const sup = n => String(n).split("").map(c => SUP[+c] ?? c).join("");
+const SUBD = "₀₁₂₃₄₅₆₇₈₉";
+const subd = n => String(n).split("").map(c => SUBD[+c] ?? c).join("");
+/* 分数の HTML（約分する） */
+function frac(n, d, raw) {
+  if (!raw) { const g = gcd(n, d) || 1; n /= g; d /= g; }
+  if (d === 1) return `<span class="eq">${n}</span>`;
+  return `<span class="fr"><i>${n}</i><i>${d}</i></span>`;
+}
+const P = (n, r) => `<sub>${n}</sub>P<sub>${r}</sub>`;
+const C = (n, r) => `<sub>${n}</sub>C<sub>${r}</sub>`;
+const COLORS = ["#c0392b", "#2c7a5f", "#2f5f9e", "#c9930e", "#7a4fa3", "#d9661f", "#2a8fa3", "#8a6d3b", "#c2417a", "#5b7d1f"];
+
+/* ===== アプリの骨組み ===== */
+const CATS = [
+  { id: "cnt", name: "場合の数", ico: "🔢" },
+  { id: "prob", name: "確率", ico: "🎲" },
+  { id: "geo", name: "図形の性質", ico: "📐" },
+  { id: "int", name: "整数の性質", ico: "🧮" },
+  { id: "quiz", name: "挑戦", ico: "🏁" },
+];
+const SIMS = [];
+function sim(def) { SIMS.push(def); }
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("mathA:" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("mathA:" + k, JSON.stringify(v)); } catch (e) { /* 保存できなくても動く */ } },
+};
+
+let current = null; // { def, cleanups: [] }
+let uid = 0;
+
+function makeCtx(def) {
+  const stage = $("#stage"), ctrl = $("#ctrl"), readout = $("#readout");
+  const cleanups = [];
+  const ctx = {
+    stage, ctrl, readout, cleanups,
+    id: (p = "") => `${def.id}-${p}${++uid}`,
+    svg(w = 800, hgt = 560) {
+      const el = s("svg", { viewBox: `0 0 ${w} ${hgt}`, class: "sv", preserveAspectRatio: "xMidYMid meet" });
+      stage.appendChild(el);
+      return el;
+    },
+    html(cls = "hstage") { const d = h("div", { class: cls }); stage.appendChild(d); return d; },
+    out(html) { readout.innerHTML = html; },
+    hint(t) { const el = $("#hint"); el.textContent = t || ""; el.hidden = !t; },
+    on(target, ev, fn, opt) { target.addEventListener(ev, fn, opt); cleanups.push(() => target.removeEventListener(ev, fn, opt)); },
+    after(ms, fn) { const t = setTimeout(fn, ms); cleanups.push(() => clearTimeout(t)); return t; },
+    every(ms, fn) { const t = setInterval(fn, ms); cleanups.push(() => clearInterval(t)); return t; },
+    loop(fn) {
+      let id = 0, last = performance.now(), alive = true;
+      const step = now => { if (!alive) return; const dt = Math.min(0.05, (now - last) / 1000); last = now; if (fn(dt, now) !== false) id = requestAnimationFrame(step); };
+      id = requestAnimationFrame(step);
+      const stop = () => { alive = false; cancelAnimationFrame(id); };
+      cleanups.push(stop);
+      return stop;
+    },
+    row(...kids) { const r = h("div", { class: "row" }, ...kids); ctrl.appendChild(r); return r; },
+    label(t) { const l = h("div", { class: "lab" }, t); ctrl.appendChild(l); return l; },
+    btn(text, fn, opts = {}) { const b = h("button", { type: "button", class: "btn" + (opts.main ? " main" : ""), onclick: fn, title: opts.title }, text); return b; },
+    slider(label, o, fn) {
+      const out = h("output", {}, (o.fmt || String)(o.value));
+      const inp = h("input", { type: "range", min: o.min, max: o.max, step: o.step || 1, value: o.value, "aria-label": label });
+      inp.addEventListener("input", () => { const v = +inp.value; out.textContent = (o.fmt || String)(v); fn(v); });
+      const el = h("label", { class: "sl" }, h("span", {}, label), inp, out);
+      (o.parent || ctrl).appendChild(el);
+      return {
+        el, inp,
+        get: () => +inp.value,
+        set(v, silent) { inp.value = v; out.textContent = (o.fmt || String)(+inp.value); if (!silent) fn(+inp.value); },
+        range(min, max) { inp.min = min; inp.max = max; out.textContent = (o.fmt || String)(+inp.value); },
+      };
+    },
+    seg(label, options, value, fn, parent) {
+      const wrap = h("div", { class: "seg", role: "group", "aria-label": label || "" });
+      let cur = value;
+      const btns = options.map(o => {
+        const b = h("button", { type: "button", "aria-pressed": String(o.v === value), title: o.title, html: o.t });
+        b.addEventListener("click", () => { if (b.disabled) return; api.set(o.v); });
+        wrap.appendChild(b); return b;
+      });
+      const api = {
+        el: wrap,
+        get: () => cur,
+        set(v, silent) { cur = v; btns.forEach((b, i) => b.setAttribute("aria-pressed", String(options[i].v === v))); if (!silent) fn(v); },
+        disable(v, dis) { const i = options.findIndex(o => o.v === v); if (i >= 0) btns[i].disabled = dis; },
+      };
+      if (label) (parent || ctrl).appendChild(h("div", { class: "lab" }, label));
+      (parent || ctrl).appendChild(wrap);
+      return api;
+    },
+    toggle(text, value, fn, color) {
+      const b = h("button", { type: "button", class: "tgl", "aria-pressed": String(!!value), style: color ? `--tc:${color}` : null, html: text });
+      let v = !!value;
+      b.addEventListener("click", () => api.set(!v));
+      const api = { el: b, get: () => v, set(nv, silent) { v = nv; b.setAttribute("aria-pressed", String(v)); if (!silent) fn(v); } };
+      return api;
+    },
+    /* ドラッグできる点 */
+    handle(svg, parent, x, y, onMove, opts = {}) {
+      const g = s("g", { class: "handle" + (opts.cls ? " " + opts.cls : "") }, parent);
+      s("circle", { class: "hit", r: opts.hit || 24 }, g);
+      const dot = s("circle", { class: "dot", r: opts.r || 9 }, g);
+      if (opts.color) dot.style.fill = opts.color;
+      let lbl = null;
+      if (opts.label) lbl = s("text", { class: "pointlbl", "text-anchor": "middle", text: opts.label }, g);
+      const api = {
+        g, x, y,
+        place(nx, ny) {
+          api.x = nx; api.y = ny; g.setAttribute("transform", `translate(${nx},${ny})`);
+          if (lbl) { const o = opts.labelOffset ? opts.labelOffset(api) : { x: 0, y: -16 }; setA(lbl, { x: o.x, y: o.y + 7 }); }
+        },
+        relabel() { api.place(api.x, api.y); },
+      };
+      api.place(x, y);
+      g.addEventListener("pointerdown", e => {
+        e.preventDefault(); e.stopPropagation();
+        g.setPointerCapture(e.pointerId); g.classList.add("on");
+        const start = svgPt(svg, e), ox = api.x - start.x, oy = api.y - start.y;
+        const move = ev => { const p = svgPt(svg, ev); onMove(p.x + ox, p.y + oy, api); };
+        const up = () => { g.classList.remove("on"); g.removeEventListener("pointermove", move); g.removeEventListener("pointerup", up); g.removeEventListener("pointercancel", up); opts.onEnd && opts.onEnd(); };
+        g.addEventListener("pointermove", move); g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
+      });
+      return api;
+    },
+  };
+  return ctx;
+}
+
+function open(id, push = true) {
+  const def = SIMS.find(d => d.id === id) || SIMS[0];
+  if (current) { current.cleanups.forEach(f => { try { f(); } catch (e) { console.error(e); } }); }
+  clear($("#stage")); clear($("#ctrl")); $("#readout").innerHTML = ""; $("#readout").hidden = false;
+  const ctx = makeCtx(def);
+  ctx.hint(def.hint || "");
+  current = { def, cleanups: ctx.cleanups };
+  const cat = CATS.find(c => c.id === def.cat);
+  $("#cardCat").textContent = cat.name;
+  $("#cardTitle").textContent = def.name;
+  document.title = `${def.name}｜数学Aラボ`;
+  renderNav(def);
+  setTab(store.get("tab", "point"));
+  try { def.build(ctx); } catch (e) { console.error(e); ctx.out("表示できませんでした：" + e.message); }
+  if (push && location.hash !== "#" + def.id) history.replaceState(null, "", "#" + def.id);
+  store.set("last", def.id);
+}
+function setTab(t) {
+  const def = current && current.def;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.t === t)));
+  $("#text").innerHTML = def ? (t === "detail" ? def.detail : def.point) || "" : "";
+  store.set("tab", t);
+}
+function renderNav(def) {
+  const nav = clear($("#secnav"));
+  CATS.forEach(c => {
+    const first = SIMS.find(d => d.cat === c.id);
+    nav.appendChild(h("button", { type: "button", "aria-current": String(c.id === def.cat), onclick: () => open(store.get("lastIn:" + c.id, first.id)) }, h("span", { class: "ico", "aria-hidden": "true" }, c.ico), c.name));
+  });
+  store.set("lastIn:" + def.cat, def.id);
+  const lib = clear($("#lib"));
+  const cat = CATS.find(c => c.id === def.cat);
+  lib.appendChild(h("h2", {}, cat.name));
+  SIMS.filter(d => d.cat === def.cat).forEach((d, i) => {
+    lib.appendChild(h("button", { type: "button", class: "item", "aria-current": String(d.id === def.id), onclick: () => open(d.id) },
+      h("b", {}, h("span", { class: "num" }, String(i + 1).padStart(2, "0")), d.name), d.sub ? h("small", {}, d.sub) : null));
+  });
+  const cur = lib.querySelector('[aria-current="true"]');
+  if (cur && cur.scrollIntoView && window.innerWidth <= 900) cur.scrollIntoView({ inline: "center", block: "nearest" });
+}
+</script>
+<script>
+"use strict";
+/* ===================== 場合の数 ===================== */
+
+/* --- 集合とベン図 --- */
+sim({
+  id: "venn", cat: "cnt", name: "集合とベン図", sub: "∩・∪・補集合・ド・モルガン",
+  hint: "スライダーで A・B を変えると、数が動いて入れかわります",
+  point: `<ul><li>A∩B（共通部分）は <b>両方に入っている</b> 所、A∪B（和集合）は <b>どちらかに入っている</b> 所。</li>
+<li>A∪B の個数は、A と B をたすと <b>重なりを2回</b> 数えてしまうので、1回ひく。</li></ul>
+<span class="formula">n(A∪B) = n(A) + n(B) − n(A∩B)</span>
+<ul><li>補集合 <span class="ov">A</span> は「A でないもの」。<span class="formula">n(<span class="ov">A</span>) = n(U) − n(A)</span></li>
+<li>ド・モルガンの法則：<span class="ov">A∪B</span> = <span class="ov">A</span>∩<span class="ov">B</span>、<span class="ov">A∩B</span> = <span class="ov">A</span>∪<span class="ov">B</span>。ボタンで ぬられる所を見くらべよう。</li></ul>`,
+  detail: `<p>ここでは全体集合 U を 1 から N までの整数、A を「a の倍数」、B を「b の倍数」にしています。</p>
+<p>A∩B は「a の倍数でもあり b の倍数でもある数」なので、<b>a と b の最小公倍数の倍数</b> になります。たとえば 2 の倍数と 3 の倍数の共通部分は 6 の倍数。</p>
+<p>「1 から 100 までで、2 でも 3 でも割り切れない数はいくつ？」のような問題は、<b><span class="ov">A</span>∩<span class="ov">B</span> = <span class="ov">A∪B</span></b>（ド・モルガン）を使って、全体から A∪B をひけば求まります。</p>
+<p>3つの集合のときは：<span class="formula">n(A∪B∪C) = n(A)+n(B)+n(C) − n(A∩B) − n(B∩C) − n(C∩A) + n(A∩B∩C)</span></p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    const U = { x: 30, y: 30, w: 740, h: 500 };
+    const A = { x: 300, y: 292, r: 178 }, B = { x: 500, y: 292, r: 178 };
+    const id = c.id("v");
+    const defs = s("defs", {}, svg);
+    const cp = (nm, circ) => { const e = s("clipPath", { id: id + nm }, defs); s("circle", { cx: circ.x, cy: circ.y, r: circ.r }, e); };
+    cp("cA", A); cp("cB", B);
+    const mk = (nm, outs) => { const m = s("mask", { id: id + nm }, defs); s("rect", { x: 0, y: 0, width: 800, height: 560, fill: "#fff" }, m); outs.forEach(o => s("circle", { cx: o.x, cy: o.y, r: o.r, fill: "#000" }, m)); };
+    mk("nA", [A]); mk("nB", [B]); mk("nAB", [A, B]);
+    const regs = {
+      both: s("circle", { cx: A.x, cy: A.y, r: A.r, "clip-path": `url(#${id}cB)` }, svg),
+      a: s("circle", { cx: A.x, cy: A.y, r: A.r, mask: `url(#${id}nB)` }, svg),
+      b: s("circle", { cx: B.x, cy: B.y, r: B.r, mask: `url(#${id}nA)` }, svg),
+      none: s("rect", { x: U.x, y: U.y, width: U.w, height: U.h, mask: `url(#${id}nAB)` }, svg),
+    };
+    Object.values(regs).forEach(r => { r.setAttribute("class", "f-acs"); r.style.transition = "opacity .3s"; });
+    s("rect", { x: U.x, y: U.y, width: U.w, height: U.h, class: "ink", rx: 4 }, svg);
+    s("circle", { cx: A.x, cy: A.y, r: A.r, class: "ink s-wm", "stroke-width": 3 }, svg);
+    s("circle", { cx: B.x, cy: B.y, r: B.r, class: "ink s-bl", "stroke-width": 3 }, svg);
+    s("text", { x: U.x + 14, y: U.y + 30, class: "disp", "font-size": 24, text: "U" }, svg);
+    const la = s("text", { x: A.x - 60, y: A.y - A.r - 8, class: "disp tw", "font-size": 20, "text-anchor": "middle" }, svg);
+    const lb = s("text", { x: B.x + 60, y: B.y - B.r - 8, class: "disp tb", "font-size": 20, "text-anchor": "middle" }, svg);
+    const layer = s("g", {}, svg);
+    const nodes = new Map();
+
+    const ops = {
+      A: { t: "A", r: ["a", "both"] }, B: { t: "B", r: ["b", "both"] },
+      AnB: { t: "A∩B", r: ["both"] }, AuB: { t: "A∪B", r: ["a", "b", "both"] },
+      nA: { t: '<span class="ov">A</span>', r: ["b", "none"] },
+      nAnnB: { t: '<span class="ov">A</span>∩<span class="ov">B</span>', r: ["none"] },
+      nAunB: { t: '<span class="ov">A</span>∪<span class="ov">B</span>', r: ["a", "b", "none"] },
+    };
+    let N = 30, a = 2, b = 3, op = "AuB";
+    const sN = c.slider("全体 U：1〜", { min: 10, max: 60, value: N }, v => { N = v; draw(); });
+    const sa = c.slider("A：○の倍数", { min: 2, max: 9, value: a }, v => { a = v; draw(); });
+    const sb = c.slider("B：○の倍数", { min: 2, max: 9, value: b }, v => { b = v; draw(); });
+    const sg = c.seg("ぬる所", Object.entries(ops).map(([k, o]) => ({ v: k, t: o.t })), op, v => { op = v; draw(); });
+
+    const dist = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+    function spots(test, need) {
+      for (let sp = 40; sp >= 18; sp -= 2) {
+        const out = [];
+        for (let y = U.y + sp * 0.75; y < U.y + U.h - sp * 0.4; y += sp * 0.9)
+          for (let x = U.x + sp * 0.6; x < U.x + U.w - sp * 0.4; x += sp) {
+            const p = { x, y };
+            if (x < U.x + 60 && y < U.y + 50) continue;
+            if (test(p, sp * 0.55)) out.push(p);
+          }
+        if (out.length >= need) return { pts: out, sp };
+      }
+      return { pts: [], sp: 18 };
+    }
+    const tests = {
+      both: (p, m) => dist(p, A) < A.r - m && dist(p, B) < B.r - m,
+      a: (p, m) => dist(p, A) < A.r - m && dist(p, B) > B.r + m,
+      b: (p, m) => dist(p, B) < B.r - m && dist(p, A) > A.r + m,
+      none: (p, m) => dist(p, A) > A.r + m && dist(p, B) > B.r + m,
+    };
+    const regionOf = n => (n % a === 0 ? (n % b === 0 ? "both" : "a") : (n % b === 0 ? "b" : "none"));
+
+    function draw() {
+      la.textContent = `A（${a}の倍数）`; lb.textContent = `B（${b}の倍数）`;
+      const groups = { both: [], a: [], b: [], none: [] };
+      for (let n = 1; n <= N; n++) groups[regionOf(n)].push(n);
+      const on = new Set(ops[op].r);
+      Object.entries(regs).forEach(([k, el]) => { el.style.opacity = on.has(k) ? 1 : 0; });
+      const seen = new Set();
+      for (const k in groups) {
+        const { pts, sp } = spots(tests[k], groups[k].length);
+        groups[k].forEach((n, i) => {
+          const p = pts[i] || { x: 760, y: 520 };
+          let nd = nodes.get(n);
+          if (!nd) {
+            const g = s("g", { class: "anim" }, layer);
+            const ci = s("circle", { r: 13 }, g);
+            const tx = s("text", { "text-anchor": "middle", y: 5, class: "mono", "font-size": 14, text: n }, g);
+            nd = { g, ci, tx }; nodes.set(n, nd);
+            g.style.transform = `translate(${p.x}px, ${p.y}px)`;
+          }
+          const r = Math.min(15, sp * 0.42);
+          setA(nd.ci, { r });
+          nd.tx.setAttribute("font-size", Math.round(r * 1.05));
+          nd.tx.setAttribute("y", r * 0.38);
+          nd.g.style.transform = `translate(${p.x}px, ${p.y}px)`;
+          const hot = on.has(k);
+          nd.ci.setAttribute("class", hot ? "f-pn ink s-ac" : "f-pn thin");
+          nd.ci.setAttribute("stroke-width", hot ? 2.2 : 1);
+          nd.tx.setAttribute("class", "mono" + (hot ? "" : " mut"));
+          nd.tx.style.fontWeight = hot ? 700 : 400;
+          seen.add(n);
+        });
+      }
+      for (const [n, nd] of nodes) if (!seen.has(n)) { nd.g.remove(); nodes.delete(n); }
+
+      const nA = Math.floor(N / a), nB = Math.floor(N / b), L = lcm(a, b), nAB = Math.floor(N / L), nU = N, nAuB = nA + nB - nAB;
+      const cnt = ops[op].r.reduce((t, k) => t + groups[k].length, 0);
+      let f = "";
+      if (op === "A") f = `n(A) = ${N}÷${a} の整数部分 = <span class="big hl">${nA}</span>`;
+      else if (op === "B") f = `n(B) = ${N}÷${b} の整数部分 = <span class="big hl">${nB}</span>`;
+      else if (op === "AnB") f = `A∩B は ${L} の倍数（${a}と${b}の最小公倍数）<br>n(A∩B) = <span class="big hl">${nAB}</span>`;
+      else if (op === "AuB") f = `n(A∪B) = n(A) + n(B) − n(A∩B)<br><span class="eq">= ${nA} + ${nB} − ${nAB} =</span> <span class="big hl">${nAuB}</span>`;
+      else if (op === "nA") f = `n(<span class="ov">A</span>) = n(U) − n(A) <span class="eq">= ${nU} − ${nA} =</span> <span class="big hl">${nU - nA}</span>`;
+      else if (op === "nAnnB") f = `<span class="ov">A</span>∩<span class="ov">B</span> = <span class="ov">A∪B</span>（ド・モルガン）<br>n = n(U) − n(A∪B) <span class="eq">= ${nU} − ${nAuB} =</span> <span class="big hl">${nU - nAuB}</span>`;
+      else f = `<span class="ov">A</span>∪<span class="ov">B</span> = <span class="ov">A∩B</span>（ド・モルガン）<br>n = n(U) − n(A∩B) <span class="eq">= ${nU} − ${nAB} =</span> <span class="big hl">${nU - nAB}</span>`;
+      c.out(`${f}<hr><span class="mt">ぬられた所の数を数えると ${cnt} 個</span>`);
+    }
+    draw();
+  },
+});
+
+/* --- 順列（席にならべる・樹形図・円順列） --- */
+sim({
+  id: "perm", cat: "cnt", name: "順列", sub: "ならべ方・樹形図・円順列・重複順列",
+  hint: "「1つならべる」を何回か押すと、ちがうならび方が集まっていきます",
+  point: `<ul><li>n 個から r 個を選んで <b>1列にならべる</b>：1番目は n 通り、2番目は（1つ使ったので）n−1 通り…とかけ算する。</li></ul>
+<span class="formula">ₙPᵣ = n×(n−1)×…×(n−r+1)　（r 個かける）</span>
+<ul><li><b>重複順列</b>（同じものを何回使ってもよい）：毎回 n 通りなので <span class="formula">nʳ</span></li>
+<li><b>円順列</b>：円にならべると、回して重なるものは同じ。n 通りの回し方が1つになるので <span class="formula">n! ÷ n = (n−1)!</span></li></ul>`,
+  detail: `<p><b>樹形図</b>は、1番目・2番目…と順に「えらべるもの」を枝分かれでかいたもの。枝の先（葉）の数が、ならべ方の数です。どの枝からも同じ本数だけ分かれるので、かけ算で数えられます（積の法則）。</p>
+<p>n! は「n の階乗」で、n×(n−1)×…×2×1。ₙPₙ = n!、0! = 1 と決めます。</p>
+<p>円順列で「1つを固定して考える」とは、1番の席をてっぺんに決めてしまうこと。のこりの (n−1) 個を順にならべるので (n−1)! 通り。</p>
+<p>じゅず順列（うら返しても同じ）は、さらに 2 でわって (n−1)!÷2。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let n = 4, r = 3, mode = "P", view = "seat";
+    const found = new Map();
+    let busy = false;
+    const sn = c.slider("ならべるもの n", { min: 2, max: 7, value: n }, v => { n = v; if (r > n || mode === "circ") r = mode === "circ" ? n : Math.min(r, n); sr.range(1, n); sr.set(r, true); reset(); });
+    const sr = c.slider("えらぶ数 r", { min: 1, max: n, value: r }, v => { r = mode === "circ" ? n : v; reset(); });
+    c.seg("ならべ方", [{ v: "P", t: "順列 ₙPᵣ" }, { v: "Pi", t: "重複順列 nʳ" }, { v: "circ", t: "円順列" }], mode, v => {
+      mode = v; if (mode === "circ") { r = n; sr.set(r, true); } sr.inp.disabled = mode === "circ"; reset();
+    });
+    const sv = c.seg("見せ方", [{ v: "seat", t: "席にならべる" }, { v: "tree", t: "樹形図" }], view, v => { view = v; reset(); });
+    c.row(c.btn("1つならべる", () => one(), { main: true }), c.btn("全部ならべる", () => all()), c.btn("リセット", () => reset()));
+
+    const total = () => mode === "P" ? nPr(n, r) : mode === "Pi" ? n ** r : fact(n - 1);
+    const key = arr => arr.join("");
+    function canonCirc(arr) { const i = arr.indexOf(0); return arr.slice(i).concat(arr.slice(0, i)); }
+
+    function ball(g, x, y, k, rad = 18) {
+      const b = s("g", { transform: `translate(${x},${y})` }, g);
+      s("circle", { r: rad, fill: COLORS[k], stroke: "var(--ink)", "stroke-width": 1.5 }, b);
+      s("text", { "text-anchor": "middle", y: rad * 0.36, "font-size": rad, fill: "#fff", "font-weight": 700, text: k + 1 }, b);
+      return b;
+    }
+    let G = null, slotsLayer = null, listLayer = null;
+    function reset() {
+      found.clear(); busy = false;
+      clear(svg); G = s("g", {}, svg);
+      const treeOk = mode !== "circ" && total() <= 36 && r <= 4;
+      sv.disable("tree", !treeOk);
+      if (!treeOk && view === "tree") { view = "seat"; sv.set("seat", true); }
+      if (view === "tree") drawTree(); else drawSeats();
+      readout();
+    }
+    function drawSeats() {
+      s("text", { x: 30, y: 40, class: "mut", "font-size": 15, text: mode === "Pi" ? "えらべるもの（何回使ってもよい）" : "えらべるもの" }, G);
+      for (let k = 0; k < n; k++) ball(G, 70 + k * 56, 80, k, 20);
+      slotsLayer = s("g", {}, G);
+      if (mode === "circ") {
+        const cx = 400, cy = 250, R = 110;
+        s("circle", { cx, cy, r: R, class: "thin dash" }, slotsLayer);
+        s("text", { x: cx, y: cy + 6, "text-anchor": "middle", class: "mut", "font-size": 15, text: "まるいテーブル" }, slotsLayer);
+        for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / n; s("circle", { cx: cx + R * Math.cos(a), cy: cy + R * Math.sin(a), r: 24, class: "f-chip thin" }, slotsLayer); }
+      } else {
+        const w = Math.min(90, 700 / r), x0 = 400 - (r - 1) * w / 2;
+        for (let i = 0; i < r; i++) {
+          s("rect", { x: x0 + i * w - 28, y: 190, width: 56, height: 56, rx: 4, class: "f-chip thin" }, slotsLayer);
+          s("text", { x: x0 + i * w, y: 180, "text-anchor": "middle", class: "mut", "font-size": 13, text: `${i + 1}番目` }, slotsLayer);
+          const ways = mode === "P" ? n - i : n;
+          s("text", { x: x0 + i * w, y: 280, "text-anchor": "middle", class: "mono tw", "font-size": 18, "font-weight": 700, text: `${ways}通り` }, slotsLayer);
+          if (i < r - 1) s("text", { x: x0 + i * w + w / 2, y: 280, "text-anchor": "middle", class: "mono", "font-size": 18, text: "×" }, slotsLayer);
+        }
+      }
+      s("line", { x1: 30, y1: 365, x2: 770, y2: 365, class: "thin" }, G);
+      listLayer = s("g", {}, G);
+      drawList();
+    }
+    function slotPos(i) {
+      if (mode === "circ") { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return { x: 400 + 110 * Math.cos(a), y: 250 + 110 * Math.sin(a) }; }
+      const w = Math.min(90, 700 / r), x0 = 400 - (r - 1) * w / 2; return { x: x0 + i * w, y: 218 };
+    }
+    function randomArr() {
+      if (mode === "Pi") return Array.from({ length: r }, () => rnd(n));
+      const pool = shuffle([...Array(n).keys()]); return pool.slice(0, r);
+    }
+    function one() {
+      if (busy || view === "tree") { if (view === "tree") pickLeaf(rnd(leaves.length)); return; }
+      busy = true;
+      let arr = randomArr();
+      if (found.size < total()) { let t = 0; while (found.has(key(mode === "circ" ? canonCirc(arr) : arr)) && t++ < 200) arr = randomArr(); }
+      const fly = s("g", {}, G);
+      arr.forEach((k, i) => {
+        const b = ball(fly, 70 + k * 56, 80, k, 20);
+        b.removeAttribute("transform");
+        b.style.transform = `translate(${70 + k * 56}px, 80px)`;
+        b.classList.add("anim");
+        c.after(60 + i * 160, () => { const p = slotPos(i); b.style.transform = `translate(${p.x}px, ${p.y}px)`; });
+      });
+      c.after(160 * arr.length + 520, () => {
+        if (mode === "circ") {
+          // 回して同じものを見せる
+          const g = fly; let step = 0;
+          const spin = () => {
+            if (step >= n) { finish(); return; }
+            step++;
+            g.style.transition = "transform .45s"; g.style.transformOrigin = "400px 250px";
+            g.style.transform = `rotate(${step * 360 / n}deg)`;
+            c.after(520, spin);
+          };
+          readout(`回しても同じならび… ${n} 通りの回し方が 1 つの円順列`);
+          spin();
+        } else finish();
+        function finish() {
+          found.set(key(mode === "circ" ? canonCirc(arr) : arr), mode === "circ" ? canonCirc(arr) : arr);
+          c.after(mode === "circ" ? 200 : 500, () => { fly.remove(); drawList(); readout(); busy = false; });
+        }
+      });
+    }
+    function all() {
+      if (view === "tree") { leaves.forEach((_, i) => c.after(i * 25, () => markLeaf(i))); return; }
+      const lim = 240;
+      const gen = [];
+      const rec = (cur, used) => {
+        if (gen.length >= lim) return;
+        if (cur.length === r) { gen.push(cur.slice()); return; }
+        for (let k = 0; k < n; k++) { if (mode !== "Pi" && used[k]) continue; if (mode === "circ" && cur.length === 0 && k !== 0) continue; used[k] = 1; cur.push(k); rec(cur, used); cur.pop(); used[k] = 0; }
+      };
+      rec([], []);
+      gen.forEach(a => found.set(key(a), a));
+      drawList(); readout();
+    }
+    function drawList() {
+      if (!listLayer) return;
+      clear(listLayer);
+      const items = [...found.values()];
+      const tot = total();
+      s("text", { x: 30, y: 392, "font-size": 15, text: `見つけたならび方：${found.size} / ${tot} 通り` }, listLayer);
+      if (!items.length) return;
+      if (mode === "circ") {
+        const cell = 46, cols = Math.floor(740 / cell), maxRows = 3;
+        items.slice(0, cols * maxRows).forEach((a, i) => {
+          const cx = 30 + cell / 2 + (i % cols) * cell, cy = 428 + Math.floor(i / cols) * cell;
+          s("circle", { cx, cy, r: 16, class: "thin" }, listLayer);
+          a.forEach((k, j) => { const an = -Math.PI / 2 + j * 2 * Math.PI / n; s("circle", { cx: cx + 16 * Math.cos(an), cy: cy + 16 * Math.sin(an), r: 5, fill: COLORS[k] }, listLayer); });
+        });
+        if (items.length > cols * maxRows) s("text", { x: 770, y: 392, "text-anchor": "end", class: "mut", "font-size": 13, text: `（${cols * maxRows} 個まで表示）` }, listLayer);
+        return;
+      }
+      const dot = r <= 3 ? 9 : 7, w = r * dot * 2 + 12, cols = Math.floor(740 / w), rowH = dot * 2 + 6, maxRows = Math.floor(150 / rowH);
+      items.slice(0, cols * maxRows).forEach((a, i) => {
+        const x = 30 + (i % cols) * w, y = 410 + Math.floor(i / cols) * rowH;
+        a.forEach((k, j) => s("circle", { cx: x + dot + j * dot * 2, cy: y + dot, r: dot - 1, fill: COLORS[k] }, listLayer));
+      });
+      if (items.length > cols * maxRows) s("text", { x: 770, y: 392, "text-anchor": "end", class: "mut", "font-size": 13, text: `（${cols * maxRows} 個まで表示）` }, listLayer);
+    }
+    /* 樹形図 */
+    let leaves = [];
+    function drawTree() {
+      leaves = [];
+      const levels = r, x0 = 60, dx = Math.min(170, 640 / levels);
+      const cnt = total(), top = 34, bottom = 530, gap = (bottom - top) / Math.max(1, cnt - 1);
+      const rad = clamp(gap * 0.42, 7, 15);
+      s("circle", { cx: x0 - 30, cy: (top + bottom) / 2, r: 5, class: "f-ink" }, G);
+      for (let l = 0; l < levels; l++) s("text", { x: x0 + l * dx + dx * 0.5, y: 22, "text-anchor": "middle", class: "mut", "font-size": 13, text: `${l + 1}番目` }, G);
+      // 位置計算と描画を2段で
+      const nodes = [];
+      const place = (path, used, depth) => {
+        const kids = [];
+        for (let k = 0; k < n; k++) if (mode === "Pi" || !used[k]) kids.push(k);
+        const out = [];
+        kids.forEach(k => {
+          used[k] = (used[k] || 0) + 1; path.push(k);
+          let y, children = [];
+          if (depth === r - 1) { y = top + nodes.leafCount * gap; if (cnt === 1) y = (top + bottom) / 2; nodes.leafCount++; }
+          else { children = place(path, used, depth + 1); y = children.reduce((t, o) => t + o.y, 0) / children.length; }
+          out.push({ k, y, depth, children, path: path.slice() });
+          path.pop(); used[k]--;
+        });
+        return out;
+      };
+      nodes.leafCount = 0;
+      const roots = place([], [], 0);
+      const edgeG = s("g", {}, G), nodeG = s("g", {}, G);
+      leaves = [];
+      const drawN = (list, px, py) => list.forEach(o => {
+        const x = x0 + o.depth * dx + dx * 0.5;
+        const e = s("line", { x1: px, y1: py, x2: x - rad, y2: o.y, class: "thin fadein", style: `animation-delay:${o.depth * .25}s` }, edgeG);
+        const b = ball(nodeG, x, o.y, o.k, rad); b.classList.add("fadein"); b.style.animationDelay = `${o.depth * .25 + .1}s`;
+        o.edge = e; o.node = b;
+        if (o.children.length) drawN(o.children, x + rad, o.y);
+        else {
+          const lb = s("text", { x: x + rad + 10, y: o.y + 5, class: "mono fadein", "font-size": clamp(rad, 11, 14), style: `animation-delay:${r * .25}s`, text: o.path.map(k => k + 1).join("") }, nodeG);
+          leaves.push({ o, lb });
+          b.style.cursor = "pointer"; b.addEventListener("click", () => pickLeaf(leaves.findIndex(L => L.o === o)));
+        }
+      });
+      drawN(roots, x0 - 25, (top + bottom) / 2);
+      leaves.allNodes = roots;
+      G.dataset.rad = rad;
+    }
+    function pathNodes(target) {
+      const out = [];
+      const walk = (list, acc) => { for (const o of list) { const a = acc.concat(o); if (o === target) { out.push(...a); return true; } if (walk(o.children, a)) return true; } return false; };
+      walk(leaves.allNodes, []);
+      return out;
+    }
+    function markLeaf(i) { const L = leaves[i]; if (!L) return; L.lb.style.fill = "var(--warm)"; L.lb.style.fontWeight = 700; found.set(key(L.o.path), L.o.path); readout(); }
+    function pickLeaf(i) {
+      const L = leaves[i]; if (!L) return;
+      G.querySelectorAll("line").forEach(e => { e.setAttribute("class", "thin"); e.removeAttribute("stroke-width"); });
+      pathNodes(L.o).forEach(o => { o.edge.setAttribute("class", "ink s-wm"); o.edge.setAttribute("stroke-width", 3.5); });
+      markLeaf(i);
+      readout(`えらんだ枝：${L.o.path.map(k => k + 1).join(" → ")}`);
+    }
+    function readout(extra) {
+      const tot = total();
+      let f;
+      if (mode === "P") f = `${P(n, r)} = ${Array.from({ length: r }, (_, i) => n - i).join(" × ")} = <span class="big hl">${tot}</span> 通り`;
+      else if (mode === "Pi") f = `${n}<sup>${r}</sup> = ${Array(r).fill(n).join(" × ")} = <span class="big hl">${tot}</span> 通り`;
+      else f = `(${n}−1)! = ${n > 2 ? Array.from({ length: n - 1 }, (_, i) => n - 1 - i).join(" × ") : "1"} = <span class="big hl">${tot}</span> 通り<br><span class="mt">${n}! = ${fact(n)} 通りのならべ方を、回し方 ${n} 通りでわる</span>`;
+      c.out(f + `<hr><span class="mt">見つけた：${found.size} / ${tot}</span>` + (extra ? `<br>${extra}` : ""));
+    }
+    reset();
+  },
+});
+
+/* --- 組合せ（円周上の点から選ぶ） --- */
+sim({
+  id: "comb", cat: "cnt", name: "組合せ", sub: "えらぶだけ（順番は関係ない）",
+  hint: "円の上の点をタップして r 個えらぶと、図形ができます",
+  point: `<ul><li>組合せは <b>えらぶだけ</b>。ならべる順番はちがっても同じ1組。</li>
+<li>えらんだ r 個のならべ方は r! 通り。順列 ₙPᵣ はそれを全部べつに数えているので、r! でわる。</li></ul>
+<span class="formula">ₙCᵣ = ₙPᵣ ÷ r! = n!／(r!(n−r)!)</span>
+<ul><li>円周上の n 点から3点えらぶと三角形ができる。三角形の数 = ₙC₃。</li>
+<li><b>ₙCᵣ = ₙCₙ₋ᵣ</b>：r 個えらぶことは、のこす n−r 個をえらぶことと同じ。</li></ul>`,
+  detail: `<p>たとえば A・B・C の3人から2人の係をえらぶとき、{A, B} と {B, A} は同じ組。順列 ₃P₂ = 6 では「AB と BA」を別に数えているので、2! = 2 でわって ₃C₂ = 3。</p>
+<p>円周上の n 点で、2点をむすぶ線分（弦）の数は ₙC₂、対角線の数は ₙC₂ − n（辺の数をひく）。</p>
+<p>「全部の組を見る」で、えらび方を全部ならべて数えられます。小さい図をタップすると、その組を大きくえがきます。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let n = 6, r = 3, sel = [];
+    const cx = 230, cy = 290, R = 190;
+    const sn = c.slider("点の数 n", { min: 4, max: 10, value: n }, v => { n = v; sel = []; sr.range(1, n - 1); if (r > n - 1) sr.set(n - 1, true), r = n - 1; draw(); right("none"); });
+    const sr = c.slider("えらぶ数 r", { min: 1, max: n - 1, value: r }, v => { r = v; sel = []; draw(); right("none"); });
+    c.row(c.btn("ランダムにえらぶ", () => { sel = shuffle([...Array(n).keys()]).slice(0, r).sort((a, b) => a - b); draw(); right("orders"); }, { main: true }),
+      c.btn("ならべ方を見る", () => right("orders")), c.btn("全部の組を見る", () => right("all")));
+    const pos = (i, rr = R, x = cx, y = cy) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return { x: x + rr * Math.cos(a), y: y + rr * Math.sin(a) }; };
+    const L = s("g", {}, svg), Rg = s("g", {}, svg);
+    function poly(g, pts, cls) {
+      if (pts.length === 2) s("line", { x1: pts[0].x, y1: pts[0].y, x2: pts[1].x, y2: pts[1].y, class: cls, "stroke-width": 3 }, g);
+      else if (pts.length > 2) s("polygon", { points: pts.map(p => `${p.x},${p.y}`).join(" "), class: cls }, g);
+    }
+    function draw() {
+      clear(L);
+      s("circle", { cx, cy, r: R, class: "thin" }, L);
+      const sorted = sel.slice().sort((a, b) => a - b);
+      if (sel.length >= 2) poly(L, sorted.map(i => pos(i)), "ink s-wm f-wms");
+      for (let i = 0; i < n; i++) {
+        const p = pos(i), on = sel.includes(i);
+        const g = s("g", { style: "cursor:pointer" }, L);
+        s("circle", { cx: p.x, cy: p.y, r: 26, fill: "transparent" }, g);
+        s("circle", { cx: p.x, cy: p.y, r: on ? 15 : 10, fill: on ? COLORS[i % 10] : "var(--panel)", stroke: "var(--ink)", "stroke-width": 2 }, g);
+        const q = pos(i, R + 30);
+        s("text", { x: q.x, y: q.y + 6, "text-anchor": "middle", class: "disp", "font-size": 18, text: "ABCDEFGHIJ"[i] }, g);
+        g.addEventListener("click", () => {
+          if (on) sel = sel.filter(k => k !== i);
+          else { if (sel.length >= r) sel.shift(); sel.push(i); }
+          draw(); if (sel.length === r) right("orders"); else right("none");
+        });
+      }
+      readout();
+    }
+    function right(kind) {
+      clear(Rg);
+      const X = 470, W = 310;
+      if (kind === "orders" && sel.length === r) {
+        const names = sel.slice().sort((a, b) => a - b).map(i => "ABCDEFGHIJ"[i]);
+        const perms = [];
+        const rec = (cur, rest) => { if (!rest.length) { perms.push(cur); return; } rest.forEach((x, i) => rec(cur + x, rest.slice(0, i).concat(rest.slice(i + 1)))); };
+        rec("", names);
+        s("text", { x: X, y: 40, "font-size": 15, text: `この組を ならべると ${r}! = ${fact(r)} 通り` }, Rg);
+        const show = perms.slice(0, 24), cols = r <= 3 ? 2 : 3, cw = W / cols;
+        show.forEach((t, i) => s("text", { x: X + (i % cols) * cw, y: 76 + Math.floor(i / cols) * 30, class: "mono pop", style: `animation-delay:${i * 0.05}s`, "font-size": 20, text: t }, Rg));
+        if (perms.length > show.length) s("text", { x: X, y: 76 + Math.ceil(show.length / cols) * 30, class: "mut", "font-size": 13, text: `…ほか ${perms.length - show.length} 通り` }, Rg);
+        const yb = 120 + Math.ceil(Math.min(perms.length, 24) / cols) * 30;
+        s("path", { d: `M${X + 60},${yb - 20} l0,30 m-10,-12 l10,12 l10,-12`, class: "ink s-wm" }, Rg);
+        s("text", { x: X, y: yb + 40, "font-size": 18, "font-weight": 700, class: "tw", text: `全部 同じ 1 組 {${names.join(", ")}}` }, Rg);
+        s("text", { x: X, y: yb + 72, "font-size": 14, class: "mut", text: `順列 ${nPr(n, r)} 通りを ${fact(r)} でわると ${nCr(n, r)} 組` }, Rg);
+      } else if (kind === "all") {
+        const combos = [];
+        const rec = (start, cur) => { if (combos.length >= 126) return; if (cur.length === r) { combos.push(cur.slice()); return; } for (let i = start; i < n; i++) { cur.push(i); rec(i + 1, cur); cur.pop(); } };
+        rec(0, []);
+        const tot = nCr(n, r);
+        s("text", { x: X, y: 30, "font-size": 15, text: `えらび方は全部で ${tot} 組` + (tot > combos.length ? `（${combos.length} 組まで表示）` : "") }, Rg);
+        const cell = clamp(Math.floor(Math.sqrt(W * 500 / combos.length)), 30, 100), cols = Math.max(1, Math.floor(W / cell));
+        combos.forEach((cb, i) => {
+          const gx = X + (i % cols) * cell + cell / 2, gy = 50 + Math.floor(i / cols) * cell + cell / 2, rr = cell * 0.38;
+          const g = s("g", { style: "cursor:pointer", class: "pop" }, Rg); g.style.animationDelay = `${i * 0.012}s`;
+          s("rect", { x: gx - cell / 2 + 2, y: gy - cell / 2 + 2, width: cell - 4, height: cell - 4, fill: "transparent" }, g);
+          s("circle", { cx: gx, cy: gy, r: rr, class: "thin", "stroke-width": .8 }, g);
+          poly(g, cb.map(k => pos(k, rr, gx, gy)), "ink s-wm f-wms");
+          if (r === 1) { const p = pos(cb[0], rr, gx, gy); s("circle", { cx: p.x, cy: p.y, r: 3, class: "f-wm" }, g); }
+          g.addEventListener("click", () => { sel = cb.slice(); draw(); });
+        });
+      } else {
+        s("text", { x: X, y: 60, "font-size": 16, class: "mut", text: `点を ${r} 個えらんでね（あと ${r - sel.length} 個）` }, Rg);
+      }
+    }
+    function readout() {
+      const tot = nCr(n, r);
+      let sh = "";
+      if (r === 2) sh = `<br><span class="mt">2点をむすぶ線分（弦）の数</span>`;
+      if (r === 3) sh = `<br><span class="mt">＝ ${n} 点からできる三角形の数</span>`;
+      if (r === 4) sh = `<br><span class="mt">＝ ${n} 点からできる四角形の数</span>`;
+      c.out(`${C(n, r)} = ${frac(nPr(n, r), fact(r), true)} = <span class="fr"><i>${Array.from({ length: r }, (_, i) => n - i).join("×")}</i><i>${Array.from({ length: r }, (_, i) => r - i).join("×")}</i></span> = <span class="big hl">${tot}</span>${sh}<hr><span class="mt">${C(n, r)} = ${C(n, n - r)} = ${nCr(n, n - r)}（のこす ${n - r} 個をえらぶのと同じ）</span>`);
+    }
+    draw(); right("none");
+  },
+});
+
+/* --- パスカルの三角形 --- */
+sim({
+  id: "pascal", cat: "cnt", name: "パスカルの三角形", sub: "ₙCᵣ がならぶ三角形・二項定理",
+  hint: "数をタップすると、上の2つの数のたし算になっているのがわかります",
+  point: `<ul><li>どの数も、<b>すぐ上の2つの数の和</b>。両はしは 1。</li>
+<li>上から n 段目の左から r 番目（どちらも0から数える）が <b>ₙCᵣ</b>。</li></ul>
+<span class="formula">ₙCᵣ = ₙ₋₁Cᵣ₋₁ + ₙ₋₁Cᵣ</span>
+<ul><li>n 段目の数をたすと <b>2ⁿ</b>。</li>
+<li>(a+b)ⁿ を展開したときの係数が、n 段目の数になる（<b>二項定理</b>）。</li></ul>`,
+  detail: `<p>ₙCᵣ = ₙ₋₁Cᵣ₋₁ + ₙ₋₁Cᵣ のわけ：n 人から r 人えらぶとき、ある1人（Aさん）に注目します。Aさんを <b>えらぶ</b> なら、のこり n−1 人から r−1 人（ₙ₋₁Cᵣ₋₁ 通り）。<b>えらばない</b> なら、n−1 人から r 人（ₙ₋₁Cᵣ 通り）。たすと全部です。</p>
+<p>二項定理：<span class="formula">(a+b)ⁿ = ₙC₀aⁿ + ₙC₁aⁿ⁻¹b + … + ₙCₙbⁿ</span> (a+b) を n 個かけるとき、b を r 個の かっこ から選ぶ選び方が ₙCᵣ 通りあるからです。（二項定理は数学Ⅱでくわしく学びます）</p>
+<p>「奇数をぬる」をおすと、シェルピンスキーの三角形という もようが出てきます。段を増やしてみよう。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let N = 8, odd = false, pick = { n: 4, r: 2 };
+    c.slider("段の数", { min: 4, max: 31, value: N }, v => { N = v; if (pick.n > N) pick = { n: Math.min(4, N), r: 1 }; draw(); });
+    const t = c.toggle("奇数に色をぬる", odd, v => { odd = v; draw(); }, "var(--warm)");
+    c.row(t.el);
+    function draw() {
+      clear(svg);
+      const rows = N + 1;
+      const cw = Math.min(56, 760 / rows), rh = Math.min(48, 510 / rows);
+      const x = (n, r) => 400 + (r - n / 2) * cw, y = n => 30 + n * rh;
+      const showNum = cw >= 24;
+      const par = pick.n > 0 ? [[pick.n - 1, pick.r - 1], [pick.n - 1, pick.r]] : [];
+      for (let n = 0; n < rows; n++) for (let r = 0; r <= n; r++) {
+        const v = nCr(n, r);
+        const isPick = n === pick.n && r === pick.r, isPar = par.some(([a, b]) => a === n && b === r);
+        const g = s("g", { style: "cursor:pointer" }, svg);
+        const w = cw * 0.92, hh = rh * 0.86;
+        let cls = "f-pn thin";
+        if (odd && v % 2 === 1) cls = "f-wm thin";
+        if (isPar) cls = "f-bls ink s-bl";
+        if (isPick) cls = "f-acs ink s-ac";
+        s("rect", { x: x(n, r) - w / 2, y: y(n) - hh / 2, width: w, height: hh, rx: Math.min(6, w / 4), class: cls, "stroke-width": isPick || isPar ? 2.5 : 1 }, g);
+        if (showNum) {
+          const fs = Math.min(18, cw / Math.max(2.2, String(v).length * 0.62));
+          s("text", { x: x(n, r), y: y(n) + fs * 0.36, "text-anchor": "middle", class: "mono", "font-size": fs, "font-weight": isPick ? 700 : 400, fill: odd && v % 2 && !isPick && !isPar ? "#fff" : null, text: v }, g);
+        }
+        g.addEventListener("click", () => { pick = { n, r }; draw(); });
+      }
+      if (pick.n > 0 && pick.r > 0 && pick.r < pick.n) {
+        par.forEach(([a, b]) => s("line", { x1: x(a, b), y1: y(a) + rh * 0.42, x2: x(pick.n, pick.r) + (b < pick.r ? -cw * 0.2 : cw * 0.2), y2: y(pick.n) - rh * 0.42, class: "ink s-bl", "stroke-width": 2.5 }, svg));
+      }
+      readout();
+    }
+    function readout() {
+      const { n, r } = pick;
+      const row = Array.from({ length: n + 1 }, (_, k) => nCr(n, k));
+      let f = `<span class="ac">${C(n, r)} = <span class="big">${nCr(n, r)}</span></span>`;
+      if (n > 0 && r > 0 && r < n) f += `<br>= <span class="bl">${C(n - 1, r - 1)} + ${C(n - 1, r)}</span> = ${nCr(n - 1, r - 1)} + ${nCr(n - 1, r)}`;
+      f += `<hr><span class="mt">${n} 段目の和：${n <= 10 ? row.join("+") + " = " : ""}${2 ** n} = 2<sup>${n}</sup></span>`;
+      if (n <= 6) {
+        const terms = row.map((k, i) => { const pa = n - i, pb = i; const co = k === 1 ? "" : k; const A = pa ? (pa === 1 ? "a" : `a<sup>${pa}</sup>`) : ""; const B = pb ? (pb === 1 ? "b" : `b<sup>${pb}</sup>`) : ""; return `<b>${co}</b>${A}${B}`; });
+        f += `<br><span class="mt">(a+b)<sup>${n}</sup> = ${terms.join(" + ")}</span>`;
+      }
+      c.out(f);
+    }
+    draw();
+  },
+});
+
+/* --- 最短経路 --- */
+sim({
+  id: "route", cat: "cnt", name: "最短経路", sub: "→ と ↑ のならべ方",
+  hint: "S から交差点をなぞって G まで行こう（右か上だけ）。×をおくこともできます",
+  point: `<ul><li>最短の道は「→ を ${"w"} 回、↑ を ${"h"} 回」ならべたもの。</li>
+<li>w+h 回のうち、どこで → を使うかをえらぶだけなので</li></ul>
+<span class="formula"><sub>w+h</sub>C<sub>w</sub> ＝ (w+h)!／(w! h!)</span>
+<ul><li>交差点に「そこまでの道の数」を書くと、<b>左からの数 ＋ 下からの数</b> になる（パスカルの三角形と同じ）。</li>
+<li>通れない点（×）があっても、この「たし算」で数えられる。</li></ul>`,
+  detail: `<p>たとえば横 5・たて 3 なら、→→→→→↑↑↑ の 8 個をならべる「同じものをふくむ順列」と考えて 8!／(5!3!) = 56 通り。8 か所から ↑ の場所 3 つをえらぶと考えても ₈C₃ = 56。</p>
+<p><b>ある点 P を通る道</b>は、(S から P への道の数) × (P から G への道の数)。</p>
+<p><b>ある点を通らない道</b>は、(全部の道) − (その点を通る道)。「×をおく」で通れない点をおくと、たし算の数え方で同じ答えになることを確かめられます。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let W = 5, H = 3, path = [[0, 0]], blocked = new Set(), mode = "walk", showNums = false;
+    const found = new Set();
+    c.slider("横 w", { min: 1, max: 8, value: W }, v => { W = v; reset(); });
+    c.slider("たて h", { min: 1, max: 6, value: H }, v => { H = v; reset(); });
+    c.seg("タップすると", [{ v: "walk", t: "道をなぞる" }, { v: "block", t: "×（通れない）をおく" }], mode, v => { mode = v; });
+    c.row(c.btn("ランダムに1本", () => randomWalk(), { main: true }), c.btn("数を書きこむ", () => { showNums = true; draw(true); }), c.btn("リセット", () => { blocked.clear(); reset(); }));
+    let sz, X0, Y0;
+    const P = (i, j) => ({ x: X0 + i * sz, y: Y0 - j * sz });
+    function dp() {
+      const a = Array.from({ length: W + 1 }, () => Array(H + 1).fill(0));
+      for (let i = 0; i <= W; i++) for (let j = 0; j <= H; j++) {
+        if (blocked.has(i + "," + j)) { a[i][j] = 0; continue; }
+        if (i === 0 && j === 0) { a[i][j] = 1; continue; }
+        a[i][j] = (i > 0 ? a[i - 1][j] : 0) + (j > 0 ? a[i][j - 1] : 0);
+      }
+      return a;
+    }
+    function reset() { path = [[0, 0]]; found.clear(); showNums = false; blocked.forEach(k => { const [i, j] = k.split(",").map(Number); if (i > W || j > H) blocked.delete(k); }); draw(); }
+    let numG;
+    const RG = s("g", {}, svg);
+    const hit = s("rect", { x: 0, y: 0, width: 800, height: 560, fill: "transparent" }, svg);
+    hit.addEventListener("pointerdown", down);
+    function draw(anim) {
+      { const svg = clear(RG); drawInto(svg, anim); }
+      readout();
+    }
+    function drawInto(svg, anim) {
+      sz = Math.min(640 / W, 420 / H, 100); X0 = 400 - W * sz / 2; Y0 = 300 + H * sz / 2;
+      for (let i = 0; i <= W; i++) { const a = P(i, 0), b = P(i, H); s("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: "thin", "stroke-width": 2 }, svg); }
+      for (let j = 0; j <= H; j++) { const a = P(0, j), b = P(W, j); s("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: "thin", "stroke-width": 2 }, svg); }
+      const pl = path.map(([i, j]) => { const p = P(i, j); return `${p.x},${p.y}`; }).join(" ");
+      s("polyline", { points: pl, class: "ink s-wm", "stroke-width": 7, "stroke-linecap": "round", "stroke-linejoin": "round" }, svg);
+      const S = P(0, 0), G = P(W, H);
+      s("text", { x: S.x - 16, y: S.y + 30, class: "pointlbl", text: "S" }, svg);
+      s("text", { x: G.x + 34, y: G.y + 8, class: "pointlbl", text: "G" }, svg);
+      const a = dp();
+      numG = s("g", {}, svg);
+      for (let i = 0; i <= W; i++) for (let j = 0; j <= H; j++) {
+        const p = P(i, j), k = i + "," + j;
+        if (blocked.has(k)) { s("path", { d: `M${p.x - 11},${p.y - 11}l22,22m0,-22l-22,22`, class: "ink s-wm", "stroke-width": 4 }, svg); continue; }
+        const end = path[path.length - 1];
+        const isEnd = end[0] === i && end[1] === j;
+        s("circle", { cx: p.x, cy: p.y, r: isEnd ? 9 : 5, class: isEnd ? "f-wm" : "f-ink" }, svg);
+        if (showNums) {
+          const t = s("text", { x: p.x + 8, y: p.y - 8, class: "mono ta" + (anim ? " pop" : ""), "font-size": Math.min(18, sz * 0.32), "font-weight": 700, text: a[i][j] }, numG);
+          if (anim) t.style.animationDelay = `${(i + j) * 0.18}s`;
+        }
+      }
+    }
+    function near(pt) {
+      let best = null, bd = 1e9;
+      for (let i = 0; i <= W; i++) for (let j = 0; j <= H; j++) { const p = P(i, j), d = Math.hypot(p.x - pt.x, p.y - pt.y); if (d < bd) { bd = d; best = [i, j]; } }
+      return bd < sz * 0.45 ? best : null;
+    }
+    function tryAdd(q) {
+      if (!q) return;
+      const k = q[0] + "," + q[1];
+      const idx = path.findIndex(p => p[0] === q[0] && p[1] === q[1]);
+      if (idx >= 0) { if (idx < path.length - 1) { path = path.slice(0, idx + 1); draw(); } return; }
+      const e = path[path.length - 1];
+      if (blocked.has(k)) return;
+      if ((q[0] === e[0] + 1 && q[1] === e[1]) || (q[0] === e[0] && q[1] === e[1] + 1)) { path.push(q); arrive(); draw(); }
+    }
+    function arrive() { const e = path[path.length - 1]; if (e[0] === W && e[1] === H) found.add(path.map(p => p.join(",")).join("|")); }
+    function down(e) {
+      const q = near(svgPt(svg, e));
+      if (mode === "block") {
+        if (!q) return; const k = q.join(",");
+        if ((q[0] === 0 && q[1] === 0) || (q[0] === W && q[1] === H)) return;
+        blocked.has(k) ? blocked.delete(k) : blocked.add(k);
+        path = [[0, 0]]; found.clear(); draw(); return;
+      }
+      const tgt = e.currentTarget; tgt.setPointerCapture(e.pointerId);
+      tryAdd(q);
+      const mv = ev => tryAdd(near(svgPt(svg, ev)));
+      const up = () => { tgt.removeEventListener("pointermove", mv); tgt.removeEventListener("pointerup", up); };
+      tgt.addEventListener("pointermove", mv); tgt.addEventListener("pointerup", up);
+    }
+    function randomWalk() {
+      const a = dp();
+      if (a[W][H] === 0) { c.out("通れる道がありません。×を減らしてね"); return; }
+      // G から逆向きに、道の数に比例してえらぶ（どの道も同じ確率）
+      let i = W, j = H; const back = [[i, j]];
+      while (i || j) { const l = i > 0 ? a[i - 1][j] : 0, d = j > 0 ? a[i][j - 1] : 0; if (Math.random() * (l + d) < l) i--; else j--; back.push([i, j]); }
+      const full = back.reverse(); path = [[0, 0]]; draw();
+      full.slice(1).forEach((p, k) => c.after(90 * (k + 1), () => { path.push(p); if (k === full.length - 2) arrive(); draw(); }));
+    }
+    function readout() {
+      const a = dp(), tot = a[W][H];
+      const arrows = path.slice(1).map((p, k) => p[0] > path[k][0] ? "→" : "↑").join("");
+      let f = blocked.size === 0
+        ? `→ ${W} 個と ↑ ${H} 個のならべ方<br>${C(W + H, W)} = ${frac(fact(W + H), fact(W) * fact(H), true).replace(/<i>\d+<\/i><i>\d+<\/i>/, `<i>${W + H}!</i><i>${W}!×${H}!</i>`)} = <span class="big hl">${tot}</span> 通り`
+        : `×をさけると <span class="big hl">${tot}</span> 通り<br><span class="mt">（×がなければ ${nCr(W + H, W)} 通り）</span>`;
+      f += `<hr><span class="mono">${arrows || "（S からなぞってね）"}</span><br><span class="mt">見つけた道：${found.size} / ${tot}</span>`;
+      c.out(f);
+    }
+    draw();
+  },
+});
+
+/* --- 重複組合せ（○と仕切り） --- */
+sim({
+  id: "dupc", cat: "cnt", name: "○と仕切り", sub: "同じものを分ける（重複組合せ）",
+  hint: "仕切り｜をドラッグして、○の分け方を変えてみよう",
+  point: `<ul><li>同じ ○ を n 個、k 人に分ける方法は、<b>○ n 個と仕切り｜(k−1) 本のならべ方</b> と同じ。</li></ul>
+<span class="formula"><sub>n+k−1</sub>C<sub>k−1</sub> 通り</span>
+<ul><li>0 個の人がいてもよい（仕切りがとなり合う・はしにある）。</li>
+<li>「全員1個以上」のときは、先に1個ずつ配って、のこりを分ける。</li></ul>`,
+  detail: `<p>例：同じりんご 5 個を A・B・C の3人に分ける。○○｜○｜○○ は A=2, B=1, C=2。○ 5 個と｜2 本、合わせて 7 か所のうち｜の場所 2 つをえらぶので ₇C₂ = 21 通り。</p>
+<p>x+y+z = 5 を みたす 0 以上の整数 (x, y, z) の組の数も同じ考え方で 21 組。</p>
+<p>「全員1個以上」なら、1個ずつ配ったのこり 2 個を3人に分けるので ₄C₂ = 6 通り。（○の間 4 か所から仕切りの場所を2つえらぶ、と考えても同じ）</p>
+<p>※重複組合せは教科書によっては発展として扱います。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let n = 5, k = 3, atLeast = false;
+    let bars = [];
+    const names = "ABCDE";
+    c.slider("○ の数 n", { min: 2, max: 10, value: n }, v => { n = v; init(); });
+    c.slider("人数 k", { min: 2, max: 5, value: k }, v => { k = v; init(); });
+    const tg = c.toggle("全員に1個以上", atLeast, v => { atLeast = v; init(); }, "var(--warm)");
+    c.row(tg.el, c.btn("ランダム", () => { const L = len(); bars = shuffle([...Array(L).keys()]).slice(0, k - 1).sort((a, b) => a - b); makeHandles(); draw(); }, { main: true }), c.btn("次の分け方", () => next()));
+    const free = () => atLeast ? n - k : n;
+    const len = () => free() + k - 1;
+    function init() {
+      if (atLeast && n < k) { bars = []; draw(); return; }
+      bars = Array.from({ length: k - 1 }, (_, i) => i);
+      makeHandles(); draw();
+    }
+    function next() {
+      // 仕切りの位置の組合せを辞書順で次へ
+      const L = len(), m = k - 1; let i = m - 1;
+      while (i >= 0 && bars[i] === L - m + i) i--;
+      if (i < 0) bars = Array.from({ length: m }, (_, j) => j);
+      else { bars[i]++; for (let j = i + 1; j < m; j++) bars[j] = bars[j - 1] + 1; }
+      draw();
+    }
+    const body = s("g", {}, svg), HL = s("g", {}, svg);
+    let handles = [];
+    const geom = () => { const L = len(), cell = Math.min(64, 720 / L); return { L, cell, x0: 400 - (L - 1) * cell / 2, y: 150 }; };
+    function makeHandles() {
+      clear(HL); handles = [];
+      if (atLeast && n < k) return;
+      bars.forEach((b, bi) => {
+        const hd = c.handle(svg, HL, 0, 0, nx => {
+          const { L, cell, x0 } = geom();
+          const p = clamp(Math.round((nx - x0) / cell), 0, L - 1);
+          if (bars.includes(p)) return;
+          bars[bi] = p; draw();
+        }, { r: 1, hit: 30, onEnd: () => { bars.sort((a, b2) => a - b2); makeHandles(); draw(); } });
+        s("rect", { x: -5, y: -40, width: 10, height: 80, rx: 3, class: "f-ink" }, hd.g);
+        handles.push(hd);
+      });
+    }
+    function draw() {
+      const svg = clear(body);
+      if (atLeast && n < k) { clear(HL); handles = []; s("text", { x: 400, y: 280, "text-anchor": "middle", "font-size": 20, text: "○が人数より少ないので、全員に1個以上は配れません" }, svg); c.out("配れません（n ≧ k が必要）"); return; }
+      if (handles.length !== bars.length) makeHandles();
+      const { L, cell, x0, y } = geom();
+      s("text", { x: 40, y: 50, class: "mut", "font-size": 15, text: `${free()} 個の ○ と ${k - 1} 本の ｜ を、${L} か所にならべる` }, svg);
+      const sorted = bars.slice().sort((a, b) => a - b);
+      const cs = (() => { const out = []; let prev = -1; [...sorted, L].forEach(b => { out.push(b - prev - 1); prev = b; }); return out; })();
+      let person = 0;
+      for (let p = 0; p < L; p++) {
+        const x = x0 + p * cell;
+        s("rect", { x: x - cell / 2 + 3, y: y - 34, width: cell - 6, height: 68, rx: 4, class: "f-chip" }, svg);
+        if (sorted.includes(p)) { person++; continue; }
+        s("circle", { cx: x, cy: y, r: Math.min(20, cell * 0.33), fill: COLORS[person], stroke: "var(--ink)", "stroke-width": 1.5 }, svg);
+      }
+      handles.forEach((hd, i) => hd.place(x0 + bars[i] * cell, y));
+      const bw = Math.min(150, 720 / k), bx0 = 400 - (k - 1) * bw / 2;
+      cs.forEach((m, i) => {
+        const x = bx0 + i * bw, by = 470;
+        s("path", { d: `M${x - bw * 0.36},${by - 90} L${x - bw * 0.3},${by} L${x + bw * 0.3},${by} L${x + bw * 0.36},${by - 90}`, class: "ink", fill: "var(--panel)" }, svg);
+        const tot = m + (atLeast ? 1 : 0);
+        for (let q = 0; q < tot; q++) {
+          const cols = 3, rr = 11, gx = x + ((q % cols) - 1) * rr * 2.1, gy = by - rr - 2 - Math.floor(q / cols) * rr * 2;
+          s("circle", { cx: gx, cy: gy, r: rr, fill: atLeast && q === 0 ? "var(--muted)" : COLORS[i], stroke: "var(--ink)", "stroke-width": 1 }, svg);
+        }
+        s("text", { x, y: by + 32, "text-anchor": "middle", class: "disp", "font-size": 20, text: `${names[i]}：${tot}個` }, svg);
+      });
+      if (atLeast) s("text", { x: 40, y: 545, class: "mut", "font-size": 13, text: "灰色の ○ は先に配った1個" }, svg);
+      const tot = nCr(L, k - 1);
+      c.out(`${names.slice(0, k).split("").map((nm, i) => `${nm}=${cs[i] + (atLeast ? 1 : 0)}`).join(", ")}<hr>${atLeast ? `1個ずつ配ったのこり ${free()} 個を分ける<br>` : ""}${C(L, k - 1)} = <span class="big hl">${tot}</span> 通り`);
+    }
+    init();
+  },
+});
+</script>
+<script>
+"use strict";
+/* ===================== 確率 ===================== */
+function diceFace(g, x, y, size, v, opts = {}) {
+  const d = s("g", { transform: `translate(${x},${y})` }, g);
+  s("rect", { x: -size / 2, y: -size / 2, width: size, height: size, rx: size * 0.18, fill: opts.fill || "var(--panel)", stroke: "var(--ink)", "stroke-width": opts.sw || 2 }, d);
+  const q = size * 0.26, P = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]], 6: [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]] }[v];
+  P.forEach(([a, b]) => s("circle", { cx: a * q, cy: b * q, r: size * 0.09, fill: v === 1 ? "#c0392b" : (opts.pip || "var(--ink)") }, d));
+  return d;
+}
+
+/* --- 2つのサイコロ --- */
+sim({
+  id: "dice2", cat: "prob", name: "2つのサイコロ", sub: "36 マスの表で数える",
+  hint: "条件をえらぶと、あてはまるマスに色がつきます。「ふる」で実験もできます",
+  point: `<ul><li>2つのサイコロの目の出方は 6×6 = <b>36 通り</b>。どれも同じように出る（同様に確からしい）。</li></ul>
+<span class="formula">P(A) = （A になるマスの数）／ 36</span>
+<ul><li><b>余事象</b>：「A でない」確率は 1 − P(A)。「少なくとも1つ」は余事象で考えると楽。</li>
+<li>2つのサイコロは区別して考える（(1,2) と (2,1) は別のマス）。</li></ul>`,
+  detail: `<p>「和が 7」になるのは (1,6)(2,5)(3,4)(4,3)(5,2)(6,1) の 6 マスで 6/36 = 1/6。表で見ると、右上から左下へのななめ一列にならびます。和が同じマスは、いつもななめに並びます。</p>
+<p>「少なくとも1つ6の目」は、「どちらも6でない」= 5×5 = 25 マスの余事象なので 1 − 25/36 = 11/36。</p>
+<p>実験の結果（相対度数）は、ふる回数を増やすほど計算した確率に近づきます（大数の法則）。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let ev = "sum7", k = 9, comp = false, tries = 0, hits = 0, last = null;
+    const EV = {
+      sum7: { t: "和が 7", f: (a, b) => a + b === 7, show: "sum" },
+      sumk: { t: "和が k 以上", f: (a, b) => a + b >= k, show: "sum" },
+      same: { t: "同じ目", f: (a, b) => a === b, show: "sum" },
+      six: { t: "少なくとも1つが 6", f: (a, b) => a === 6 || b === 6, show: "none" },
+      even: { t: "積が偶数", f: (a, b) => (a * b) % 2 === 0, show: "prod" },
+      diff2: { t: "差が 2", f: (a, b) => Math.abs(a - b) === 2, show: "diff" },
+      m4: { t: "和が 4 の倍数", f: (a, b) => (a + b) % 4 === 0, show: "sum" },
+    };
+    c.seg("できごと A", Object.entries(EV).map(([v, o]) => ({ v, t: o.t })), ev, v => { ev = v; sk.el.hidden = v !== "sumk"; resetTally(); draw(); });
+    const sk = c.slider("k", { min: 2, max: 12, value: k }, v => { k = v; resetTally(); draw(); });
+    sk.el.hidden = true;
+    const tg = c.toggle('余事象 <span class="ov">A</span>（A でない）', comp, v => { comp = v; draw(); }, "var(--blue)");
+    c.row(tg.el);
+    c.row(c.btn("ふる", () => roll(1), { main: true }), c.btn("100回ふる", () => roll(100)), c.btn("記録を消す", () => { resetTally(); draw(); }));
+    function resetTally() { tries = 0; hits = 0; last = null; }
+    const cell = 64, gx = 70, gy = 90;
+    const T = s("g", {}, svg), D = s("g", {}, svg);
+    const isA = (a, b) => EV[ev].f(a, b);
+    function draw() {
+      clear(T);
+      for (let i = 1; i <= 6; i++) { diceFace(T, gx + (i - 0.5) * cell, gy - 36, 40, i); diceFace(T, gx - 36, gy + (i - 0.5) * cell, 40, i); }
+      s("text", { x: gx + 3 * cell, y: gy - 66, "text-anchor": "middle", class: "mut", "font-size": 13, text: "サイコロ B（青）" }, T);
+      s("text", { x: gx - 62, y: gy + 3 * cell, "text-anchor": "middle", class: "mut", "font-size": 13, transform: `rotate(-90 ${gx - 62} ${gy + 3 * cell})`, text: "サイコロ A（赤）" }, T);
+      let cnt = 0;
+      for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
+        const x = gx + (b - 1) * cell, y = gy + (a - 1) * cell;
+        const inA = isA(a, b), on = comp ? !inA : inA;
+        if (on) cnt++;
+        s("rect", { x: x + 2, y: y + 2, width: cell - 4, height: cell - 4, rx: 4, class: on ? (comp ? "f-bls ink s-bl" : "f-wms ink s-wm") : "f-pn thin", "stroke-width": on ? 2 : 1 }, T);
+        const sh = EV[ev].show;
+        const v = sh === "sum" ? a + b : sh === "prod" ? a * b : sh === "diff" ? Math.abs(a - b) : `${a},${b}`;
+        s("text", { x: x + cell / 2, y: y + cell / 2 + 6, "text-anchor": "middle", class: "mono" + (on ? "" : " mut"), "font-size": sh === "none" ? 14 : 18, "font-weight": on ? 700 : 400, text: v }, T);
+        if (last && last[0] === a && last[1] === b) s("rect", { x: x - 2, y: y - 2, width: cell + 4, height: cell + 4, rx: 6, class: "ink", "stroke-width": 4 }, T);
+      }
+      const lbl = { sum: "マスの数字 = 和", prod: "マスの数字 = 積", diff: "マスの数字 = 差", none: "マス = (A の目, B の目)" }[EV[ev].show];
+      s("text", { x: gx, y: gy + 6 * cell + 26, class: "mut", "font-size": 13, text: lbl }, T);
+      // 結果の棒
+      const bx = 520, by = 420, bw = 240;
+      s("text", { x: bx, y: by - 14, "font-size": 14, text: "計算した確率と、実験の割合" }, T);
+      const p = cnt / 36;
+      s("rect", { x: bx, y: by, width: bw, height: 18, class: "f-chip" }, T);
+      s("rect", { x: bx, y: by, width: bw * p, height: 18, class: comp ? "f-bl" : "f-wm" }, T);
+      s("text", { x: bx + bw + 8, y: by + 14, class: "mono", "font-size": 13, text: fmt(p, 3) }, T);
+      const rf = tries ? (comp ? (tries - hits) : hits) / tries : 0;
+      s("rect", { x: bx, y: by + 28, width: bw, height: 18, class: "f-chip" }, T);
+      s("rect", { x: bx, y: by + 28, width: bw * rf, height: 18, class: "f-ac" }, T);
+      s("text", { x: bx + bw + 8, y: by + 42, class: "mono", "font-size": 13, text: tries ? fmt(rf, 3) : "—" }, T);
+      s("text", { x: bx, y: by + 66, class: "mut", "font-size": 12.5, text: `上：計算　下：実験（${tries} 回中 ${comp ? tries - hits : hits} 回）` }, T);
+      const name = comp ? `P(<span class="ov">A</span>)` : "P(A)";
+      let f = `${name} = ${frac(cnt, 36, true)} = ${frac(cnt, 36)} <span class="mt">≒ ${fmt(p, 3)}</span>`;
+      if (comp) { const ca = 36 - cnt; f += `<br>= 1 − P(A) = 1 − ${frac(ca, 36)} <span class="mt">（A は ${ca} マス）</span>`; }
+      c.out(`<span class="big">${f}</span>`);
+    }
+    function showDice(a, b, spin) {
+      clear(D);
+      const da = diceFace(D, 580, 200, 96, a, { fill: "#fbe9e4", sw: 2.5 });
+      const db = diceFace(D, 700, 200, 96, b, { fill: "#e3ecf8", sw: 2.5 });
+      if (spin) { [da, db].forEach((d, i) => d.setAttribute("transform", d.getAttribute("transform") + ` rotate(${(Math.random() - .5) * 40})`)); }
+      s("text", { x: 640, y: 290, "text-anchor": "middle", class: "disp", "font-size": 22, text: spin ? "…" : `${a} と ${b}` }, D);
+      if (!spin) { const inA = isA(a, b), on = comp ? !inA : inA; s("text", { x: 640, y: 326, "text-anchor": "middle", class: on ? (comp ? "tb" : "tw") : "mut", "font-size": 20, "font-weight": 700, text: on ? "あたり！" : "はずれ" }, D); }
+    }
+    let rolling = false;
+    function roll(times) {
+      if (rolling) return;
+      if (times > 1) {
+        for (let i = 0; i < times; i++) { const a = rnd(6) + 1, b = rnd(6) + 1; tries++; if (isA(a, b)) hits++; last = [a, b]; }
+        showDice(last[0], last[1]); draw(); return;
+      }
+      rolling = true; let t = 0;
+      const tick = () => {
+        showDice(rnd(6) + 1, rnd(6) + 1, true);
+        if (++t < 9) c.after(60, tick);
+        else { const a = rnd(6) + 1, b = rnd(6) + 1; tries++; if (isA(a, b)) hits++; last = [a, b]; showDice(a, b); draw(); rolling = false; }
+      };
+      tick();
+    }
+    showDice(3, 4); draw();
+  },
+});
+
+/* --- 大数の法則 --- */
+sim({
+  id: "lln", cat: "prob", name: "大数の法則", sub: "たくさんやると確率に近づく",
+  hint: "「×100」「×1000」でどんどん試してみよう。線は確率の値に近づいていきます",
+  point: `<ul><li>実験を何回もくり返すと、あることがらが起こる <b>割合（相対度数）</b> は、その確率に近づいていく。</li>
+<li>回数が少ないうちは大きくぶれる。10回では「たまたま」が大きい。</li>
+<li>「もう1本」で何本も試すと、どの線も同じ値に集まっていく。</li></ul>`,
+  detail: `<p>横の軸は「回数」を 1, 10, 100, 1000, 10000 と10倍ごとに同じ間かくでかいています（対数目盛り）。こうすると、はじめの大きなぶれも、あとの小さなぶれも見やすくなります。</p>
+<p>注意：コインで表が5回続いても、次に裏が出やすくなるわけではありません。1回1回は前の結果に関係なく、いつも 1/2 です。たくさんの回数で「ならされる」ことで割合が 1/2 に近づきます。</p>
+<p>反対に、実験で得た割合から確率を見つもることもできます（統計的確率）。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    const EX = {
+      coin: { t: "コインの表", p: 1 / 2, pt: "1/2", trial: () => rnd(2) === 0, icon: v => v ? "表" : "裏" },
+      die1: { t: "サイコロの 1", p: 1 / 6, pt: "1/6", trial: () => rnd(6) === 0, roll: true },
+      sum7: { t: "2つのサイコロの和が 7", p: 1 / 6, pt: "1/6", trial: () => rnd(6) + rnd(6) + 2 === 7 },
+      ge3: { t: "サイコロで 3 以上", p: 2 / 3, pt: "2/3", trial: () => rnd(6) >= 2 },
+    };
+    let ex = "coin", series = [], auto = false;
+    c.seg("実験", Object.entries(EX).map(([v, o]) => ({ v, t: o.t })), ex, v => { ex = v; series = []; newSeries(); draw(); });
+    c.row(c.btn("×1", () => run(1)), c.btn("×10", () => run(10)), c.btn("×100", () => run(100), { main: true }), c.btn("×1000", () => run(1000)));
+    const ta = c.toggle("自動でつづける", false, v => { auto = v; });
+    c.row(ta.el, c.btn("もう1本", () => { if (series.length >= 6) series.shift(); newSeries(); draw(); }), c.btn("リセット", () => { series = []; newSeries(); draw(); }));
+    const MAX = 10000;
+    function newSeries() { series.push({ n: 0, k: 0, pts: [], recent: [], color: COLORS[series.length % 10] }); }
+    function run(m) {
+      const S = series[series.length - 1];
+      for (let i = 0; i < m && S.n < MAX; i++) { const v = EX[ex].trial(); S.n++; if (v) S.k++; S.recent.push(v); if (S.recent.length > 20) S.recent.shift(); S.pts.push(S.k / S.n); }
+      draw();
+    }
+    c.every(120, () => { if (auto) { const S = series[series.length - 1]; if (S.n >= MAX) { ta.set(false); return; } run(Math.max(1, Math.ceil(S.n / 15))); } });
+    const L = 80, R = 760, T = 110, B = 500;
+    const xs = n => L + (R - L) * Math.log10(n) / 4, ys = v => B - (B - T) * v;
+    function draw() {
+      clear(svg);
+      const e = EX[ex];
+      for (let d = 0; d <= 4; d++) { const x = xs(10 ** d); s("line", { x1: x, y1: T, x2: x, y2: B, class: "thin", "stroke-opacity": .5 }, svg); s("text", { x, y: B + 22, "text-anchor": "middle", class: "mono mut", "font-size": 13, text: 10 ** d }, svg); }
+      for (let v = 0; v <= 1.0001; v += 0.25) { s("line", { x1: L, y1: ys(v), x2: R, y2: ys(v), class: "thin", "stroke-opacity": .4 }, svg); s("text", { x: L - 10, y: ys(v) + 5, "text-anchor": "end", class: "mono mut", "font-size": 13, text: v.toFixed(2) }, svg); }
+      s("text", { x: (L + R) / 2, y: B + 46, "text-anchor": "middle", class: "mut", "font-size": 13, text: "回数（10倍ごとに同じ幅）" }, svg);
+      s("line", { x1: L, y1: ys(e.p), x2: R, y2: ys(e.p), class: "ink s-wm dash", "stroke-width": 2.5 }, svg);
+      s("text", { x: R, y: ys(e.p) - 8, "text-anchor": "end", class: "tw tag", "font-weight": 700, text: `確率 ${e.pt} ≒ ${fmt(e.p, 3)}` }, svg);
+      series.forEach((S, si) => {
+        if (!S.pts.length) return;
+        const step = Math.max(1, Math.floor(S.pts.length / 1500));
+        const pts = [];
+        for (let i = 0; i < S.pts.length; i += i < 200 ? 1 : step) pts.push(`${xs(i + 1)},${ys(S.pts[i])}`);
+        pts.push(`${xs(S.pts.length)},${ys(S.pts[S.pts.length - 1])}`);
+        const last = si === series.length - 1;
+        s("polyline", { points: pts.join(" "), fill: "none", stroke: S.color, "stroke-width": last ? 2.6 : 1.6, "stroke-opacity": last ? 1 : .55, "stroke-linejoin": "round" }, svg);
+        s("circle", { cx: xs(S.pts.length), cy: ys(S.pts[S.pts.length - 1]), r: last ? 6 : 4, fill: S.color }, svg);
+      });
+      // 最近の結果
+      const S = series[series.length - 1];
+      s("text", { x: L, y: 40, "font-size": 14, class: "mut", text: "さいきんの結果" }, svg);
+      S.recent.forEach((v, i) => {
+        const x = L + 120 + i * 28, y = 36;
+        s("circle", { cx: x, cy: y, r: 11, class: v ? "f-wm" : "f-chip", stroke: "var(--ink)", "stroke-width": 1 }, svg);
+        if (e.icon) s("text", { x, y: y + 4.5, "text-anchor": "middle", "font-size": 12, fill: v ? "#fff" : null, text: e.icon(v) }, svg);
+      });
+      s("text", { x: L, y: 76, "font-size": 15, text: `${e.t}　● = あたり` }, svg);
+      const rf = S.n ? S.k / S.n : 0;
+      c.out(`${S.n} 回中 ${S.k} 回 → 割合 <span class="big hl">${S.n ? fmt(rf, 4) : "—"}</span><br><span class="mt">確率 ${e.pt} ≒ ${fmt(e.p, 4)}　（ずれ ${S.n ? fmt(Math.abs(rf - e.p), 4) : "—"}）</span>`);
+    }
+    newSeries(); draw();
+  },
+});
+
+/* --- 反復試行（ゴルトンボード） --- */
+sim({
+  id: "binom", cat: "prob", name: "反復試行", sub: "ゴルトンボードで玉を落とす",
+  hint: "玉はくぎに当たるたびに、確率 p で右へ進みます。下の箱をタップすると計算が出ます",
+  point: `<ul><li>確率 p のことを n 回くり返して、ちょうど k 回起こる確率：</li></ul>
+<span class="formula">ₙCₖ pᵏ (1−p)ⁿ⁻ᵏ</span>
+<ul><li>ₙCₖ は「n 回のうち、どの k 回で起こるか」のえらび方 ＝ その箱に行く道の数。</li>
+<li>pᵏ(1−p)ⁿ⁻ᵏ は、その道1本を通る確率。</li>
+<li>玉をたくさん落とすと、箱の玉の数が計算（● の印）に近い山の形になる。</li></ul>`,
+  detail: `<p>ゴルトンボードでは、玉がくぎに当たるたびに右へ（確率 p）か左へ（確率 1−p）落ちます。n 段のくぎを通ると、右へ行った回数 k で入る箱が決まります。</p>
+<p>k 回右へ行く道は ₙCₖ 本あり（最短経路と同じ考え方）、どの道も通る確率は pᵏ(1−p)ⁿ⁻ᵏ。だから箱 k に入る確率は ₙCₖ pᵏ(1−p)ⁿ⁻ᵏ です。</p>
+<p>例：サイコロを 5 回ふって 1 の目がちょうど 2 回出る確率は ₅C₂ (1/6)²(5/6)³ = 1250/7776。</p>
+<p>p = 1/2 のときは左右対称、p が小さいと山は左によります。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let n = 6, pi = 2, pickK = null;
+    const PS = [{ v: 0, t: "1/6", p: 1 / 6, a: 1, b: 6 }, { v: 1, t: "1/3", p: 1 / 3, a: 1, b: 3 }, { v: 2, t: "1/2", p: 1 / 2, a: 1, b: 2 }, { v: 3, t: "2/3", p: 2 / 3, a: 2, b: 3 }];
+    c.slider("くぎの段数 n", { min: 1, max: 12, value: n }, v => { n = v; reset(); });
+    c.seg("右へ行く確率 p", PS.map(o => ({ v: o.v, t: o.t })), pi, v => { pi = v; reset(); });
+    c.row(c.btn("1個", () => drop(1)), c.btn("10個", () => drop(10), { main: true }), c.btn("100個", () => drop(100)), c.btn("空にする", () => reset()));
+    let bins = [], balls = [], queue = 0, total = 0;
+    const g = { top: 60, bot: 530 };
+    let dx, dy, X0;
+    const layerStatic = s("g", {}, svg), layerBars = s("g", {}, svg), layerBalls = s("g", {}, svg);
+    function geo() { dx = Math.min(56, 640 / (n + 1)); dy = Math.min(30, 230 / n); X0 = 400; }
+    const pegX = (i, j) => X0 + (j - i / 2) * dx, pegY = i => g.top + 30 + i * dy;
+    const binX = k => X0 + (k - n / 2) * dx;
+    function reset() {
+      bins = Array(n + 1).fill(0); balls.forEach(b => b.el.remove()); balls = []; queue = 0; total = 0;
+      if (pickK != null && pickK > n) pickK = null;
+      geo(); drawStatic(); drawBars();
+    }
+    function drawStatic() {
+      clear(layerStatic);
+      s("path", { d: `M${X0 - 26},${g.top - 30} L${X0 - 8},${g.top + 10} M${X0 + 26},${g.top - 30} L${X0 + 8},${g.top + 10}`, class: "ink" }, layerStatic);
+      for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) s("circle", { cx: pegX(i, j), cy: pegY(i), r: 4, class: "f-ink" }, layerStatic);
+      const binTop = pegY(n) + 10;
+      for (let k = 0; k <= n + 1; k++) { const x = binX(k) - dx / 2; s("line", { x1: x, y1: binTop, x2: x, y2: g.bot, class: "thin" }, layerStatic); }
+      s("line", { x1: binX(0) - dx / 2, y1: g.bot, x2: binX(n) + dx / 2, y2: g.bot, class: "ink" }, layerStatic);
+      for (let k = 0; k <= n; k++) {
+        const hit = s("rect", { x: binX(k) - dx / 2, y: binTop, width: dx, height: g.bot - binTop + 30, fill: "transparent", style: "cursor:pointer" }, layerStatic);
+        s("text", { x: binX(k), y: g.bot + 20, "text-anchor": "middle", class: "mono", "font-size": Math.min(15, dx * 0.5), text: k }, layerStatic);
+        hit.addEventListener("click", () => { pickK = k; drawBars(); });
+      }
+      s("text", { x: binX(n) + dx / 2 + 6, y: g.bot + 20, class: "mut", "font-size": 12, text: "← 右へ行った回数 k" }, layerStatic);
+    }
+    const prob = k => { const p = PS[pi].p; return nCr(n, k) * p ** k * (1 - p) ** (n - k); };
+    function drawBars() {
+      clear(layerBars);
+      const binTop = pegY(n) + 18, H = g.bot - binTop;
+      const maxP = Math.max(...bins.map((_, k) => prob(k)));
+      const maxC = Math.max(1, ...bins);
+      const scale = total ? H / Math.max(maxC, maxP * total) : H / maxP;
+      for (let k = 0; k <= n; k++) {
+        const x = binX(k), hb = bins[k] * scale;
+        if (pickK === k) s("rect", { x: x - dx / 2, y: binTop - 8, width: dx, height: H + 8, class: "f-bls" }, layerBars);
+        const he = (total ? prob(k) * total : prob(k)) * scale;
+        s("rect", { x: x - dx * 0.38, y: g.bot - hb, width: dx * 0.76, height: hb, class: "f-ac", "fill-opacity": .85 }, layerBars);
+        s("circle", { cx: x, cy: g.bot - he, r: 4.5, class: "f-wm", stroke: "var(--panel)", "stroke-width": 1.5 }, layerBars);
+        if (bins[k] && dx > 26) s("text", { x, y: g.bot - Math.max(hb, he) - 10, "text-anchor": "middle", class: "mono ta", "font-size": 12, text: bins[k] }, layerBars);
+      }
+      readout();
+    }
+    function readout() {
+      const o = PS[pi];
+      let f = `<span class="mt">● = 計算から予想される数　■ = 実際の玉（${total} 個）</span>`;
+      if (pickK != null) {
+        const k = pickK;
+        const num = nCr(n, k) * o.a ** k * (o.b - o.a) ** (n - k), den = o.b ** n;
+        f = `右へちょうど ${k} 回（${n} 回中）<br>${C(n, k)} (${o.t})<sup>${k}</sup> (1−${o.t})<sup>${n - k}</sup><br>= ${nCr(n, k)} × ${frac(o.a ** k * (o.b - o.a) ** (n - k), den, true)} = ${den < 1e7 ? frac(num, den) : ""} <span class="big hl">≒ ${fmt(prob(k), 4)}</span>`
+          + (total ? `<br><span class="mt">実験：${total} 個中 ${bins[k]} 個 → ${fmt(bins[k] / total, 4)}</span>` : "") + `<hr>` + f;
+      } else f = `下の箱をタップすると、その箱に入る確率を計算します<hr>` + f;
+      c.out(f);
+    }
+    function drop(m) { queue += m; }
+    c.loop(dt => {
+      if (queue > 0 && balls.length < 160) {
+        const spawn = Math.min(queue, queue > 30 ? 4 : 1);
+        for (let i = 0; i < spawn; i++) {
+          if (balls.length && balls[balls.length - 1].t < 0.35 && queue <= 30) break;
+          queue--;
+          const el = s("circle", { r: Math.min(7, dx * 0.2), fill: COLORS[rnd(10)], stroke: "var(--ink)", "stroke-width": .8 }, layerBalls);
+          balls.push({ el, row: -1, j: 0, t: 0, nj: 0 });
+        }
+      }
+      const speed = queue > 30 ? 9 : 4.5;
+      for (const b of balls) {
+        b.t += dt * speed;
+        while (b.t >= 1) {
+          b.t -= 1; b.row++; b.j = b.nj;
+          if (b.row < n) b.nj = b.j + (Math.random() < PS[pi].p ? 1 : 0);
+          else { b.done = true; break; }
+        }
+        if (b.done) continue;
+        let x0, y0, x1, y1;
+        if (b.row < 0) { x0 = X0; y0 = g.top - 20; x1 = pegX(0, 0); y1 = pegY(0) - 9; }
+        else { x0 = pegX(b.row, b.j); y0 = pegY(b.row) - 9; x1 = b.row + 1 < n ? pegX(b.row + 1, b.nj) : binX(b.nj); y1 = b.row + 1 < n ? pegY(b.row + 1) - 9 : g.bot - 8; }
+        const t = b.t, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t - Math.sin(Math.PI * t) * dy * 0.3;
+        b.el.setAttribute("cx", x); b.el.setAttribute("cy", y);
+      }
+      let changed = false;
+      balls = balls.filter(b => { if (b.done) { bins[b.j]++; total++; b.el.remove(); changed = true; return false; } return true; });
+      if (changed) drawBars();
+    });
+    reset();
+  },
+});
+
+/* --- 条件付き確率 --- */
+sim({
+  id: "cond", cat: "prob", name: "条件付き確率", sub: "面積図と 1000 人の図",
+  hint: "スライダーで割合を変えてみよう。「陽性なら本当に病気？」の答えは意外な値になります",
+  point: `<ul><li>A が起こったときに B が起こる確率を <b>P<sub>A</sub>(B)</b> とかく（A の中での B の割合）。</li></ul>
+<span class="formula">P<sub>A</sub>(B) = P(A∩B) ÷ P(A)</span>
+<ul><li><b>乗法定理</b>：P(A∩B) = P(A) × P<sub>A</sub>(B)　（面積図のたて×横）</li>
+<li>「B だったとき、原因が A である確率」P<sub>B</sub>(A) は、B 全体（色のついた所）の中で A∩B がしめる割合。</li></ul>`,
+  detail: `<p>病気の検査の例：病気の人が 1%、病気の人が陽性になる確率 90%、病気でない人がまちがって陽性になる確率 5%。</p>
+<p>1000 人で考えると、病気 10 人のうち陽性 9 人。病気でない 990 人のうち陽性は約 50 人。陽性の人は合わせて約 59 人で、そのうち本当に病気なのは 9 人だけ → 約 15%。</p>
+<p>「90% 当たる検査」でも、もともと病気の人がとても少ないと、陽性の人の多くは病気ではありません。1000 人の図にすると、この感覚がつかみやすくなります。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    const PRE = {
+      test: { t: "病気の検査", A: "病気", nA: "病気でない", B: "陽性", nB: "陰性", pA: 1, pBA: 90, pBnA: 5, unit: "人" },
+      factory: { t: "工場の不良品", A: "工場 X 製", nA: "工場 Y 製", B: "不良品", nB: "良品", pA: 60, pBA: 3, pBnA: 5, unit: "個" },
+      rain: { t: "天気予報", A: "雨", nA: "雨でない", B: "「雨」と予報", nB: "「晴れ」と予報", pA: 30, pBA: 80, pBnA: 20, unit: "日" },
+    };
+    let pre = "test", view = "dots", pA, pBA, pBnA;
+    c.seg("例", Object.entries(PRE).map(([v, o]) => ({ v, t: o.t })), pre, v => { pre = v; load(); });
+    c.seg("見せ方", [{ v: "dots", t: "1000 の図" }, { v: "area", t: "面積図" }], view, v => { view = v; draw(); });
+    const s1 = c.slider("P(A)", { min: 1, max: 90, value: 1, fmt: v => v + "%" }, v => { pA = v; draw(); });
+    const s2 = c.slider("P_A(B)", { min: 0, max: 100, value: 90, fmt: v => v + "%" }, v => { pBA = v; draw(); });
+    const s3 = c.slider("P_Ā(B)", { min: 0, max: 100, value: 5, fmt: v => v + "%" }, v => { pBnA = v; draw(); });
+    function load() { const o = PRE[pre]; pA = o.pA; pBA = o.pBA; pBnA = o.pBnA; s1.set(pA, true); s2.set(pBA, true); s3.set(pBnA, true); draw(); }
+    const COL = { AB: "var(--warm)", AnB: "var(--warm-soft)", nAB: "var(--blue)", nAnB: "var(--chip)" };
+    function draw() {
+      clear(svg);
+      const o = PRE[pre];
+      [s1, s2, s3].forEach((sl, i) => sl.el.firstChild.innerHTML = [`P(A)<br><small>A=${o.A}</small>`, `P<sub>A</sub>(B)<br><small>${o.A}→${o.B}</small>`, `P<sub><span class="ov">A</span></sub>(B)<br><small>${o.nA}→${o.B}</small>`][i]);
+      const a = pA / 100, ba = pBA / 100, bna = pBnA / 100;
+      const nA = Math.round(1000 * a), nAB = Math.round(nA * ba), nnA = 1000 - nA, nnAB = Math.round(nnA * bna);
+      const legend = [["AB", `${o.A} で ${o.B}`], ["AnB", `${o.A} で ${o.nB}`], ["nAB", `${o.nA} で ${o.B}`], ["nAnB", `${o.nA} で ${o.nB}`]];
+      legend.forEach(([k, t], i) => { const x = 40 + (i % 2) * 260, y = 32 + Math.floor(i / 2) * 26; s("rect", { x, y: y - 13, width: 18, height: 18, fill: COL[k], stroke: "var(--ink)", "stroke-width": 1 }, svg); s("text", { x: x + 26, y: y + 2, "font-size": 15, text: t }, svg); });
+      if (view === "dots") {
+        const cols = 40, sz = 17, x0 = 400 - cols * sz / 2, y0 = 100;
+        const kinds = [["AB", nAB], ["AnB", nA - nAB], ["nAB", nnAB], ["nAnB", nnA - nnAB]];
+        let i = 0;
+        kinds.forEach(([k, m]) => { for (let q = 0; q < m; q++, i++) { const x = x0 + (i % cols) * sz, y = y0 + Math.floor(i / cols) * sz; s("rect", { x: x + 1.5, y: y + 1.5, width: sz - 3, height: sz - 3, rx: 2, fill: COL[k], stroke: k === "nAnB" ? "var(--line)" : "none" }, svg); } });
+        s("text", { x: x0, y: y0 + 25 * sz + 24, class: "mut", "font-size": 13, text: `1マス = 1${o.unit}（全部で 1000${o.unit}）` }, svg);
+      } else {
+        const X = 150, Y = 100, S = 400;
+        const w = S * a;
+        const part = (x, y, ww, hh, k) => s("rect", { x, y, width: Math.max(0, ww), height: Math.max(0, hh), fill: COL[k], stroke: "var(--ink)", "stroke-width": 1.5 }, svg);
+        part(X, Y + S * (1 - ba), w, S * ba, "AB"); part(X, Y, w, S * (1 - ba), "AnB");
+        part(X + w, Y + S * (1 - bna), S - w, S * bna, "nAB"); part(X + w, Y, S - w, S * (1 - bna), "nAnB");
+        s("text", { x: X + w / 2, y: Y + S + 24, "text-anchor": "middle", class: "tag", text: `${o.A} ${pA}%` }, svg);
+        s("text", { x: X + w + (S - w) / 2, y: Y + S + 24, "text-anchor": "middle", class: "tag", text: `${o.nA} ${100 - pA}%` }, svg);
+        s("text", { x: X - 8, y: Y + S * (1 - ba / 2) + 5, "text-anchor": "end", class: "tag tw", "font-weight": 700, text: `${pBA}%` }, svg);
+        s("text", { x: X + S + 8, y: Y + S * (1 - bna / 2) + 5, class: "tag tb", "font-weight": 700, text: `${pBnA}%` }, svg);
+        s("text", { x: X + S + 60, y: Y + 40, class: "mut", "font-size": 14, text: "横の長さ = P(A)" }, svg);
+        s("text", { x: X + S + 60, y: Y + 62, class: "mut", "font-size": 14, text: "たての長さ = P_A(B)" }, svg);
+        s("text", { x: X + S + 60, y: Y + 84, class: "mut", "font-size": 14, text: "面積 = 確率" }, svg);
+      }
+      const pAB = a * ba, pB = pAB + (1 - a) * bna, post = pB ? pAB / pB : 0;
+      c.out(`P(A∩B) = P(A)×P<sub>A</sub>(B) = ${fmt(a, 2)}×${fmt(ba, 2)} = ${fmt(pAB, 4)}<br>P(B) = ${fmt(pAB, 4)} + ${fmt((1 - a) * bna, 4)} = ${fmt(pB, 4)}<hr><b>${o.B}のとき ${o.A} である確率</b><br>P<sub>B</sub>(A) = <span class="fr"><i>P(A∩B)</i><i>P(B)</i></span> = <span class="big hl">${fmt(post * 100, 1)}%</span><br><span class="mt">1000${o.unit}なら：${o.B} ${nAB + nnAB}${o.unit}のうち ${o.A} は ${nAB}${o.unit}</span>`);
+    }
+    load();
+  },
+});
+</script>
+<script>
+"use strict";
+/* ===================== 図形の性質 ===================== */
+const V = {
+  add: (a, b) => ({ x: a.x + b.x, y: a.y + b.y }), sub: (a, b) => ({ x: a.x - b.x, y: a.y - b.y }),
+  mul: (a, k) => ({ x: a.x * k, y: a.y * k }), len: a => Math.hypot(a.x, a.y), dist: (a, b) => Math.hypot(a.x - b.x, a.y - b.y),
+  norm: a => { const l = Math.hypot(a.x, a.y) || 1; return { x: a.x / l, y: a.y / l }; },
+  dot: (a, b) => a.x * b.x + a.y * b.y, cross: (a, b) => a.x * b.y - a.y * b.x,
+  mid: (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }), perp: a => ({ x: -a.y, y: a.x }),
+  lerp: (a, b, t) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }),
+};
+/* 直線 p1p2 と 直線 p3p4 の交点 */
+function inter(p1, p2, p3, p4) {
+  const d1 = V.sub(p2, p1), d2 = V.sub(p4, p3), den = V.cross(d1, d2);
+  if (Math.abs(den) < 1e-9) return null;
+  const t = V.cross(V.sub(p3, p1), d2) / den;
+  return V.add(p1, V.mul(d1, t));
+}
+function foot(p, a, b) { const d = V.sub(b, a), t = V.dot(V.sub(p, a), d) / V.dot(d, d); return V.add(a, V.mul(d, t)); }
+function angleAt(p, a, b) { const u = V.sub(a, p), v = V.sub(b, p); return deg(Math.acos(clamp(V.dot(u, v) / (V.len(u) * V.len(v) || 1), -1, 1))); }
+function circum(A, B, Cc) {
+  const d = 2 * (A.x * (B.y - Cc.y) + B.x * (Cc.y - A.y) + Cc.x * (A.y - B.y));
+  if (Math.abs(d) < 1e-9) return null;
+  const a2 = A.x ** 2 + A.y ** 2, b2 = B.x ** 2 + B.y ** 2, c2 = Cc.x ** 2 + Cc.y ** 2;
+  return { x: (a2 * (B.y - Cc.y) + b2 * (Cc.y - A.y) + c2 * (A.y - B.y)) / d, y: (a2 * (Cc.x - B.x) + b2 * (A.x - Cc.x) + c2 * (B.x - A.x)) / d };
+}
+/* 長い直線（画面いっぱい） */
+function longLine(g, p, q, cls, extra = {}) {
+  const d = V.norm(V.sub(q, p)), a = V.add(p, V.mul(d, -3000)), b = V.add(p, V.mul(d, 3000));
+  return s("line", Object.assign({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, class: cls }, extra), g);
+}
+function seg(g, p, q, cls, extra = {}) { return s("line", Object.assign({ x1: p.x, y1: p.y, x2: q.x, y2: q.y, class: cls }, extra), g); }
+/* 角の弧：頂点 p、向き a・b の間 */
+function arcAt(g, p, a, b, r, cls, extra = {}) {
+  let t1 = Math.atan2(a.y - p.y, a.x - p.x), t2 = Math.atan2(b.y - p.y, b.x - p.x);
+  let d = t2 - t1; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+  const e = t1 + d;
+  const P1 = { x: p.x + r * Math.cos(t1), y: p.y + r * Math.sin(t1) }, P2 = { x: p.x + r * Math.cos(e), y: p.y + r * Math.sin(e) };
+  return s("path", Object.assign({ d: `M${p.x},${p.y} L${P1.x},${P1.y} A${r},${r} 0 0 ${d > 0 ? 1 : 0} ${P2.x},${P2.y} Z`, class: cls }, extra), g);
+}
+function bisDir(p, a, b) { return V.norm(V.add(V.norm(V.sub(a, p)), V.norm(V.sub(b, p)))); }
+function angleLabel(g, p, a, b, r, text, cls = "tag") {
+  const d = bisDir(p, a, b), q = V.add(p, V.mul(d, r));
+  return s("text", { x: q.x, y: q.y + 5, "text-anchor": "middle", class: cls, "font-size": 15, "font-weight": 700, text }, g);
+}
+function tick(g, p, q, n = 1, cls = "ink") {
+  const m = V.mid(p, q), d = V.norm(V.sub(q, p)), nn = V.perp(d);
+  for (let i = 0; i < n; i++) { const c0 = V.add(m, V.mul(d, (i - (n - 1) / 2) * 6)); seg(g, V.add(c0, V.mul(nn, -7)), V.add(c0, V.mul(nn, 7)), cls, { "stroke-width": 2 }); }
+}
+const lbl = (P, Q) => `${P}${Q}`;
+/* ドラッグできる三角形（共通） */
+function triangleHandles(c, svg, layer, pts, onChange, names = ["A", "B", "C"]) {
+  const H = [];
+  const center = () => ({ x: (H[0].x + H[1].x + H[2].x) / 3, y: (H[0].y + H[1].y + H[2].y) / 3 });
+  pts.forEach((p, i) => {
+    H.push(c.handle(svg, layer, p.x, p.y, (x, y, hd) => { hd.place(clamp(x, 20, 780), clamp(y, 20, 540)); H.forEach(o => o.relabel()); onChange(); },
+      { label: names[i], labelOffset: hd => { const cc = H.length === 3 ? center() : { x: 400, y: 300 }; const d = V.norm(V.sub(hd, cc)); return { x: d.x * 24, y: d.y * 24 }; } }));
+  });
+  H.forEach(o => o.relabel());
+  return H;
+}
+
+/* --- 三角形の五心 --- */
+sim({
+  id: "centers", cat: "geo", name: "三角形の五心", sub: "外心・内心・重心・垂心・傍心",
+  hint: "A・B・C の点をドラッグして、三角形の形を変えてみよう",
+  point: `<ul><li><b>外心 O</b>：3辺の垂直二等分線の交点。外接円の中心（OA=OB=OC）。</li>
+<li><b>内心 I</b>：3つの角の二等分線の交点。内接円の中心（3辺までの距離が等しい）。</li>
+<li><b>重心 G</b>：3本の中線の交点。中線を <b>2：1</b> に分ける。</li>
+<li><b>垂心 H</b>：3つの頂点から対辺へひいた垂線の交点。</li>
+<li><b>傍心</b>：1つの内角と2つの外角の二等分線の交点。傍接円の中心（3つある）。</li></ul>`,
+  detail: `<p>どの心も「3本の線が1点で交わる」ことがポイント。2本の交点を求めれば、3本目も必ずそこを通ります。</p>
+<p>外心は、鋭角三角形なら内部、直角三角形なら <b>斜辺の中点</b>、鈍角三角形なら外部にあります。垂心も同じように動きます（直角三角形では直角の頂点）。三角形を動かして確かめよう。</p>
+<p><b>オイラー線</b>：正三角形でなければ、外心 O・重心 G・垂心 H は一直線にならび、OG：GH = 1：2 になります。</p>
+<p>正三角形では、外心・内心・重心・垂心がすべて同じ点になります。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    const on = { O: true, I: false, G: false, H: false, E: false, L: false };
+    const T = { O: ["外心 O", "var(--warm)"], I: ["内心 I", "var(--accent)"], G: ["重心 G", "var(--blue)"], H: ["垂心 H", "var(--violet)"], E: ["傍心", "var(--gold)"], L: ["オイラー線", "var(--ink)"] };
+    c.label("表示するもの");
+    const tg = Object.keys(T).map(k => c.toggle(T[k][0], on[k], v => { on[k] = v; draw(); }, T[k][1]));
+    c.row(...tg.map(t => t.el));
+    c.row(c.btn("正三角形", () => setT([{ x: 400, y: 90 }, { x: 230, y: 385 }, { x: 570, y: 385 }])), c.btn("直角三角形", () => setT([{ x: 260, y: 120 }, { x: 260, y: 420 }, { x: 600, y: 420 }])), c.btn("鈍角三角形", () => setT([{ x: 300, y: 300 }, { x: 160, y: 420 }, { x: 660, y: 420 }])));
+    const G = s("g", {}, svg), HL = s("g", {}, svg);
+    const H = triangleHandles(c, svg, HL, [{ x: 330, y: 110 }, { x: 180, y: 420 }, { x: 610, y: 420 }], () => draw());
+    function setT(ps) { ps.forEach((p, i) => H[i].place(p.x, p.y)); H.forEach(o => o.relabel()); draw(); }
+    function dotL(p, name, col) {
+      s("circle", { cx: p.x, cy: p.y, r: 6, fill: col, stroke: "var(--panel)", "stroke-width": 2 }, G);
+      s("text", { x: p.x + 10, y: p.y - 9, class: "pointlbl", "font-size": 18, fill: col, text: name }, G);
+    }
+    function draw() {
+      clear(G);
+      const [A, B, Cc] = H.map(o => ({ x: o.x, y: o.y }));
+      const a = V.dist(B, Cc), b = V.dist(Cc, A), cl = V.dist(A, B);
+      const area = Math.abs(V.cross(V.sub(B, A), V.sub(Cc, A))) / 2;
+      s("polygon", { points: `${A.x},${A.y} ${B.x},${B.y} ${Cc.x},${Cc.y}`, class: "ink", fill: "var(--panel)", "fill-opacity": .5, "stroke-width": 2.5 }, G);
+      const lines = [];
+      let info = [];
+      const Ang = [angleAt(A, B, Cc), angleAt(B, Cc, A), angleAt(Cc, A, B)];
+      if (area < 50) { c.out("三角形がつぶれています。点を動かしてね"); return; }
+      const Oc = circum(A, B, Cc), R = V.dist(Oc, A);
+      const Gc = { x: (A.x + B.x + Cc.x) / 3, y: (A.y + B.y + Cc.y) / 3 };
+      const Hc = { x: A.x + B.x + Cc.x - 2 * Oc.x, y: A.y + B.y + Cc.y - 2 * Oc.y };
+      const per = a + b + cl, Ic = { x: (a * A.x + b * B.x + cl * Cc.x) / per, y: (a * A.y + b * B.y + cl * Cc.y) / per }, r = 2 * area / per;
+      if (on.E) {
+        const col = T.E[1];
+        [[-a, b, cl, a], [a, -b, cl, b], [a, b, -cl, cl]].forEach(([wa, wb, wc, side], i) => {
+          const sw = wa + wb + wc, E = { x: (wa * A.x + wb * B.x + wc * Cc.x) / sw, y: (wa * A.y + wb * B.y + wc * Cc.y) / sw }, re = area / ((per / 2) - side);
+          s("circle", { cx: E.x, cy: E.y, r: re, fill: "none", stroke: col, "stroke-width": 1.8, "stroke-dasharray": "3 4" }, G);
+          [A, B, Cc].forEach(P => seg(G, P, E, "thin", { stroke: col, "stroke-opacity": .6 }));
+          dotL(E, ["I_A", "I_B", "I_C"][i], col);
+        });
+        // 三角形の辺をのばす
+        [[A, B], [B, Cc], [Cc, A]].forEach(([p, q]) => longLine(G, p, q, "thin dash"));
+      }
+      if (on.O) {
+        const col = T.O[1];
+        [[B, Cc, 1], [Cc, A, 2], [A, B, 3]].forEach(([p, q, n]) => { const m = V.mid(p, q); longLine(G, m, V.add(m, V.perp(V.sub(q, p))), "thin", { stroke: col, "stroke-width": 1.4 }); tick(G, p, m, n, "ink s-wm"); tick(G, m, q, n, "ink s-wm"); });
+        s("circle", { cx: Oc.x, cy: Oc.y, r: R, fill: "none", stroke: col, "stroke-width": 2.2 }, G);
+        [A, B, Cc].forEach(P => seg(G, Oc, P, "dash", { stroke: col, "stroke-width": 1.6 }));
+        dotL(Oc, "O", col);
+        const pos = Math.max(...Ang) > 90.05 ? "三角形の外" : Math.max(...Ang) > 89.95 ? "斜辺の中点" : "三角形の中";
+        info.push(`<span class="hl">外心 O</span>：OA = OB = OC = ${fmt(R)}（外接円の半径）<br><span class="mt">いまは ${pos}</span>`);
+      }
+      if (on.I) {
+        const col = T.I[1];
+        [[A, B, Cc], [B, Cc, A], [Cc, A, B]].forEach(([P, Q, Rr]) => { const D = inter(P, Ic, Q, Rr); if (D) seg(G, P, D, "", { stroke: col, "stroke-width": 1.6 }); arcAt(G, P, Q, Ic, 22, "", { fill: col, "fill-opacity": .25 }); arcAt(G, P, Ic, Rr, 26, "", { fill: col, "fill-opacity": .12 }); });
+        s("circle", { cx: Ic.x, cy: Ic.y, r, fill: "none", stroke: col, "stroke-width": 2.2 }, G);
+        [[B, Cc], [Cc, A], [A, B]].forEach(([p, q]) => { const F = foot(Ic, p, q); seg(G, Ic, F, "dash", { stroke: col, "stroke-width": 1.4 }); });
+        dotL(Ic, "I", col);
+        info.push(`<span class="ac">内心 I</span>：3辺までの距離 = ${fmt(r)}（内接円の半径）`);
+      }
+      if (on.G) {
+        const col = T.G[1];
+        [[A, V.mid(B, Cc)], [B, V.mid(Cc, A)], [Cc, V.mid(A, B)]].forEach(([P, M]) => { seg(G, P, M, "", { stroke: col, "stroke-width": 1.8 }); s("circle", { cx: M.x, cy: M.y, r: 3.5, fill: col }, G); });
+        [[B, Cc], [Cc, A], [A, B]].forEach(([p, q], i) => { const M = V.mid(p, q); tick(G, p, M, i + 1, "ink s-bl"); tick(G, M, q, i + 1, "ink s-bl"); });
+        dotL(Gc, "G", col);
+        const Ma = V.mid(B, Cc);
+        info.push(`<span class="bl">重心 G</span>：AG：GM = ${fmt(V.dist(A, Gc))}：${fmt(V.dist(Gc, Ma))} = 2：1`);
+      }
+      if (on.H) {
+        const col = T.H[1];
+        [[A, B, Cc], [B, Cc, A], [Cc, A, B]].forEach(([P, Q, Rr]) => {
+          const F = foot(P, Q, Rr); seg(G, P, F, "", { stroke: col, "stroke-width": 1.8 });
+          const t = V.dot(V.sub(F, Q), V.sub(Rr, Q)) / V.dot(V.sub(Rr, Q), V.sub(Rr, Q));
+          if (t < 0 || t > 1) seg(G, t < 0 ? Q : Rr, F, "dash", { stroke: col, "stroke-width": 1.2 });
+          seg(G, Hc, P, "dash", { stroke: col, "stroke-width": 1.2 });
+          const u = V.norm(V.sub(Rr, Q)), w = V.norm(V.sub(P, F)), k = 10;
+          if (V.dist(P, F) > 12) s("path", { d: `M${F.x + u.x * k},${F.y + u.y * k} L${F.x + u.x * k + w.x * k},${F.y + u.y * k + w.y * k} L${F.x + w.x * k},${F.y + w.y * k}`, fill: "none", stroke: col, "stroke-width": 1.5 }, G);
+        });
+        dotL(Hc, "H", col);
+        info.push(`<span style="color:var(--violet);font-weight:700">垂心 H</span>：3本の垂線が1点で交わる`);
+      }
+      if (on.L) {
+        if (V.dist(Oc, Hc) > 2) {
+          longLine(G, Oc, Hc, "ink", { "stroke-width": 2.5, "stroke-dasharray": "12 6" });
+          if (!on.O) dotL(Oc, "O", T.O[1]); if (!on.G) dotL(Gc, "G", T.G[1]); if (!on.H) dotL(Hc, "H", T.H[1]);
+          info.push(`<b>オイラー線</b>：OG：GH = ${fmt(V.dist(Oc, Gc))}：${fmt(V.dist(Gc, Hc))} = 1：2`);
+        } else info.push(`正三角形なので O・G・H が重なっています`);
+      }
+      c.out(`∠A = ${fmt(Ang[0])}°, ∠B = ${fmt(Ang[1])}°, ∠C = ${fmt(Ang[2])}°<hr>${info.join("<br>") || '<span class="mt">上の「表示するもの」をえらんでね</span>'}`);
+    }
+    draw();
+  },
+});
+
+/* --- 角の二等分線と比 --- */
+sim({
+  id: "bisector", cat: "geo", name: "角の二等分線と比", sub: "AB：AC = BD：DC",
+  hint: "点をドラッグして形を変えても、2本の帯の分かれ目はいつもそろいます",
+  point: `<ul><li>∠A の二等分線が BC と交わる点を D とすると</li></ul>
+<span class="formula">AB：AC = BD：DC</span>
+<ul><li>外角の二等分線と BC の延長の交点 E でも <b>AB：AC = BE：EC</b>（外分）。</li>
+<li>下の帯グラフで、上（AB：AC）と下（BD：DC）の分かれ目がそろっていることを確かめよう。</li></ul>`,
+  detail: `<p>証明のアイデア：C を通って AD に平行な線をひき、BA の延長との交点を E とすると、∠ACE = ∠AEC となり AE = AC。平行線と比の性質から BD：DC = BA：AE = AB：AC。</p>
+<p>面積で考えることもできます：△ABD と △ADC は、D から見た高さが同じなので面積の比 = BD：DC。また A から見ると、AD をはさむ角が等しいので面積の比 = AB：AC。</p>
+<p>計算例：AB = 6、AC = 4、BC = 5 なら BD = 5 × 6/(6+4) = 3。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let ext = false;
+    const t = c.toggle("外角の二等分線も", ext, v => { ext = v; draw(); }, "var(--blue)");
+    c.row(t.el);
+    const G = s("g", {}, svg), HL = s("g", {}, svg);
+    const H = triangleHandles(c, svg, HL, [{ x: 300, y: 90 }, { x: 150, y: 380 }, { x: 560, y: 380 }], () => draw());
+    function bar(y, l1, l2, n1, n2, col1, col2) {
+      const X = 120, W = 560, t1 = l1 / (l1 + l2);
+      s("rect", { x: X, y, width: W * t1, height: 26, fill: col1 }, G);
+      s("rect", { x: X + W * t1, y, width: W * (1 - t1), height: 26, fill: col2 }, G);
+      s("rect", { x: X, y, width: W, height: 26, class: "ink", "stroke-width": 1.5 }, G);
+      s("text", { x: X - 10, y: y + 19, "text-anchor": "end", "font-size": 15, text: `${n1}：${n2}` }, G);
+      s("text", { x: X + W * t1 / 2, y: y + 19, "text-anchor": "middle", class: "mono", "font-size": 14, fill: "#fff", text: fmt(l1) }, G);
+      s("text", { x: X + W * t1 + W * (1 - t1) / 2, y: y + 19, "text-anchor": "middle", class: "mono", "font-size": 14, fill: "#fff", text: fmt(l2) }, G);
+      return X + W * t1;
+    }
+    function draw() {
+      clear(G);
+      const [A, B, Cc] = H.map(o => ({ x: o.x, y: o.y }));
+      if (Math.abs(V.cross(V.sub(B, A), V.sub(Cc, A))) < 100) { c.out("三角形がつぶれています"); return; }
+      const ab = V.dist(A, B), ac = V.dist(A, Cc);
+      const D = V.lerp(B, Cc, ab / (ab + ac));
+      s("polygon", { points: `${A.x},${A.y} ${B.x},${B.y} ${Cc.x},${Cc.y}`, class: "ink", fill: "var(--panel)", "fill-opacity": .5, "stroke-width": 2.5 }, G);
+      seg(G, B, D, "", { stroke: "var(--warm)", "stroke-width": 6, "stroke-opacity": .6 });
+      seg(G, D, Cc, "", { stroke: "var(--accent)", "stroke-width": 6, "stroke-opacity": .6 });
+      seg(G, A, B, "", { stroke: "var(--warm)", "stroke-width": 3 });
+      seg(G, A, Cc, "", { stroke: "var(--accent)", "stroke-width": 3 });
+      arcAt(G, A, B, D, 40, "", { fill: "var(--gold)", "fill-opacity": .35, stroke: "var(--gold)" });
+      arcAt(G, A, D, Cc, 46, "", { fill: "var(--gold)", "fill-opacity": .18, stroke: "var(--gold)" });
+      angleLabel(G, A, B, D, 60, "●"); angleLabel(G, A, D, Cc, 64, "●");
+      seg(G, A, D, "ink", { "stroke-width": 2.5 });
+      s("circle", { cx: D.x, cy: D.y, r: 6, class: "f-ink" }, G);
+      s("text", { x: D.x, y: D.y + 28, "text-anchor": "middle", class: "pointlbl", text: "D" }, G);
+      let extra = "";
+      if (ext) {
+        if (Math.abs(ab - ac) < 1) extra = `<br><span class="mt">AB = AC のとき、外角の二等分線は BC と平行で交わらない</span>`;
+        else {
+          const E = V.add(B, V.mul(V.sub(Cc, B), ab / (ab - ac)));
+          longLine(G, B, Cc, "thin dash");
+          seg(G, A, E, "", { stroke: "var(--blue)", "stroke-width": 2.2 });
+          s("circle", { cx: E.x, cy: E.y, r: 6, class: "f-bl" }, G);
+          s("text", { x: E.x, y: E.y + 28, "text-anchor": "middle", class: "pointlbl tb", text: "E" }, G);
+          extra = `<br><span class="bl">BE：EC = ${fmt(V.dist(B, E))}：${fmt(V.dist(E, Cc))} = ${fmt(V.dist(B, E) / V.dist(E, Cc), 3)}</span>`;
+        }
+      }
+      const x1 = bar(450, ab, ac, "AB", "AC", "var(--warm)", "var(--accent)");
+      const bd = V.dist(B, D), dc = V.dist(D, Cc);
+      bar(500, bd, dc, "BD", "DC", "var(--warm)", "var(--accent)");
+      s("line", { x1, y1: 440, x2: x1, y2: 536, class: "ink dash", "stroke-width": 2 }, G);
+      c.out(`AB：AC = ${fmt(ab)}：${fmt(ac)} → <span class="hl">${fmt(ab / ac, 3)}</span><br>BD：DC = ${fmt(bd)}：${fmt(dc)} → <span class="hl">${fmt(bd / dc, 3)}</span>${extra}`);
+    }
+    draw();
+  },
+});
+
+/* --- チェバ・メネラウス --- */
+sim({
+  id: "ceva", cat: "geo", name: "チェバとメネラウス", sub: "比のかけ算はいつも 1",
+  hint: "点 P（チェバ）や 直線の2点（メネラウス）をドラッグ。比のかけ算はいつも 1 になります",
+  point: `<ul><li><b>チェバの定理</b>：三角形の頂点と点 P を結ぶ線が対辺と D・E・F で交わるとき</li></ul>
+<span class="formula">(BD/DC)×(CE/EA)×(AF/FB) = 1</span>
+<ul><li><b>メネラウスの定理</b>：直線が3辺（またはその延長）と D・E・F で交わるときも、同じ形の式が成り立つ。</li>
+<li>覚え方：<b>頂点 → 分点 → 頂点 → 分点 …</b> と三角形をひとまわり。「読む順を見る」で確かめよう。</li></ul>`,
+  detail: `<p>チェバの定理は、面積の比で証明できます。BD：DC = △ABP：△ACP など、3つの比をかけると面積が約分されて 1 になります。</p>
+<p>メネラウスの定理は、三角形の頂点から直線へ平行線をひいて、平行線と比を使って証明します。</p>
+<p>使い方：3つの比のうち2つがわかれば、のこり1つが求まります。たとえば BD：DC = 1：2、CE：EA = 3：1 なら AF：FB = 2：3。</p>
+<p>P を三角形の外に出しても（線を延長すれば）チェバの定理は成り立ちます。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let mode = "ceva";
+    c.seg("定理", [{ v: "ceva", t: "チェバ" }, { v: "men", t: "メネラウス" }], mode, v => { mode = v; ph.forEach(o => o.g.style.display = mode === "ceva" ? "" : "none"); lh.forEach(o => o.g.style.display = mode === "men" ? "" : "none"); draw(); });
+    c.row(c.btn("読む順を見る", () => trace(), { main: true }));
+    const G = s("g", {}, svg), TR = s("g", {}, svg), HL = s("g", {}, svg);
+    const H = triangleHandles(c, svg, HL, [{ x: 330, y: 80 }, { x: 140, y: 440 }, { x: 600, y: 440 }], () => draw());
+    const ph = [c.handle(svg, HL, 340, 300, (x, y, hd) => { hd.place(x, y); draw(); }, { label: "P", color: "var(--blue)", labelOffset: () => ({ x: 18, y: -12 }) })];
+    const lh = [c.handle(svg, HL, 120, 200, (x, y, hd) => { hd.place(x, y); draw(); }, { color: "var(--blue)" }), c.handle(svg, HL, 720, 380, (x, y, hd) => { hd.place(x, y); draw(); }, { color: "var(--blue)" })];
+    lh.forEach(o => o.g.style.display = "none");
+    let last = null;
+    function draw() {
+      clear(G); clear(TR);
+      const [A, B, Cc] = H.map(o => ({ x: o.x, y: o.y }));
+      if (Math.abs(V.cross(V.sub(B, A), V.sub(Cc, A))) < 100) { c.out("三角形がつぶれています"); return; }
+      let D, E, F;
+      if (mode === "ceva") {
+        const Pp = { x: ph[0].x, y: ph[0].y };
+        D = inter(A, Pp, B, Cc); E = inter(B, Pp, Cc, A); F = inter(Cc, Pp, A, B);
+      } else {
+        const L1 = { x: lh[0].x, y: lh[0].y }, L2 = { x: lh[1].x, y: lh[1].y };
+        D = inter(L1, L2, B, Cc); E = inter(L1, L2, Cc, A); F = inter(L1, L2, A, B);
+        longLine(G, L1, L2, "", { stroke: "var(--blue)", "stroke-width": 2.5 });
+      }
+      [[A, B], [B, Cc], [Cc, A]].forEach(([p, q]) => longLine(G, p, q, "thin dash"));
+      s("polygon", { points: `${A.x},${A.y} ${B.x},${B.y} ${Cc.x},${Cc.y}`, class: "ink", fill: "var(--panel)", "fill-opacity": .5, "stroke-width": 2.5 }, G);
+      if (!D || !E || !F) { c.out("平行になって交わらない線があります。少し動かしてね"); last = null; return; }
+      if (mode === "ceva") { const Pp = { x: ph[0].x, y: ph[0].y }; [[A, D], [B, E], [Cc, F]].forEach(([p, q]) => { seg(G, p, q, "", { stroke: "var(--blue)", "stroke-width": 1.8 }); seg(G, Pp, q, "", { stroke: "var(--blue)", "stroke-width": 1.8 }); seg(G, Pp, p, "", { stroke: "var(--blue)", "stroke-width": 1.8 }); }); }
+      const cols = ["var(--warm)", "var(--accent)", "var(--violet)"];
+      [[B, D, Cc, 0], [Cc, E, A, 1], [A, F, B, 2]].forEach(([p, m, q, i]) => {
+        seg(G, p, m, "", { stroke: cols[i], "stroke-width": 6, "stroke-opacity": .55, "stroke-linecap": "round" });
+        seg(G, m, q, "", { stroke: cols[i], "stroke-width": 6, "stroke-opacity": .25, "stroke-linecap": "round" });
+      });
+      [[D, "D"], [E, "E"], [F, "F"]].forEach(([p, n]) => { s("circle", { cx: p.x, cy: p.y, r: 6, class: "f-ink" }, G); s("text", { x: p.x + 12, y: p.y + 22, class: "pointlbl", "font-size": 19, text: n }, G); });
+      const r1 = V.dist(B, D) / V.dist(D, Cc), r2 = V.dist(Cc, E) / V.dist(E, A), r3 = V.dist(A, F) / V.dist(F, B);
+      last = { A, B, Cc, D, E, F };
+      c.out(`<span style="color:var(--violet)">AF/FB</span> × <span class="hl">BD/DC</span> × <span class="ac">CE/EA</span><br>= <span style="color:var(--violet)">${fmt(r3, 3)}</span> × <span class="hl">${fmt(r1, 3)}</span> × <span class="ac">${fmt(r2, 3)}</span><br>= <span class="big">${fmt(r1 * r2 * r3, 3)}</span>`);
+    }
+    function trace() {
+      if (!last) return;
+      const { A, B, Cc, D, E, F } = last;
+      const order = [[A, F, "A"], [F, B, "F"], [B, D, "B"], [D, Cc, "D"], [Cc, E, "C"], [E, A, "E"]];
+      clear(TR);
+      const dot = s("circle", { r: 10, class: "f-gd", stroke: "var(--ink)", "stroke-width": 2 }, TR);
+      const txt = s("text", { x: 400, y: 40, "text-anchor": "middle", class: "disp", "font-size": 24 }, TR);
+      let i = 0, t = 0, seq = "";
+      c.loop(dt => {
+        t += dt * 1.2;
+        if (t >= 1) { t = 0; seq += (i % 2 === 0 ? order[i][2] + order[i + 1][2] + (i < 4 ? "/" : "/") : "") ; i++; if (i >= order.length) { txt.textContent = "AF/FB × BD/DC × CE/EA = 1"; dot.remove(); return false; } }
+        const [p, q] = order[i];
+        const pos = V.lerp(p, q, t);
+        setA(dot, { cx: pos.x, cy: pos.y });
+        const parts = ["A→F", "F→B", "B→D", "D→C", "C→E", "E→A"];
+        txt.textContent = parts.slice(0, i + 1).join("  ") + (i % 2 === 0 ? "（分子）" : "（分母）");
+      });
+    }
+    draw();
+  },
+});
+
+/* --- 円周角の定理など --- */
+sim({
+  id: "inscribed", cat: "geo", name: "円周角と円", sub: "円周角・内接四角形・接弦定理",
+  hint: "円の上の点をドラッグ。どこへ動かしても角の大きさは変わりません",
+  point: `<ul><li><b>円周角の定理</b>：同じ弧に対する円周角は <b>どこでも等しく</b>、中心角の <b>半分</b>。</li>
+<li>半円の弧（直径）に対する円周角は <b>90°</b>。</li>
+<li><b>円に内接する四角形</b>：向かい合う角の和は 180°。外角は となりの内角の対角に等しい。</li>
+<li><b>接弦定理</b>：接線と弦のつくる角は、その角の内部にある弧に対する円周角に等しい。</li></ul>`,
+  detail: `<p>円周角の定理の証明は、P と中心 O を通る直径をひいて、二等辺三角形（OP = OA = OB）の外角を使います。</p>
+<p>内接四角形の対角の和が 180° になるのは、∠A と ∠C がそれぞれ中心角 2a と 2c の半分で、2a + 2c = 360° だから。</p>
+<p>逆に、向かい合う角の和が 180° の四角形は円に内接します（4点が同じ円周上にある条件）。</p>
+<p>接弦定理は、弦の端の点 B を C に近づけていった「円周角の行きつく先」と考えるとイメージしやすいです。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    const O = { x: 360, y: 285 }, R = 210;
+    let mode = "ins", morePs = false;
+    c.seg("見るもの", [{ v: "ins", t: "円周角の定理" }, { v: "quad", t: "内接四角形" }, { v: "tan", t: "接弦定理" }], mode, v => { mode = v; build2(); });
+    const tm = c.toggle("P をふやす", morePs, v => { morePs = v; build2(); }, "var(--accent)");
+    c.row(tm.el, c.btn("直径にする", () => { ang.B = ang.A + Math.PI; build2(); }));
+    const ang = { A: Math.PI * 0.85, B: Math.PI * 0.15, P: -Math.PI * 0.55, P2: -Math.PI * 0.3, P3: -Math.PI * 0.82, Q1: Math.PI * 1.05, Q2: Math.PI * 0.55, Q3: -Math.PI * 0.05, Q4: -Math.PI * 0.6, T: Math.PI * 0.5, TB: -Math.PI * 0.05, TC: -Math.PI * 0.7 };
+    const at = a => ({ x: O.x + R * Math.cos(a), y: O.y + R * Math.sin(a) });
+    const G = s("g", {}, svg), HL = s("g", {}, svg);
+    let hs = {};
+    function mk(name, label, color) {
+      const p = at(ang[name]);
+      hs[name] = c.handle(svg, HL, p.x, p.y, (x, y, hd) => { ang[name] = Math.atan2(y - O.y, x - O.x); const q = at(ang[name]); hd.place(q.x, q.y); draw(); },
+        { label, color, labelOffset: hd => { const d = V.norm(V.sub(hd, O)); return { x: d.x * 26, y: d.y * 26 }; } });
+    }
+    function build2() {
+      clear(HL); hs = {};
+      tm.el.hidden = mode !== "ins";
+      if (mode === "ins") { mk("A", "A"); mk("B", "B"); mk("P", "P", "var(--accent)"); if (morePs) { mk("P2", "P'", "var(--accent)"); mk("P3", "P''", "var(--accent)"); } }
+      else if (mode === "quad") { mk("Q1", ""); mk("Q2", ""); mk("Q3", ""); mk("Q4", ""); }
+      else { mk("T", "A", "var(--blue)"); mk("TB", "B"); mk("TC", "C", "var(--accent)"); }
+      draw();
+    }
+    function draw() {
+      clear(G);
+      s("circle", { cx: O.x, cy: O.y, r: R, class: "ink", "stroke-width": 2.5 }, G);
+      s("circle", { cx: O.x, cy: O.y, r: 4, class: "f-ink" }, G);
+      s("text", { x: O.x + 8, y: O.y + 20, class: "pointlbl", "font-size": 18, text: "O" }, G);
+      if (mode === "ins") drawIns(); else if (mode === "quad") drawQuad(); else drawTan();
+    }
+    function drawIns() {
+      const A = at(ang.A), B = at(ang.B);
+      const Ps = ["P", "P2", "P3"].filter(k => hs[k]).map(k => at(ang[k]));
+      const Pm = Ps[0];
+      // P と反対側の弧 AB に色
+      const side = V.cross(V.sub(B, A), V.sub(Pm, A));
+      const tA = ang.A, tB = ang.B;
+      // 中心角（P の反対側の弧）
+      let sweep = ((tB - tA) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI); // A→B 正の向き
+      const mid = tA + sweep / 2, M = at(mid);
+      const Mside = V.cross(V.sub(B, A), V.sub(M, A));
+      let start = tA, sw = sweep;
+      if (Mside * side > 0) { start = tB; sw = 2 * Math.PI - sweep; }
+      const arcPts = n => Array.from({ length: n + 1 }, (_, i) => at(start + sw * i / n));
+      const ap = arcPts(60);
+      s("path", { d: `M${ap.map(p => `${p.x},${p.y}`).join(" L")}`, fill: "none", stroke: "var(--warm)", "stroke-width": 7, "stroke-linecap": "round", "stroke-opacity": .7 }, G);
+      const r2 = 46;
+      const cp = Array.from({ length: 41 }, (_, i) => ({ x: O.x + r2 * Math.cos(start + sw * i / 40), y: O.y + r2 * Math.sin(start + sw * i / 40) }));
+      s("path", { d: `M${O.x},${O.y} L${cp.map(p => `${p.x},${p.y}`).join(" L")} Z`, fill: "var(--warm)", "fill-opacity": .25, stroke: "var(--warm)" }, G);
+      seg(G, O, A, "ink s-wm", { "stroke-width": 2 }); seg(G, O, B, "ink s-wm", { "stroke-width": 2 });
+      const central = deg(sw);
+      const lab = { x: O.x + 70 * Math.cos(start + sw / 2), y: O.y + 70 * Math.sin(start + sw / 2) };
+      s("text", { x: lab.x, y: lab.y + 5, "text-anchor": "middle", class: "tag tw", "font-weight": 700, text: `${fmt(central)}°` }, G);
+      seg(G, A, B, "thin");
+      Ps.forEach((Pp, i) => {
+        seg(G, Pp, A, "ink s-ac", { "stroke-width": 2.2 }); seg(G, Pp, B, "ink s-ac", { "stroke-width": 2.2 });
+        arcAt(G, Pp, A, B, 34, "", { fill: "var(--accent)", "fill-opacity": .25, stroke: "var(--accent)" });
+        angleLabel(G, Pp, A, B, 58, `${fmt(angleAt(Pp, A, B))}°`, "tag ta");
+      });
+      const ins = angleAt(Pm, A, B);
+      const dia = Math.abs(central - 180) < 0.6;
+      c.out(`円周角 ∠APB = <span class="big ac">${fmt(ins)}°</span><br>中心角 ∠AOB = <span class="hl">${fmt(central)}°</span>（弧 AB）<br>${fmt(central)}° ÷ 2 = ${fmt(central / 2)}°${dia ? `<hr><b>AB が直径 → 円周角は 90°</b>` : ""}`);
+    }
+    function drawQuad() {
+      const keys = ["Q1", "Q2", "Q3", "Q4"].sort((a, b) => ang[a] - ang[b]);
+      const pts = keys.map(k => at(ang[k]));
+      const names = ["A", "B", "C", "D"];
+      keys.forEach((k, i) => { hs[k].g.querySelector("text") || s("text", { class: "pointlbl", "text-anchor": "middle" }, hs[k].g); const d = V.norm(V.sub(pts[i], O)); setA(hs[k].g.querySelector("text"), { x: d.x * 26, y: d.y * 26 + 7 }).textContent = names[i]; });
+      s("polygon", { points: pts.map(p => `${p.x},${p.y}`).join(" "), class: "ink", fill: "var(--panel)", "fill-opacity": .6, "stroke-width": 2.5 }, G);
+      const angs = pts.map((p, i) => angleAt(p, pts[(i + 3) % 4], pts[(i + 1) % 4]));
+      const cols = ["var(--warm)", "var(--blue)", "var(--warm)", "var(--blue)"];
+      pts.forEach((p, i) => { arcAt(G, p, pts[(i + 3) % 4], pts[(i + 1) % 4], 30, "", { fill: cols[i], "fill-opacity": .3, stroke: cols[i] }); angleLabel(G, p, pts[(i + 3) % 4], pts[(i + 1) % 4], 54, `${fmt(angs[i])}°`, "tag"); });
+      // C の外角
+      const Cp = pts[2], ext = V.add(Cp, V.mul(V.norm(V.sub(Cp, pts[1])), 90));
+      seg(G, Cp, ext, "thin dash", { "stroke-width": 2 });
+      arcAt(G, Cp, ext, pts[3], 22, "", { fill: "var(--warm)", "fill-opacity": .5 });
+      c.out(`<span class="hl">∠A + ∠C</span> = ${fmt(angs[0])}° + ${fmt(angs[2])}° = <span class="big hl">${fmt(angs[0] + angs[2])}°</span><br><span class="bl">∠B + ∠D</span> = ${fmt(angs[1])}° + ${fmt(angs[3])}° = <span class="big bl">${fmt(angs[1] + angs[3])}°</span><hr><span class="mt">C の外角（小さい扇形）= 180° − ∠C = ${fmt(180 - angs[2])}° = ∠A</span>`);
+    }
+    function drawTan() {
+      const A = at(ang.T), B = at(ang.TB), Cc = at(ang.TC);
+      const t = V.perp(V.norm(V.sub(A, O)));
+      longLine(G, A, V.add(A, t), "ink s-bl", { "stroke-width": 2.5 });
+      s("text", { x: A.x + t.x * 150 + 8, y: A.y + t.y * 150 - 8, class: "tag tb", text: "接線" }, G);
+      seg(G, A, B, "ink", { "stroke-width": 2.2 }); seg(G, A, Cc, "thin", { "stroke-width": 1.8 }); seg(G, B, Cc, "ink s-ac", { "stroke-width": 2.2 }); seg(G, A, Cc, "ink s-ac", { "stroke-width": 2.2 });
+      // C と反対側の接線の向き
+      const side = V.cross(V.sub(B, A), V.sub(Cc, A));
+      let tt = t; if (Math.sign(V.cross(V.sub(B, A), t)) === Math.sign(side)) tt = V.mul(t, -1);
+      const T2 = V.add(A, V.mul(tt, 100));
+      const tanAng = angleAt(A, T2, B);
+      arcAt(G, A, T2, B, 40, "", { fill: "var(--warm)", "fill-opacity": .35, stroke: "var(--warm)" });
+      angleLabel(G, A, T2, B, 64, `${fmt(tanAng)}°`, "tag tw");
+      const ins = angleAt(Cc, A, B);
+      arcAt(G, Cc, A, B, 36, "", { fill: "var(--accent)", "fill-opacity": .3, stroke: "var(--accent)" });
+      angleLabel(G, Cc, A, B, 60, `${fmt(ins)}°`, "tag ta");
+      c.out(`接線と弦 AB の角 = <span class="big hl">${fmt(tanAng)}°</span><br>弧 AB に対する円周角 ∠ACB = <span class="big ac">${fmt(ins)}°</span><hr><span class="mt">B を A に近づけたり、C を動かしたりしても等しいまま</span>`);
+    }
+    build2();
+  },
+});
+
+/* --- 方べきの定理 --- */
+sim({
+  id: "power", cat: "geo", name: "方べきの定理", sub: "PA×PB = PC×PD",
+  hint: "P や 直線の向き（青い点）をドラッグ。右の長方形の面積はいつも同じです",
+  point: `<ul><li>点 P を通る2本の直線が円と A・B、C・D で交わるとき</li></ul>
+<span class="formula">PA × PB = PC × PD</span>
+<ul><li>P が円の <b>内側</b> でも <b>外側</b> でも成り立つ。</li>
+<li>1本が接線（接点 T）になると <span class="formula">PA × PB = PT²</span></li>
+<li>右の長方形（たて PA・横 PB）は、形が変わっても <b>面積が同じ</b>。</li></ul>`,
+  detail: `<p>証明：△PAC と △PDB が相似（円周角の定理で角が等しい）なので PA：PD = PC：PB、だから PA×PB = PC×PD。</p>
+<p>この値は P と円だけで決まり、半径 r、中心 O までの距離 d とすると |d² − r²| になります。直線の向きに関係ありません。</p>
+<p>計算例：PA = 3、PB = 8、PC = 4 なら PD = 3×8÷4 = 6。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    const O = { x: 300, y: 290 }, R = 170;
+    let showT = true;
+    const tt = c.toggle("接線もかく（P が外のとき）", showT, v => { showT = v; draw(); }, "var(--violet)");
+    c.row(tt.el, c.btn("P を外へ", () => { Ph.place(600, 140); draw(); }), c.btn("P を中へ", () => { Ph.place(330, 330); draw(); }));
+    const G = s("g", {}, svg), HL = s("g", {}, svg);
+    const Ph = c.handle(svg, HL, 560, 170, (x, y, hd) => { hd.place(clamp(x, 20, 780), clamp(y, 20, 540)); draw(); }, { label: "P", labelOffset: () => ({ x: 18, y: -14 }) });
+    const D1 = c.handle(svg, HL, 120, 260, (x, y, hd) => { hd.place(x, y); draw(); }, { color: "var(--accent)", r: 7 });
+    const D2 = c.handle(svg, HL, 200, 470, (x, y, hd) => { hd.place(x, y); draw(); }, { color: "var(--blue)", r: 7 });
+    function hits(Pp, Q) {
+      const u = V.norm(V.sub(Q, Pp)), f = V.sub(Pp, O);
+      const b = V.dot(u, f), cc = V.dot(f, f) - R * R, disc = b * b - cc;
+      if (disc < 0) return null;
+      const t1 = -b - Math.sqrt(disc), t2 = -b + Math.sqrt(disc);
+      return [V.add(Pp, V.mul(u, t1)), V.add(Pp, V.mul(u, t2)), Math.abs(t1), Math.abs(t2)];
+    }
+    function draw() {
+      clear(G);
+      const Pp = { x: Ph.x, y: Ph.y };
+      s("circle", { cx: O.x, cy: O.y, r: R, class: "ink", "stroke-width": 2.5 }, G);
+      s("circle", { cx: O.x, cy: O.y, r: 3.5, class: "f-ink" }, G);
+      const L1 = hits(Pp, { x: D1.x, y: D1.y }), L2 = hits(Pp, { x: D2.x, y: D2.y });
+      longLine(G, Pp, { x: D1.x, y: D1.y }, "thin", { stroke: "var(--accent)", "stroke-width": 1.5 });
+      longLine(G, Pp, { x: D2.x, y: D2.y }, "thin", { stroke: "var(--blue)", "stroke-width": 1.5 });
+      const d = V.dist(Pp, O), pw = Math.abs(d * d - R * R);
+      const rows = [];
+      const drawL = (L, n1, n2, col) => {
+        if (!L) return null;
+        const [a, b, la, lb] = L;
+        seg(G, Pp, a, "", { stroke: col, "stroke-width": 5, "stroke-opacity": .5 });
+        seg(G, Pp, b, "", { stroke: col, "stroke-width": 2.5 });
+        [[a, n1], [b, n2]].forEach(([p, n]) => { s("circle", { cx: p.x, cy: p.y, r: 5.5, fill: col }, G); const dd = V.norm(V.sub(p, O)); s("text", { x: p.x + dd.x * 22, y: p.y + dd.y * 22 + 7, "text-anchor": "middle", class: "pointlbl", "font-size": 19, text: n }, G); });
+        return [la, lb];
+      };
+      const r1 = drawL(L1, "A", "B", "var(--accent)"), r2 = drawL(L2, "C", "D", "var(--blue)");
+      let tl = null;
+      if (showT && d > R + 1) {
+        const ang0 = Math.atan2(Pp.y - O.y, Pp.x - O.x), al = Math.acos(R / d);
+        const T = { x: O.x + R * Math.cos(ang0 + al), y: O.y + R * Math.sin(ang0 + al) };
+        seg(G, Pp, T, "", { stroke: "var(--violet)", "stroke-width": 2.5 });
+        seg(G, O, T, "thin dash");
+        s("circle", { cx: T.x, cy: T.y, r: 5.5, fill: "var(--violet)" }, G);
+        s("text", { x: T.x + (T.x - O.x) / R * 22, y: T.y + (T.y - O.y) / R * 22 + 7, "text-anchor": "middle", class: "pointlbl", "font-size": 19, text: "T" }, G);
+        tl = V.dist(Pp, T);
+      }
+      // 面積の長方形
+      const sc = 150 / Math.sqrt(Math.max(pw, 1));
+      let y = 40;
+      s("text", { x: 590, y: 26, class: "mut", "font-size": 13, text: "面積をくらべる" }, G);
+      const rect = (w, h, col, t) => {
+        const W = w * sc * 0.55, Hh = h * sc * 0.55;
+        if (y + Hh > 540 || W > 230) { s("text", { x: 590, y: y + 16, "font-size": 13, class: "mut", text: `${t}（大きすぎて省略）` }, G); y += 30; return; }
+        s("rect", { x: 560, y, width: W, height: Hh, fill: col, "fill-opacity": .3, stroke: col, "stroke-width": 2 }, G);
+        s("text", { x: 566 + W, y: y + 16, "font-size": 13, text: t }, G);
+        y += Hh + 14;
+      };
+      if (r1) rect(r1[0], r1[1], "var(--accent)", "PA×PB");
+      if (r2) rect(r2[0], r2[1], "var(--blue)", "PC×PD");
+      if (tl) rect(tl, tl, "var(--violet)", "PT²");
+      const f1 = r1 ? `PA×PB = ${fmt(r1[0])}×${fmt(r1[1])} = <span class="ac">${fmt(r1[0] * r1[1], 0)}</span>` : `<span class="mt">緑の線が円と交わらない</span>`;
+      const f2 = r2 ? `PC×PD = ${fmt(r2[0])}×${fmt(r2[1])} = <span class="bl">${fmt(r2[0] * r2[1], 0)}</span>` : `<span class="mt">青の線が円と交わらない</span>`;
+      const f3 = tl ? `<br>PT² = ${fmt(tl)}² = <span style="color:var(--violet);font-weight:700">${fmt(tl * tl, 0)}</span>` : "";
+      c.out(`${f1}<br>${f2}${f3}<hr><span class="mt">P は円の${d < R ? "内側" : "外側"}。|OP² − r²| = ${fmt(pw, 0)}</span>`);
+    }
+    draw();
+  },
+});
+
+/* --- 多面体とオイラーの定理 --- */
+sim({
+  id: "poly", cat: "geo", name: "多面体", sub: "回して数える・v − e + f = 2",
+  hint: "ドラッグで回せます。「数える」ボタンで頂点・辺・面を1つずつ光らせます",
+  point: `<ul><li>へこみのない多面体では、頂点の数 v、辺の数 e、面の数 f の間に</li></ul>
+<span class="formula">v − e + f = 2　（オイラーの多面体定理）</span>
+<ul><li><b>正多面体</b>は5種類だけ：正四面体・立方体・正八面体・正十二面体・正二十面体。</li>
+<li>辺の数は「面の数 × 1つの面の辺の数 ÷ 2」（1本の辺は2つの面で共有）。</li></ul>`,
+  detail: `<p>例：正十二面体は正五角形が12枚。辺は 12×5÷2 = 30、頂点は 1つの頂点に3枚の面が集まるので 12×5÷3 = 20。20 − 30 + 12 = 2。</p>
+<p>正多面体が5種類しかないわけ：1つの頂点に集まる角の合計は 360° 未満でないと立体にならない。正三角形（60°）なら3・4・5枚、正方形（90°）なら3枚、正五角形（108°）なら3枚だけ。</p>
+<p>サッカーボール（切頂二十面体）は、正二十面体の頂点を切り落とした形。正五角形 12 枚と正六角形 20 枚でできています。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    const phi = (1 + Math.sqrt(5)) / 2;
+    const cyc = (pts, signs) => { const out = []; pts.forEach(p => { for (let k = 0; k < 3; k++) out.push([p[k % 3], p[(k + 1) % 3], p[(k + 2) % 3]]); }); return out; };
+    const pm = arr => { let out = [[]]; arr.forEach(v => { const nx = []; out.forEach(o => { nx.push(o.concat(v)); if (v !== 0) nx.push(o.concat(-v)); }); out = nx; }); return out; };
+    const SH = {
+      tet: { t: "正四面体", v: [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]] },
+      cube: { t: "立方体", v: pm([1, 1, 1]) },
+      oct: { t: "正八面体", v: [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]] },
+      dod: { t: "正十二面体", v: pm([1, 1, 1]).concat(cyc(pm([0, 1 / phi, phi]))) },
+      ico: { t: "正二十面体", v: cyc(pm([0, 1, phi])) },
+      prism: { t: "三角柱", v: [0, 1, 2].flatMap(i => { const a = i * 2 * Math.PI / 3; return [[Math.cos(a), Math.sin(a), 0.9], [Math.cos(a), Math.sin(a), -0.9]]; }) },
+      pyr: { t: "四角すい", v: [[1, 1, -0.6], [1, -1, -0.6], [-1, 1, -0.6], [-1, -1, -0.6], [0, 0, 1.2]] },
+      ball: { t: "サッカーボール", v: cyc(pm([0, 1, 3 * phi])).concat(cyc(pm([1, 2 + phi, 2 * phi]))).concat(cyc(pm([phi, 2, phi ** 3]))) },
+    };
+    let shape = "cube", rot = [[1, 0, 0], [0, 1, 0], [0, 0, 1]], spin = true, hl = null;
+    c.seg("立体", Object.entries(SH).map(([v, o]) => ({ v, t: o.t })), shape, v => { shape = v; hl = null; prep(); });
+    const ts = c.toggle("ゆっくり回す", spin, v => { spin = v; });
+    c.row(ts.el);
+    c.row(c.btn("頂点を数える", () => count("v"), { main: true }), c.btn("辺を数える", () => count("e"), { main: true }), c.btn("面を数える", () => count("f"), { main: true }));
+    let P = null;
+    function hull(pts) {
+      // 凸多面体の面を求める（どの点も片側にある平面）
+      const n = pts.length, faces = [], seen = new Set();
+      const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], cr = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dt = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) for (let k = j + 1; k < n; k++) {
+        let nn = cr(sub(pts[j], pts[i]), sub(pts[k], pts[i]));
+        const L = Math.hypot(...nn); if (L < 1e-6) continue; nn = nn.map(v => v / L);
+        const d0 = dt(nn, pts[i]);
+        let pos = 0, neg = 0; const on = [];
+        for (let m = 0; m < n; m++) { const d = dt(nn, pts[m]) - d0; if (d > 1e-6) pos++; else if (d < -1e-6) neg++; else on.push(m); }
+        if (pos && neg) continue;
+        const key = on.join(","); if (seen.has(key)) continue; seen.add(key);
+        if (pos) nn = nn.map(v => -v);
+        const cen = [0, 1, 2].map(a => on.reduce((t, m) => t + pts[m][a], 0) / on.length);
+        const u = sub(pts[on[0]], cen), L2 = Math.hypot(...u), uu = u.map(v => v / L2), w = cr(nn, uu);
+        on.sort((a, b) => { const pa = sub(pts[a], cen), pb = sub(pts[b], cen); return Math.atan2(dt(pa, w), dt(pa, uu)) - Math.atan2(dt(pb, w), dt(pb, uu)); });
+        faces.push({ idx: on, n: nn });
+      }
+      const edges = new Map();
+      faces.forEach(f => f.idx.forEach((a, i) => { const b = f.idx[(i + 1) % f.idx.length]; const k = a < b ? a + "-" + b : b + "-" + a; if (!edges.has(k)) edges.set(k, [Math.min(a, b), Math.max(a, b)]); }));
+      return { faces, edges: [...edges.values()] };
+    }
+    function prep() {
+      const raw = SH[shape].v;
+      const maxR = Math.max(...raw.map(p => Math.hypot(...p)));
+      const pts = raw.map(p => p.map(v => v / maxR));
+      const { faces, edges } = hull(pts);
+      P = { pts, faces, edges };
+      readout();
+    }
+    const mulM = (A, B) => A.map((r, i) => [0, 1, 2].map(j => r[0] * B[0][j] + r[1] * B[1][j] + r[2] * B[2][j]));
+    const rotY = a => [[Math.cos(a), 0, Math.sin(a)], [0, 1, 0], [-Math.sin(a), 0, Math.cos(a)]];
+    const rotX = a => [[1, 0, 0], [0, Math.cos(a), -Math.sin(a)], [0, Math.sin(a), Math.cos(a)]];
+    const app = (M, p) => [0, 1, 2].map(i => M[i][0] * p[0] + M[i][1] * p[1] + M[i][2] * p[2]);
+    const G = s("g", {}, svg);
+    let drag = null;
+    c.on(svg, "pointerdown", e => { drag = { x: e.clientX, y: e.clientY }; svg.setPointerCapture(e.pointerId); });
+    c.on(svg, "pointermove", e => { if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag = { x: e.clientX, y: e.clientY }; rot = mulM(mulM(rotY(dx * 0.01), rotX(-dy * 0.01)), rot); });
+    c.on(svg, "pointerup", () => { drag = null; });
+    function render() {
+      clear(G);
+      const S = 210, cx = 400, cy = 290, f = 4;
+      const q = P.pts.map(p => app(rot, p));
+      const pr = q.map(p => { const k = f / (f - p[2]); return { x: cx + p[0] * S * k, y: cy - p[1] * S * k, z: p[2] }; });
+      const fz = P.faces.map((fc, i) => ({ i, z: fc.idx.reduce((t, m) => t + q[m][2], 0) / fc.idx.length, nz: app(rot, fc.n)[2] }));
+      fz.sort((a, b) => a.z - b.z);
+      const frontEdge = new Set();
+      fz.forEach(({ i, nz }) => {
+        const fc = P.faces[i], front = nz > 0;
+        const isHl = hl && hl.kind === "f" && hl.done.has(i);
+        const isCur = hl && hl.kind === "f" && hl.cur === i;
+        s("polygon", { points: fc.idx.map(m => `${pr[m].x},${pr[m].y}`).join(" "), fill: isCur ? "var(--warm)" : isHl ? "var(--warm)" : (fc.idx.length === 6 ? "var(--chip)" : "var(--accent)"), "fill-opacity": isCur ? .8 : isHl ? .4 : front ? .22 : .05, stroke: "none" }, G);
+        if (front) fc.idx.forEach((a, k) => { const b = fc.idx[(k + 1) % fc.idx.length]; frontEdge.add(a < b ? a + "-" + b : b + "-" + a); });
+      });
+      P.edges.forEach(([a, b], i) => {
+        const front = frontEdge.has(a + "-" + b);
+        const isHl = hl && hl.kind === "e" && hl.done.has(i), isCur = hl && hl.kind === "e" && hl.cur === i;
+        s("line", { x1: pr[a].x, y1: pr[a].y, x2: pr[b].x, y2: pr[b].y, stroke: isHl || isCur ? "var(--warm)" : "var(--ink)", "stroke-width": isCur ? 6 : isHl ? 4 : front ? 2.4 : 1.2, "stroke-opacity": front || isHl ? 1 : .35, "stroke-dasharray": front || isHl ? null : "5 5", "stroke-linecap": "round" }, G);
+      });
+      pr.forEach((p, i) => {
+        const isHl = hl && hl.kind === "v" && hl.done.has(i), isCur = hl && hl.kind === "v" && hl.cur === i;
+        if (isHl || isCur) s("circle", { cx: p.x, cy: p.y, r: isCur ? 11 : 7, fill: "var(--warm)", stroke: "var(--panel)", "stroke-width": 2 }, G);
+        else s("circle", { cx: p.x, cy: p.y, r: 3.5, fill: "var(--ink)", "fill-opacity": p.z > -0.2 ? 1 : .35 }, G);
+      });
+      if (hl && hl.cur != null) {
+        let at;
+        if (hl.kind === "v") at = pr[hl.cur];
+        else if (hl.kind === "e") { const [a, b] = P.edges[hl.cur]; at = V.mid(pr[a], pr[b]); }
+        else { const fc = P.faces[hl.cur]; at = { x: fc.idx.reduce((t, m) => t + pr[m].x, 0) / fc.idx.length, y: fc.idx.reduce((t, m) => t + pr[m].y, 0) / fc.idx.length }; }
+        s("text", { x: at.x + 12, y: at.y - 10, class: "pointlbl tw", "font-size": 24, text: hl.done.size }, G);
+      }
+    }
+    function count(kind) {
+      const list = kind === "v" ? P.pts : kind === "e" ? P.edges : P.faces;
+      // 手前から順に数えると見やすい
+      const order = list.map((_, i) => i);
+      hl = { kind, done: new Set(), cur: null, order, step: 0 };
+      const per = Math.max(60, Math.min(260, 6000 / list.length));
+      const tick = () => {
+        if (!hl || hl.kind !== kind) return;
+        if (hl.step >= order.length) { hl.cur = null; readout(kind); return; }
+        hl.cur = order[hl.step]; hl.done.add(hl.cur); hl.step++; readout();
+        c.after(per, tick);
+      };
+      tick();
+    }
+    function readout(doneKind) {
+      const v = P.pts.length, e = P.edges.length, f = P.faces.length;
+      const types = {}; P.faces.forEach(fc => { types[fc.idx.length] = (types[fc.idx.length] || 0) + 1; });
+      const nm = { 3: "三角形", 4: "四角形", 5: "五角形", 6: "六角形" };
+      const tdesc = Object.entries(types).map(([k, m]) => `${nm[k]} ${m}枚`).join("・");
+      const cnt = hl ? `<br><span class="hl">数えている：${{ v: "頂点", e: "辺", f: "面" }[hl.kind]} ${hl.done.size} 個</span>` : "";
+      c.out(`${SH[shape].t}：${tdesc}<br>頂点 v = <b>${v}</b>、辺 e = <b>${e}</b>、面 f = <b>${f}</b><br><span class="big">${v} − ${e} + ${f} = ${v - e + f}</span>${cnt}`);
+    }
+    c.loop(dt => { if (spin && !drag) rot = mulM(mulM(rotY(dt * 0.5), rotX(dt * 0.17)), rot); render(); });
+    prep();
+  },
+});
+</script>
+<script>
+"use strict";
+/* ===================== 整数の性質 ===================== */
+
+/* --- 素因数分解と約数 --- */
+sim({
+  id: "factor", cat: "int", name: "素因数分解と約数", sub: "因数の木・約数の表",
+  hint: "スライダーで数を変えると、木がのびて約数の表ができます。表のマスをタップしてみよう",
+  point: `<ul><li><b>素数</b>：1 とその数自身しか約数がない 2 以上の数（2, 3, 5, 7, 11, …）。</li>
+<li><b>素因数分解</b>：数を素数のかけ算だけで表す。小さい素数から順にわっていく。</li>
+<li>N = pᵃ × qᵇ のとき、約数は pⁱ × qʲ（0≦i≦a, 0≦j≦b）の形。表にすると</li></ul>
+<span class="formula">約数の個数 = (a+1)(b+1)</span>
+<span class="formula">約数の和 = (1+p+…+pᵃ)(1+q+…+qᵇ)</span>`,
+  detail: `<p>例：72 = 2³ × 3²。約数は 2 の部分（1, 2, 4, 8 の4通り）と 3 の部分（1, 3, 9 の3通り）の組み合わせなので 4×3 = 12 個。</p>
+<p>約数の和は、表のマスを全部たしたもの = (1+2+4+8)(1+3+9) = 15 × 13 = 195。展開するとちょうど表の全部のマスが出てきます。</p>
+<p>約数の個数が奇数になるのは <b>平方数</b>（指数がすべて偶数）のときだけ。表で、まん中にくる約数と組になる相手が自分自身になるからです。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let N = 72, pick = null;
+    const sl = c.slider("数 N", { min: 2, max: 500, value: N }, v => { N = v; pick = null; draw(); });
+    c.row(...[12, 36, 72, 100, 360, 97].map(v => c.btn(String(v), () => { sl.set(v); })));
+    function draw() {
+      clear(svg);
+      const f = factorize(N);
+      // 因数の木
+      let x = 70, y = 50, m = N, depth = 0;
+      const steps = [];
+      while (true) { const p = factorize(m)[0][0]; if (p === m) { steps.push({ v: m, prime: true }); break; } steps.push({ v: m, p }); m /= p; }
+      const dy = Math.min(60, 470 / Math.max(1, steps.length));
+      s("text", { x: 30, y: 26, class: "mut", "font-size": 13, text: "小さい素数からわっていく" }, svg);
+      steps.forEach((st, i) => {
+        const cx = 120 + i * 18, cy = 50 + i * dy, delay = `${i * 0.12}s`;
+        if (!st.prime) {
+          const g = s("g", { class: "fadein", style: `animation-delay:${delay}` }, svg);
+          s("text", { x: cx, y: cy + 6, "text-anchor": "middle", class: "mono", "font-size": 20, "font-weight": 700, text: st.v }, g);
+          s("line", { x1: cx - 6, y1: cy + 12, x2: cx - 34, y2: cy + dy - 16, class: "ink", "stroke-width": 1.5 }, g);
+          s("line", { x1: cx + 6, y1: cy + 12, x2: cx + 14, y2: cy + dy - 16, class: "ink", "stroke-width": 1.5 }, g);
+          s("circle", { cx: cx - 42, cy: cy + dy - 6, r: 17, class: "f-wms ink s-wm" }, g);
+          s("text", { x: cx - 42, y: cy + dy, "text-anchor": "middle", class: "mono tw", "font-size": 17, "font-weight": 700, text: st.p }, g);
+        } else {
+          const g = s("g", { class: "fadein", style: `animation-delay:${delay}` }, svg);
+          if (i === 0) { s("circle", { cx, cy, r: 26, class: "f-wms ink s-wm" }, g); s("text", { x: cx, y: cy + 7, "text-anchor": "middle", class: "mono tw", "font-size": 20, "font-weight": 700, text: st.v }, g); s("text", { x: cx + 40, y: cy + 7, class: "tw", "font-size": 18, "font-weight": 700, text: "素数！" }, g); }
+          else { s("circle", { cx, cy, r: 17, class: "f-wms ink s-wm" }, g); s("text", { x: cx, y: cy + 6, "text-anchor": "middle", class: "mono tw", "font-size": 17, "font-weight": 700, text: st.v }, g); }
+        }
+      });
+      // 約数の表
+      const X = 330, Y = 60, W = 450, Hh = 470;
+      const fs = f.length;
+      const pw = (p, e) => Array.from({ length: e + 1 }, (_, i) => p ** i);
+      const divs = [];
+      if (fs === 1) {
+        const [p, a] = f[0], row = pw(p, a), cw = Math.min(70, W / (row.length + 1));
+        s("text", { x: X, y: Y - 20, class: "mut", "font-size": 13, text: `約数 = ${p} の 0〜${a} 乗` }, svg);
+        row.forEach((v, i) => cellAt(X + cw + i * cw, Y + 20, cw, 48, v, `${p}${sup(i)}`, i * 0.05));
+      } else if (fs >= 2 && fs <= 3) {
+        const [p, a] = f[0], [q, b] = f[1];
+        const layers = fs === 3 ? pw(f[2][0], f[2][1]) : [1];
+        const cw = Math.min(64, W / (b + 2)), chh = Math.min(42, (Hh - 20 * layers.length) / ((a + 2) * layers.length));
+        layers.forEach((L, li) => {
+          const y0 = Y + li * (chh * (a + 2) + 18);
+          if (fs === 3) s("text", { x: X, y: y0 - 4, class: "mut", "font-size": 12, text: `× ${f[2][0]}${sup(li)}（= ${L}）` }, svg);
+          pw(q, b).forEach((v, j) => s("text", { x: X + cw * (j + 1.5), y: y0 + chh * 0.7, "text-anchor": "middle", class: "mono tb", "font-size": 13, "font-weight": 700, text: `${q}${sup(j)}` }, svg));
+          pw(p, a).forEach((u, i) => {
+            s("text", { x: X + cw * 0.5, y: y0 + chh * (i + 1.7), "text-anchor": "middle", class: "mono tw", "font-size": 13, "font-weight": 700, text: `${p}${sup(i)}` }, svg);
+            pw(q, b).forEach((v, j) => cellAt(X + cw * (j + 1), y0 + chh * (i + 1), cw, chh, u * v * L, null, (i + j) * 0.04));
+          });
+        });
+      } else {
+        s("text", { x: X, y: Y, "font-size": 15, text: "素因数が4種類以上：約数を小さい順に" }, svg);
+        const all = []; for (let d = 1; d <= N; d++) if (N % d === 0) all.push(d);
+        all.forEach((d, i) => cellAt(X + (i % 6) * 70, Y + 20 + Math.floor(i / 6) * 40, 66, 36, d, null, i * 0.02));
+      }
+      function cellAt(x, y, w, hh, v, sub, delay) {
+        divs.push(v);
+        const g = s("g", { class: "pop", style: `cursor:pointer;animation-delay:${delay}s` }, svg);
+        const on = pick === v, pair = pick && N / pick === v;
+        s("rect", { x: x + 2, y: y + 2, width: w - 4, height: hh - 4, rx: 3, class: on ? "f-acs ink s-ac" : pair ? "f-bls ink s-bl" : "f-pn thin" }, g);
+        s("text", { x: x + w / 2, y: y + hh / 2 + 6, "text-anchor": "middle", class: "mono", "font-size": Math.min(17, w / 3.2), "font-weight": on || pair ? 700 : 400, text: v }, g);
+        if (sub) s("text", { x: x + w / 2, y: y - 4, "text-anchor": "middle", class: "mono mut", "font-size": 12, text: sub }, g);
+        g.addEventListener("click", () => { pick = v; draw(); });
+      }
+      const expr = f.map(([p, e]) => e > 1 ? `${p}<sup>${e}</sup>` : `${p}`).join(" × ");
+      const cnt = f.reduce((t, [, e]) => t * (e + 1), 1);
+      const sum = f.reduce((t, [p, e]) => t * pw(p, e).reduce((a, b) => a + b, 0), 1);
+      const square = f.every(([, e]) => e % 2 === 0);
+      let out = f.length === 1 && f[0][1] === 1 ? `${N} は <span class="big hl">素数</span>（約数は 1 と ${N}）` :
+        `${N} = <span class="big hl">${expr}</span><br>約数の個数 = ${f.map(([, e]) => `(${e}+1)`).join("")} = <b>${cnt}</b> 個<br>約数の和 = ${f.map(([p, e]) => `(${pw(p, e).join("+")})`).join("")} = <b>${sum}</b>`;
+      if (square && N > 1) out += `<br><span class="ac">平方数（${Math.sqrt(N)}²）なので約数の個数は奇数</span>`;
+      if (pick) out += `<hr>${pick} × ${N / pick} = ${N}（<span class="ac">${pick}</span> と <span class="bl">${N / pick}</span> は組になる約数）`;
+      c.out(out);
+    }
+    draw();
+  },
+});
+
+/* --- ユークリッドの互除法 --- */
+sim({
+  id: "euclid", cat: "int", name: "ユークリッドの互除法", sub: "長方形を正方形で切っていく",
+  hint: "「次へ」で、長方形から一番大きな正方形を切りとっていきます",
+  point: `<ul><li>a を b でわった余りを r とすると</li></ul>
+<span class="formula">gcd(a, b) = gcd(b, r)</span>
+<ul><li>わり算をくり返して、余りが 0 になったときの「わる数」が <b>最大公約数</b>。</li>
+<li>図では、a×b の長方形から一番大きな正方形を切りとっていく。最後にぴったりしきつめられた <b>一番小さい正方形の1辺</b> が最大公約数。</li></ul>`,
+  detail: `<p>なぜ gcd(a, b) = gcd(b, r)？　a = bq + r なので、a と b の公約数は r = a − bq もわり切り、b と r の公約数は a = bq + r もわり切ります。だから公約数の集まりがまったく同じです。</p>
+<p>図で考えると：最後の小さい正方形は、1つ前の長方形をぴったりしきつめます。すると その前の長方形も…と さかのぼって、最初の a×b の長方形全体を、この正方形でしきつめられます。つまり 1辺は a と b の公約数。しかも、どの公約数の正方形も同じように切りとりに合うので、これが最大です。</p>
+<p>最大公約数が 1 のとき、a と b は「互いに素」といいます。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let a = 252, b = 105, step = 0, steps = [];
+    const sa = c.slider("a", { min: 1, max: 300, value: a }, v => { a = v; init(); });
+    const sb = c.slider("b", { min: 1, max: 300, value: b }, v => { b = v; init(); });
+    c.row(c.btn("次へ", () => { if (step < steps.length) { step++; draw(true); } }, { main: true }), c.btn("最後まで", () => { step = steps.length; draw(true); }), c.btn("はじめから", () => { step = 0; draw(); }));
+    c.row(...[[252, 105], [91, 35], [144, 89], [120, 84]].map(([x, y]) => c.btn(`${x} と ${y}`, () => { sa.set(x, true); sb.set(y, true); a = x; b = y; init(); })));
+    function init() {
+      steps = []; let x = 0, y = 0, w = Math.max(a, b), hh = Math.min(a, b);
+      let A = w, B = hh;
+      while (B > 0) {
+        const q = Math.floor(A / B), r = A % B;
+        const sq = [];
+        if (w >= hh) { for (let i = 0; i < q; i++) sq.push({ x: x + i * hh, y, s: hh }); x += q * hh; w -= q * hh; }
+        else { for (let i = 0; i < q; i++) sq.push({ x, y: y + i * w, s: w }); y += q * w; hh -= q * w; }
+        steps.push({ A, B, q, r, sq });
+        A = B; B = r;
+      }
+      step = 0; draw();
+    }
+    function draw(anim) {
+      clear(svg);
+      const W = Math.max(a, b), Hh = Math.min(a, b);
+      const sc = Math.min(560 / W, 330 / Hh);
+      const X = 400 - W * sc / 2, Y = 40;
+      s("rect", { x: X, y: Y, width: W * sc, height: Hh * sc, class: "f-pn ink", "stroke-width": 2 }, svg);
+      s("text", { x: X + W * sc / 2, y: Y + Hh * sc + 22, "text-anchor": "middle", class: "mono mut", "font-size": 14, text: W }, svg);
+      s("text", { x: X - 8, y: Y + Hh * sc / 2 + 5, "text-anchor": "end", class: "mono mut", "font-size": 14, text: Hh }, svg);
+      for (let i = 0; i < step; i++) {
+        const st = steps[i], col = COLORS[i % 10], last = i === steps.length - 1;
+        st.sq.forEach((q, k) => {
+          const r = s("rect", { x: X + q.x * sc, y: Y + q.y * sc, width: q.s * sc, height: q.s * sc, fill: col, "fill-opacity": last ? .75 : .35, stroke: "var(--ink)", "stroke-width": 1.2, class: anim && i === step - 1 ? "pop" : "" }, svg);
+          if (anim && i === step - 1) r.style.animationDelay = `${k * 0.08}s`;
+          if (q.s * sc > 34) s("text", { x: X + (q.x + q.s / 2) * sc, y: Y + (q.y + q.s / 2) * sc + 6, "text-anchor": "middle", class: "mono", "font-size": Math.min(18, q.s * sc / 3), text: q.s }, svg);
+        });
+      }
+      // わり算の式
+      const lineY = Y + Hh * sc + 50;
+      steps.forEach((st, i) => {
+        if (i >= step) return;
+        const y = lineY + i * 26; if (y > 548) return;
+        s("rect", { x: 200, y: y - 16, width: 12, height: 12, fill: COLORS[i % 10], "fill-opacity": .6 }, svg);
+        s("text", { x: 222, y: y - 5, class: "mono", "font-size": 16, "font-weight": i === step - 1 ? 700 : 400, text: `${st.A} = ${st.B} × ${st.q} + ${st.r}` + (st.r === 0 ? "  → 余り0" : "") }, svg);
+      });
+      const g = gcd(a, b);
+      const done = step === steps.length;
+      c.out(done ? `gcd(${a}, ${b}) = <span class="big hl">${g}</span><br><span class="mt">${g}×${g} の正方形で、${W}×${Hh} の長方形がしきつめられる</span>${g === 1 ? `<br><span class="ac">${a} と ${b} は互いに素</span>` : ""}<br><span class="mt">最小公倍数 = ${a}×${b}÷${g} = ${lcm(a, b)}</span>`
+        : step === 0 ? `${W}×${Hh} の長方形。「次へ」で切っていこう` : `いまの長方形：${steps[step - 1].B}×${steps[step - 1].r}<br><span class="mt">gcd(${steps[step - 1].A}, ${steps[step - 1].B}) = gcd(${steps[step - 1].B}, ${steps[step - 1].r})</span>`);
+    }
+    init();
+  },
+});
+
+/* --- エラトステネスのふるい --- */
+sim({
+  id: "sieve", cat: "int", name: "エラトステネスのふるい", sub: "倍数を消して素数をさがす",
+  hint: "「次の素数でふるう」で、その素数の倍数が消えていきます",
+  point: `<ul><li>2 は素数。2 の倍数（2 以外）を消す。</li>
+<li>のこった一番小さい数 3 は素数。3 の倍数を消す。…これをくり返す。</li>
+<li><b>√N をこえたら、もう消すものはない</b>。のこった数は全部素数。</li></ul>`,
+  detail: `<p>N = 100 なら、7 でふるったあと 11 でふるおうとしても、11 の倍数 22, 33, … はすでに 2, 3, 5, 7 の倍数として消えています（11×11 = 121 > 100）。だから √100 = 10 までの素数でふるえば十分です。</p>
+<p>「6 列」にすると、2 と 3 以外の素数は 6 でわって 1 余る列と 5 余る列にしか出てきません（6k±1 の形）。6 でわった余りで整数を分けるとわかります。</p>
+<p>素数は無限にあります（ユークリッドの証明：素数が有限個だとして、全部かけて 1 をたすと、どの素数でもわり切れない数ができて矛盾）。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let cols = 10, N = 100, crossed = new Map(), primes = [], cur = 1, busy = false;
+    c.seg("ならべ方", [{ v: 10, t: "10 列（1〜100）" }, { v: 6, t: "6 列（1〜120）" }], cols, v => { cols = v; N = v === 10 ? 100 : 120; reset(); });
+    c.row(c.btn("次の素数でふるう", () => next(), { main: true }), c.btn("全部", () => all()), c.btn("リセット", () => reset()));
+    function reset() { crossed = new Map(); primes = []; cur = 1; busy = false; draw(); }
+    const pos = n => { const rows = Math.ceil(N / cols), cw = Math.min(72, 760 / cols), ch = Math.min(46, 520 / rows); return { x: 400 - cols * cw / 2 + ((n - 1) % cols) * cw, y: 20 + Math.floor((n - 1) / cols) * ch, cw, ch }; };
+    function draw() {
+      clear(svg);
+      for (let n = 1; n <= N; n++) {
+        const { x, y, cw, ch } = pos(n);
+        const isP = primes.includes(n), by = crossed.get(n);
+        const col = isP ? COLORS[primes.indexOf(n) % 10] : by ? COLORS[primes.indexOf(by) % 10] : null;
+        s("rect", { x: x + 2, y: y + 2, width: cw - 4, height: ch - 4, rx: 4, fill: isP ? col : by ? col : "var(--panel)", "fill-opacity": isP ? .9 : by ? .15 : 1, stroke: isP ? "var(--ink)" : "var(--line)", "stroke-width": isP ? 2 : 1 }, svg);
+        s("text", { x: x + cw / 2, y: y + ch / 2 + 6, "text-anchor": "middle", class: "mono" + (by || n === 1 ? " mut" : ""), "font-size": 17, "font-weight": isP ? 700 : 400, fill: isP ? "#fff" : null, "text-decoration": by ? "line-through" : null, text: n }, svg);
+      }
+      readout();
+    }
+    function nextPrime() { for (let n = cur + 1; n <= N; n++) if (!crossed.has(n)) return n; return null; }
+    function next(fast) {
+      if (busy) return;
+      const p = nextPrime(); if (!p) return;
+      primes.push(p); cur = p;
+      if (p * p > N) {
+        for (let n = p + 1; n <= N; n++) if (!crossed.has(n) && !primes.includes(n)) primes.push(n);
+        cur = N; draw(); return;
+      }
+      const ms = [];
+      for (let m = p * 2; m <= N; m += p) if (!crossed.has(m)) ms.push(m);
+      if (fast) { ms.forEach(m => crossed.set(m, p)); draw(); return; }
+      busy = true; draw();
+      ms.forEach((m, i) => c.after(i * 40, () => { crossed.set(m, p); draw(); if (i === ms.length - 1) busy = false; }));
+      if (!ms.length) busy = false;
+    }
+    function all() { if (busy) return; let g = 0; while (nextPrime() && g++ < 200) next(true); }
+    function readout() {
+      const p = primes[primes.length - 1];
+      const done = cur >= N || !nextPrime();
+      c.out(done ? `のこった数はすべて素数：<span class="big hl">${primes.length} 個</span><br><span class="mt">${primes.join(", ")}</span>` :
+        p ? `<b>${p}</b> の倍数を消した<br><span class="mt">次は ${nextPrime()}。${nextPrime() ** 2 > N ? `${nextPrime()}² = ${nextPrime() ** 2} > ${N} なので、のこりは全部素数！` : `${nextPrime()}² = ${nextPrime() ** 2} ≦ ${N} なので まだふるう`}</span>` : `1 は素数ではない。まず 2 からふるおう`);
+    }
+    draw();
+  },
+});
+
+/* --- n進法 --- */
+sim({
+  id: "base", cat: "int", name: "n 進法", sub: "くり上がりを目で見る",
+  hint: "「＋1」をおし続けると、玉が n 個たまったところで1つ上の位にくり上がります",
+  point: `<ul><li><b>n 進法</b>：n 個たまったら 1 つ上の位へくり上がる数の表し方。</li>
+<li>位の重みは右から 1, n, n², n³, …。</li></ul>
+<span class="formula">1011₍₂₎ = 1×2³ + 0×2² + 1×2 + 1×1 = 11</span>
+<ul><li>10 進法 → n 進法は、<b>n でわった余りを下から</b> ならべる。</li></ul>`,
+  detail: `<p>2 進法はコンピュータで使われる表し方。電球のついている（1）・消えている（0）で数を表します。2 進法の位の電球をタップして、いろいろな数をつくってみよう。</p>
+<p>10 進法の 11 を 2 進法に：11÷2 = 5 余り 1、5÷2 = 2 余り 1、2÷2 = 1 余り 0、1÷2 = 0 余り 1。余りを下から読んで 1011₍₂₎。</p>
+<p>16 進法では 10〜15 を A〜F で表します（カラーコード #FF8800 など）。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let base = 2, val = 11, carry = -1;
+    const DIG = { 2: 8, 3: 5, 5: 4, 8: 3, 10: 3, 16: 2 };
+    c.seg("何進法", [2, 3, 5, 8, 10, 16].map(b => ({ v: b, t: `${b}進法` })), base, v => { base = v; val = Math.min(val, maxV()); draw(); });
+    c.row(c.btn("＋1", () => add(1), { main: true }), c.btn("−1", () => add(-1)), c.btn("0 にする", () => { val = 0; draw(); }));
+    const maxV = () => base ** DIG[base] - 1;
+    const digitsOf = v => { const d = []; for (let i = 0; i < DIG[base]; i++) { d.push(v % base); v = Math.floor(v / base); } return d; };
+    const ch = d => "0123456789ABCDEF"[d];
+    function add(k) {
+      const before = digitsOf(val);
+      val = clamp(val + k, 0, maxV());
+      const after = digitsOf(val);
+      carry = -1;
+      if (k > 0) for (let i = 0; i < after.length; i++) if (after[i] < before[i]) carry = i;
+      draw();
+    }
+    function draw() {
+      clear(svg);
+      const D = DIG[base], d = digitsOf(val);
+      const cw = Math.min(150, 720 / D), X0 = 400 + (D / 2 - 0.5) * cw;
+      for (let i = 0; i < D; i++) {
+        const x = X0 - i * cw;
+        const g = s("g", {}, svg);
+        s("rect", { x: x - cw / 2 + 5, y: 70, width: cw - 10, height: 330, rx: 6, class: carry >= i ? "f-wms" : "f-chip" }, g);
+        s("text", { x, y: 56, "text-anchor": "middle", class: "mono mut", "font-size": 13, text: `${base}${sup(i)} の位` }, g);
+        s("text", { x, y: 40, "text-anchor": "middle", class: "mono", "font-size": 14, text: `(${base ** i})` }, g);
+        if (base === 2) {
+          const on = d[i] === 1;
+          const bulb = s("g", { style: "cursor:pointer" }, g);
+          s("circle", { cx: x, cy: 200, r: Math.min(34, cw * 0.38), fill: on ? "var(--gold)" : "var(--panel)", stroke: "var(--ink)", "stroke-width": 2 }, bulb);
+          if (on) s("circle", { cx: x, cy: 200, r: Math.min(50, cw * 0.48), fill: "var(--gold)", "fill-opacity": .25 }, bulb);
+          s("rect", { x: x - 10, y: 200 + Math.min(34, cw * 0.38), width: 20, height: 16, class: "f-ink" }, bulb);
+          bulb.addEventListener("click", () => { val += on ? -(2 ** i) : 2 ** i; carry = -1; draw(); });
+        } else {
+          const r = Math.min(13, cw * 0.14), perRow = Math.max(1, Math.floor((cw - 20) / (r * 2.3)));
+          for (let k = 0; k < d[i]; k++) {
+            const bx = x + ((k % perRow) - (perRow - 1) / 2) * r * 2.3, by = 385 - r - Math.floor(k / perRow) * r * 2.3;
+            s("circle", { cx: bx, cy: by, r, fill: COLORS[i % 10], stroke: "var(--ink)", "stroke-width": 1, class: k === d[i] - 1 && carry === -1 ? "pop" : "" }, g);
+          }
+          s("text", { x, y: 100, "text-anchor": "middle", class: "mut", "font-size": 12, text: `${base - 1} 個まで` }, g);
+        }
+        s("text", { x, y: 450, "text-anchor": "middle", class: "mono disp", "font-size": 46, fill: carry >= i && carry >= 0 ? "var(--warm)" : null, text: ch(d[i]) }, g);
+        if (base !== 2) {
+          const up = s("g", { style: "cursor:pointer" }, g);
+          s("rect", { x: x - 36, y: 470, width: 32, height: 28, rx: 4, class: "f-pn thin" }, up); s("text", { x: x - 20, y: 490, "text-anchor": "middle", "font-size": 18, text: "−" }, up);
+          up.addEventListener("click", () => { if (d[i] > 0) { val -= base ** i; carry = -1; draw(); } });
+          const dn = s("g", { style: "cursor:pointer" }, g);
+          s("rect", { x: x + 4, y: 470, width: 32, height: 28, rx: 4, class: "f-pn thin" }, dn); s("text", { x: x + 20, y: 490, "text-anchor": "middle", "font-size": 18, text: "+" }, dn);
+          dn.addEventListener("click", () => { if (d[i] < base - 1) { val += base ** i; carry = -1; draw(); } });
+        }
+      }
+      if (carry > 0) { s("text", { x: X0 - carry * cw, y: 140, "text-anchor": "middle", class: "tw disp", "font-size": 20, text: "くり上がり！" }, svg); }
+      const str = d.slice().reverse().join("") ;
+      const shown = d.slice().reverse().map(ch).join("").replace(/^0+(?=.)/, "");
+      const terms = d.map((x, i) => [x, i]).reverse().filter(([x]) => x > 0).map(([x, i]) => `${x}×${base ** i}`);
+      c.out(`<span class="big">${shown}<sub>(${base})</sub> = <span class="hl">${val}</span></span><br><span class="mt">${terms.length ? terms.join(" + ") : "0"} = ${val}</span>${base === 2 ? `<br><span class="mt">電球をタップしても変えられる</span>` : ""}`);
+    }
+    draw();
+  },
+});
+
+/* --- 不定方程式 --- */
+sim({
+  id: "dioph", cat: "int", name: "1次不定方程式", sub: "ax + by = c の整数解を格子点で見る",
+  hint: "直線が格子点（整数の点）をどこで通るか見てみよう。点はいつも同じ間かくでならびます",
+  point: `<ul><li>ax + by = c をみたす整数 x, y は、直線上の <b>格子点</b>。</li>
+<li>g = gcd(a, b) とすると、<b>c が g でわり切れるときだけ</b> 整数解がある。</li>
+<li>1つの解 (x₀, y₀) が見つかれば、全部の解は</li></ul>
+<span class="formula">x = x₀ + (b/g)k,　y = y₀ − (a/g)k　（k は整数）</span>`,
+  detail: `<p>例：3x + 5y = 1。x = 2, y = −1 が1つの解（3×2 + 5×(−1) = 1）。ほかの解は x = 2 + 5k、y = −1 − 3k。直線にそって、右へ 5・下へ 3 ずつ進むと次の格子点です。</p>
+<p>1つの解は、ユークリッドの互除法を逆にたどると見つけられます（拡張ユークリッドの互除法）。</p>
+<p>6x + 4y = 3 のように、左辺はいつも 2 の倍数なのに右辺が奇数なら、整数解はありません。直線が格子点を1つも通らないことを図で確かめよう。</p>`,
+  build(c) {
+    const svg = c.svg(800, 560);
+    let a = 3, b = 5, cc = 1, k = 0;
+    c.slider("a", { min: 1, max: 12, value: a }, v => { a = v; k = 0; draw(); });
+    c.slider("b", { min: 1, max: 12, value: b }, v => { b = v; k = 0; draw(); });
+    c.slider("c", { min: -30, max: 30, value: cc }, v => { cc = v; k = 0; draw(); });
+    c.row(c.btn("◀ k−1", () => { k--; draw(); }), c.btn("k+1 ▶", () => { k++; draw(); }, { main: true }));
+    function ext(x, y) { if (y === 0) return [x, 1, 0]; const [g, s1, t1] = ext(y, x % y); return [g, t1, s1 - Math.floor(x / y) * t1]; }
+    const R = 12, sz = 21, X0 = 400, Y0 = 280;
+    const px = x => X0 + x * sz, py = y => Y0 - y * sz;
+    function draw() {
+      clear(svg);
+      for (let i = -R; i <= R; i++) {
+        s("line", { x1: px(i), y1: py(-R), x2: px(i), y2: py(R), class: "thin", "stroke-opacity": i === 0 ? 1 : .25, "stroke-width": i === 0 ? 2 : 1 }, svg);
+        s("line", { x1: px(-R), y1: py(i), x2: px(R), y2: py(i), class: "thin", "stroke-opacity": i === 0 ? 1 : .25, "stroke-width": i === 0 ? 2 : 1 }, svg);
+        if (i % 5 === 0 && i) { s("text", { x: px(i), y: py(0) + 16, "text-anchor": "middle", class: "mono mut", "font-size": 11, text: i }, svg); s("text", { x: px(0) - 6, y: py(i) + 4, "text-anchor": "end", class: "mono mut", "font-size": 11, text: i }, svg); }
+      }
+      s("text", { x: px(R) + 6, y: py(0) + 5, class: "mono", "font-size": 14, text: "x" }, svg);
+      s("text", { x: px(0) + 6, y: py(R) - 4, class: "mono", "font-size": 14, text: "y" }, svg);
+      for (let x = -R; x <= R; x++) for (let y = -R; y <= R; y++) s("circle", { cx: px(x), cy: py(y), r: 1.6, class: "f-ink", "fill-opacity": .3 }, svg);
+      // 直線 ax + by = c
+      const yAt = x => (cc - a * x) / b;
+      s("line", { x1: px(-R - 1), y1: py(yAt(-R - 1)), x2: px(R + 1), y2: py(yAt(R + 1)), class: "ink s-bl", "stroke-width": 2.5 }, svg);
+      const [g, s0, t0] = ext(a, b);
+      if (cc % g !== 0) {
+        c.out(`${a}x + ${b}y = ${cc}<br>gcd(${a}, ${b}) = ${g}。左辺はいつも ${g} の倍数なのに、${cc} は ${g} でわり切れない<br><span class="big hl">整数解はない</span>`);
+        return;
+      }
+      const x0 = s0 * cc / g, y0 = t0 * cc / g, dx = b / g, dy = -a / g;
+      // 見えている範囲の解
+      const sols = [];
+      for (let kk = -60; kk <= 60; kk++) { const x = x0 + dx * kk, y = y0 + dy * kk; if (Math.abs(x) <= R && Math.abs(y) <= R) sols.push({ x, y, kk }); }
+      // 基準を見える解にそろえる
+      const base = sols.length ? sols.reduce((m, o) => Math.abs(o.x) + Math.abs(o.y) < Math.abs(m.x) + Math.abs(m.y) ? o : m) : { x: x0, y: y0, kk: 0 };
+      const cur = { x: base.x + dx * k, y: base.y + dy * k };
+      sols.forEach(o => s("circle", { cx: px(o.x), cy: py(o.y), r: 6, class: "f-wm", stroke: "var(--panel)", "stroke-width": 1.5 }, svg));
+      if (Math.abs(cur.x) <= R && Math.abs(cur.y) <= R) {
+        const nx = cur.x + dx, ny = cur.y + dy;
+        if (Math.abs(nx) <= R + 2 && Math.abs(ny) <= R + 2) {
+          s("path", { d: `M${px(cur.x)},${py(cur.y)} h${dx * sz} v${-dy * sz}`, fill: "none", stroke: "var(--accent)", "stroke-width": 2.5, "stroke-dasharray": "5 4" }, svg);
+          s("text", { x: px(cur.x + dx / 2), y: py(cur.y) - 8, "text-anchor": "middle", class: "tag ta", "font-weight": 700, text: `+${dx}` }, svg);
+          s("text", { x: px(cur.x + dx) + 8, y: py(cur.y + dy / 2) + 5, class: "tag ta", "font-weight": 700, text: `${dy}` }, svg);
+        }
+        s("circle", { cx: px(cur.x), cy: py(cur.y), r: 11, fill: "none", stroke: "var(--accent)", "stroke-width": 3.5 }, svg);
+        s("text", { x: px(cur.x) + 14, y: py(cur.y) - 12, class: "tag ta", "font-weight": 700, text: `(${cur.x}, ${cur.y})` }, svg);
+      }
+      c.out(`${a}x + ${b}y = ${cc}　（gcd = ${g}）<br>(x, y) = <span class="big hl">(${cur.x}, ${cur.y})</span><br><span class="mt">${a}×(${cur.x}) + ${b}×(${cur.y}) = ${a * cur.x + b * cur.y}</span><hr>一般解：x = ${base.x} + ${dx}k,　y = ${base.y} ${dy < 0 ? "−" : "+"} ${Math.abs(dy)}k<br><span class="mt">いま k = ${k}。図の範囲に ${sols.length} 個</span>`);
+    }
+    draw();
+  },
+});
+</script>
+<script>
+"use strict";
+/* ===================== 挑戦（クイズ） ===================== */
+function fracStr(n, d) { const g = gcd(n, d); n /= g; d /= g; return d === 1 ? String(n) : `${n}/${d}`; }
+function distinct(ans, cands) {
+  const out = [String(ans)];
+  for (const v of cands) { const t = String(v); if (!out.includes(t) && t !== "NaN" && t !== "0/1") out.push(t); if (out.length === 4) break; }
+  let k = 2; while (out.length < 4) { const t = typeof ans === "number" ? String(ans + k * (k % 2 ? 1 : -1)) : String(ans) + "×" + k; if (!out.includes(t)) out.push(t); k++; }
+  return out;
+}
+const QGEN = {
+  perm() { const n = 4 + rnd(5), r = 2 + rnd(2); const a = nPr(n, r); return { cat: "場合の数", q: `${n} 人から ${r} 人をえらんで、1列にならべる方法は何通り？`, ans: a, wrong: [nCr(n, r), n ** r, nPr(n, r - 1), a * 2], ex: `${P(n, r)} = ${Array.from({ length: r }, (_, i) => n - i).join("×")} = ${a} 通り。ならべるので順列。`, link: "perm" }; },
+  comb() { const n = 5 + rnd(5), r = 2 + rnd(2); const a = nCr(n, r); return { cat: "場合の数", q: `${n} 人の中から ${r} 人の係をえらぶ方法は何通り？`, ans: a, wrong: [nPr(n, r), nCr(n, r - 1), n * r, a + n], ex: `えらぶだけなので組合せ。${C(n, r)} = ${a} 通り。`, link: "comb" }; },
+  circ() { const n = 4 + rnd(4); const a = fact(n - 1); return { cat: "場合の数", q: `${n} 人がまるいテーブルにすわる方法は何通り？（回して同じものは1通り）`, ans: a, wrong: [fact(n), fact(n - 1) / 2, fact(n) / 2, fact(n - 2)], ex: `円順列は (n−1)! = ${n - 1}! = ${a} 通り。`, link: "perm" }; },
+  route() { const w = 3 + rnd(3), h = 2 + rnd(2); const a = nCr(w + h, w); return { cat: "場合の数", q: `横 ${w} 区画・たて ${h} 区画の碁盤の目の道で、左下から右上へ行く最短の道は何通り？`, ans: a, wrong: [w * h, 2 ** (w + h), nPr(w + h, h), a + w], ex: `→ ${w} 個と ↑ ${h} 個のならべ方。${C(w + h, w)} = ${a} 通り。`, link: "route" }; },
+  tri() { const n = 6 + rnd(5); const a = nCr(n, 3); return { cat: "場合の数", q: `円周上の ${n} 個の点から 3 点をえらんでできる三角形は何個？`, ans: a, wrong: [nPr(n, 3), nCr(n, 2), n * 3, a - n], ex: `3 点をえらべば三角形が1つ決まる。${C(n, 3)} = ${a} 個。`, link: "comb" }; },
+  dice() {
+    const L = [["和が 7", (a, b) => a + b === 7], ["和が 10 以上", (a, b) => a + b >= 10], ["同じ目", (a, b) => a === b], ["少なくとも1つが 6", (a, b) => a === 6 || b === 6], ["積が偶数", (a, b) => a * b % 2 === 0], ["差が 2", (a, b) => Math.abs(a - b) === 2]];
+    const [t, f] = L[rnd(L.length)]; let k = 0; for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) if (f(a, b)) k++;
+    return { cat: "確率", q: `2つのサイコロをふる。${t}になる確率は？`, ans: fracStr(k, 36), wrong: [fracStr(36 - k, 36), fracStr(k + 1, 36), fracStr(Math.max(1, k - 2), 36), fracStr(k, 12)], ex: `36 マスのうち ${k} マス → ${k}/36 = ${fracStr(k, 36)}。`, link: "dice2" };
+  },
+  coin() { const n = 3 + rnd(3), k = 1 + rnd(n - 1); const num = nCr(n, k), den = 2 ** n; return { cat: "確率", q: `コインを ${n} 回投げて、表がちょうど ${k} 回出る確率は？`, ans: fracStr(num, den), wrong: [fracStr(1, den), fracStr(k, n), fracStr(num + 1, den), fracStr(nCr(n, k - 1) || 1, den)], ex: `反復試行：${C(n, k)}(1/2)<sup>${k}</sup>(1/2)<sup>${n - k}</sup> = ${num}/${den} = ${fracStr(num, den)}。`, link: "binom" }; },
+  atleast() { const n = 2 + rnd(3); return { cat: "確率", q: `コインを ${n} 回投げて、少なくとも1回は表が出る確率は？`, ans: fracStr(2 ** n - 1, 2 ** n), wrong: [fracStr(1, 2 ** n), "1/2", fracStr(n, 2 ** n), fracStr(2 ** n - 2, 2 ** n)], ex: `余事象「全部うら」は 1/${2 ** n}。1 − 1/${2 ** n} = ${fracStr(2 ** n - 1, 2 ** n)}。`, link: "dice2" }; },
+  divisors() { const L = [12, 18, 24, 36, 48, 60, 72, 90, 96, 100, 120, 144, 180, 200]; const n = L[rnd(L.length)]; const f = factorize(n); const a = f.reduce((t, [, e]) => t * (e + 1), 1); return { cat: "整数", q: `${n} の正の約数は何個？`, ans: a, wrong: [a - 1, a + 2, f.reduce((t, [, e]) => t * e, 1) + 1, a * 2], ex: `${n} = ${f.map(([p, e]) => e > 1 ? `${p}<sup>${e}</sup>` : p).join("×")} → ${f.map(([, e]) => `(${e}+1)`).join("")} = ${a} 個。`, link: "factor" }; },
+  gcdq() { const g = 3 + rnd(10), x = 2 + rnd(6); let y = 2 + rnd(6); while (gcd(x, y) !== 1 || y === x) y = 2 + rnd(7); const a = g * x, b = g * y; return { cat: "整数", q: `${a} と ${b} の最大公約数は？`, ans: g, wrong: [lcm(a, b), g * 2, Math.max(1, g - 1), x * y], ex: `互除法：gcd(${a}, ${b}) = ${g}。`, link: "euclid" }; },
+  bin() { const v = 5 + rnd(27); const s2 = v.toString(2); return { cat: "整数", q: `2 進法の ${s2}<sub>(2)</sub> を 10 進法で表すと？`, ans: v, wrong: [v + 1, v - 1, parseInt(s2, 10) % 100, v * 2], ex: `${s2.split("").map((d, i) => `${d}×${2 ** (s2.length - 1 - i)}`).join(" + ")} = ${v}。`, link: "base" }; },
+  angle() { const x = 20 + rnd(14) * 5; return { cat: "図形", q: `円の中心角が ${2 * x}° のとき、同じ弧に対する円周角は？`, ans: x + "°", wrong: [2 * x + "°", (180 - x) + "°", (90 - x / 2) + "°", (x + 10) + "°"], ex: `円周角は中心角の半分：${2 * x}° ÷ 2 = ${x}°。`, link: "inscribed" }; },
+  quad() { const x = 60 + rnd(14) * 5; return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", wrong: [x + "°", (360 - x) + "°", (90 - x / 2) + "°", (x / 2) + "°"], ex: `向かい合う角の和は 180°。180° − ${x}° = ${180 - x}°。`, link: "inscribed" }; },
+  power() { const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]]; const [a, b, cc, d] = L[rnd(L.length)]; return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: d, wrong: [a + b - cc, b * cc / a, d + 2, cc + 1], ex: `方べきの定理：PA×PB = PC×PD → ${a}×${b} = ${cc}×PD → PD = ${d}。`, link: "power" }; },
+  bis() { const L = [[6, 4, 5], [8, 4, 6], [9, 6, 10], [6, 3, 6], [10, 6, 8]]; const [ab, ac, bc] = L[rnd(L.length)]; const bd = bc * ab / (ab + ac); const s1 = Number.isInteger(bd) ? String(bd) : fracStr(bc * ab, ab + ac); return { cat: "図形", q: `△ABC で AB = ${ab}、AC = ${ac}、BC = ${bc}。∠A の二等分線と BC の交点を D とするとき BD は？`, ans: s1, wrong: [fracStr(bc * ac, ab + ac), String(bc / 2), fracStr(ab * ac, bc), String(ab - ac)], ex: `BD：DC = AB：AC = ${ab}：${ac}。BD = ${bc} × ${ab}/(${ab}+${ac}) = ${s1}。`, link: "bisector" }; },
+  poly() { const L = [["正四面体", 4, 6, 4], ["立方体", 8, 12, 6], ["正八面体", 6, 12, 8], ["正十二面体", 20, 30, 12], ["正二十面体", 12, 30, 20]]; const [t, v, e, f] = L[rnd(L.length)]; const ask = rnd(3); const nm = ["頂点", "辺", "面"][ask], a = [v, e, f][ask]; return { cat: "図形", q: `${t}の${nm}の数は？`, ans: a, wrong: [[v, e, f][(ask + 1) % 3], [v, e, f][(ask + 2) % 3], a + 2, a * 2], ex: `${t}：頂点 ${v}、辺 ${e}、面 ${f}。${v} − ${e} + ${f} = 2。`, link: "poly" }; },
+  centroid() { const m = 3 * (2 + rnd(6)); return { cat: "図形", q: `△ABC の中線 AM の長さが ${m} のとき、頂点 A から重心 G までの長さ AG は？`, ans: m * 2 / 3, wrong: [m / 3, m / 2, m, m * 3 / 4], ex: `重心は中線を 2：1 に分ける。AG = ${m} × 2/3 = ${m * 2 / 3}。`, link: "centers" }; },
+};
+sim({
+  id: "quiz", cat: "quiz", name: "10 問クイズ", sub: "全分野からランダムに出題",
+  hint: "",
+  point: `<ul><li>場合の数・確率・図形・整数から 10 問。数字は毎回かわります。</li>
+<li>答えると解説と「この画面で確かめる」ボタンが出ます。</li>
+<li>8 問以上で 合格 のはんこ。最高点を記録します。</li></ul>`,
+  detail: `<p>まちがえた問題は、解説の下のボタンから、その内容をあつかう画面へ行って、動かしながら確かめよう。</p><p>クイズの内容（16 種類）：順列・組合せ・円順列・最短経路・三角形の数・サイコロ・コイン・余事象・約数の個数・最大公約数・2進法・円周角・内接四角形・方べき・角の二等分線・多面体・重心。</p>`,
+  build(c) { runQuiz(c, Object.keys(QGEN), "all"); },
+});
+[["cnt", "場合の数だけ", ["perm", "comb", "circ", "route", "tri"]], ["prob", "確率だけ", ["dice", "coin", "atleast"]], ["geo", "図形だけ", ["angle", "quad", "power", "bis", "poly", "centroid"]], ["int", "整数だけ", ["divisors", "gcdq", "bin"]]].forEach(([k, t, gens]) => {
+  sim({ id: "quiz-" + k, cat: "quiz", name: t, sub: "10 問", point: `<ul><li>${t.replace("だけ", "")}の問題を 10 問。</li><li>8 問以上で合格。</li></ul>`, detail: `<p>数字は毎回かわります。くり返しチャレンジしよう。</p>`, build(c) { runQuiz(c, gens, k); } });
+});
+function runQuiz(c, gens, key) {
+  const box = c.html();
+  const best = store.get("best:" + key, null);
+  let qs = [], i = 0, score = 0;
+  function start() {
+    qs = []; const bag = [];
+    for (let k = 0; k < 10; k++) { if (!bag.length) bag.push(...shuffle(gens.slice())); qs.push(QGEN[bag.pop()]()); }
+    i = 0; score = 0; show();
+  }
+  function show() {
+    clear(box);
+    const q = qs[i];
+    const choices = shuffle(distinct(q.ans, q.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? fmt(w, 2) : w)));
+    const wrap = h("div", { class: "quiz" },
+      h("div", { class: "qn" }, `第 ${i + 1} 問 / 10　・　${q.cat}　・　正解 ${score}`),
+      h("div", { class: "bar" }, h("i", { style: `width:${i * 10}%` })),
+      h("div", { class: "qtext", html: q.q }));
+    const grid = h("div", { class: "choices" });
+    const btns = choices.map(ch => {
+      const b = h("button", { type: "button", class: "choice", html: ch });
+      b.addEventListener("click", () => answer(ch, b));
+      grid.appendChild(b); return b;
+    });
+    wrap.appendChild(grid);
+    box.appendChild(wrap);
+    c.out(`<span class="mt">答えをえらんでね</span><br>正解 <span class="big hl">${score}</span> / ${i}`);
+    function answer(ch, b) {
+      const ok = ch === String(q.ans);
+      if (ok) score++;
+      btns.forEach(x => { x.disabled = true; if (x.innerHTML === String(q.ans) || x.textContent === String(q.ans)) x.classList.add("right"); });
+      if (!ok) b.classList.add("wrong");
+      const target = SIMS.find(d => d.id === q.link);
+      wrap.appendChild(h("div", { class: "explain" },
+        h("div", { html: `<b style="color:var(${ok ? "--accent" : "--warm"})">${ok ? "正解！" : "ざんねん"}</b>　${q.ex}` }),
+        h("div", { class: "row", style: "display:flex;gap:8px;margin-top:10px;flex-wrap:wrap" },
+          h("button", { type: "button", class: "btn main", onclick: () => { i++; i < qs.length ? show() : finish(); } }, i < qs.length - 1 ? "次の問題 →" : "結果を見る"),
+          target ? h("a", { class: "btn", href: "#" + target.id, target: "_blank", rel: "noopener", style: "text-decoration:none" }, `「${target.name}」で確かめる ↗`) : null)));
+      c.out(`正解 <span class="big hl">${score}</span> / ${i + 1}`);
+    }
+  }
+  function finish() {
+    clear(box);
+    const prev = store.get("best:" + key, 0);
+    if (score > prev) store.set("best:" + key, score);
+    const pass = score >= 8;
+    box.appendChild(h("div", { class: "quiz center" },
+      h("div", { class: "qtext" }, `10 問中 ${score} 問 正解`),
+      pass ? h("div", { class: "stamp" }, "合格") : h("p", {}, "あと少し！ 8 問で合格です"),
+      h("p", { class: "qn" }, `これまでの最高：${Math.max(prev, score)} 問`),
+      h("button", { type: "button", class: "btn main", onclick: start }, "もう一度")));
+    c.out(`結果：<span class="big hl">${score}</span> / 10${pass ? "　合格！" : ""}`);
+  }
+  box.appendChild(h("div", { class: "quiz center" },
+    h("div", { class: "qtext" }, "10 問クイズ"),
+    h("p", {}, "数字は毎回かわります。8 問以上で合格。"),
+    best != null ? h("p", { class: "qn" }, `これまでの最高：${best} 問`) : null,
+    h("button", { type: "button", class: "btn main", onclick: start, style: "font-size:18px;padding:10px 26px" }, "はじめる")));
+  c.out(`<span class="mt">「はじめる」をおしてね</span>`);
+}
+
+/* ===================== 起動 ===================== */
+document.querySelectorAll(".tabs button").forEach(b => b.addEventListener("click", () => setTab(b.dataset.t)));
+$("#maxBtn").addEventListener("click", () => {
+  const w = $("#stageWrap"), on = !w.classList.contains("is-max");
+  w.classList.toggle("is-max", on); $("#maxBtn").textContent = on ? "✕ もどす" : "⛶ 全画面";
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#stageWrap").classList.contains("is-max")) $("#maxBtn").click(); });
+window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (id && (!current || current.def.id !== id)) open(id, false); });
+open(location.hash.slice(1) || store.get("last", "venn"));
+</script>
+</body>
+</html>
