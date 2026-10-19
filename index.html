@@ -233,6 +233,20 @@ sub, sup { font-size: .68em; line-height: 0; }
 @media (max-width: 900px) and (orientation: portrait) {
   .stage-wrap.wide-fig:not(.html-mode) .rot-tip { display: block; font-size: 12px; color: var(--muted); text-align: center; padding: 3px 8px 5px; border-top: 1px dashed var(--line); background: var(--panel); }
 }
+/* 授業モード：問題・式・図に集中する */
+.fprob:empty { display: none; }
+.fprob { font-size: 19px; font-weight: 700; line-height: 1.65; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+.fprob b { color: var(--warm); }
+.fprob .pnum { font-family: var(--font-data); font-size: 12px; color: var(--muted); margin-right: 8px; vertical-align: 3px; font-weight: 500; }
+.unit-mode .fgen { font-size: 32px; line-height: 1.4; }
+.unit-mode .fgen .tok.now { box-shadow: 0 0 0 4px var(--warm-soft); }
+.unit-mode .lsay { font-size: 17px; }
+.unit-mode .card-head, .unit-mode .dots, .unit-mode .stage-hint { display: none !important; }
+.askh { font-family: var(--font-display); font-weight: 800; font-size: 18px; margin: 0 0 8px; }
+.unit-mode .ask .choice { font-size: 20px; padding: 14px 6px; }
+.flow { margin-top: 6px; }
+.flow summary { cursor: pointer; color: var(--muted); font-size: 14px; padding: 6px 0; }
+.kbadge { color: var(--panel); }
 /* HTMLで描くステージ（クイズなど） */
 .hstage { position: absolute; inset: 0; overflow: auto; padding: 22px; }
 .quiz { max-width: 640px; margin: 0 auto; }
@@ -293,6 +307,12 @@ sub, sup { font-size: .68em; line-height: 0; }
   .fband .readout .big { font-size: 17px; }
   .lsay { font-size: 15px; }
   .fband .ibtn { display: none; }
+  .fprob { font-size: 16.5px; margin-bottom: 6px; padding-bottom: 6px; }
+  .unit-mode .fgen { font-size: 25px; }
+  .unit-mode .lsay { font-size: 15.5px; }
+  .unit-mode .card { border: 0; background: transparent; }
+  .unit-mode .card-body { padding: 4px 2px 8px; }
+  .unit-mode .ask .choice { font-size: 19px; }
   .quiz .qtext { font-size: 17px; }
   .quiz .choice { font-size: 16px; padding: 10px 6px; }
   .hstage { padding: 12px; }
@@ -309,7 +329,7 @@ sub, sup { font-size: .68em; line-height: 0; }
   <aside class="panel lib" id="lib" aria-label="えらぶ"></aside>
   <section class="stage-wrap" id="stageWrap" aria-label="ステージ">
     <div class="fband" id="fband">
-      <div class="fbody"><div class="fgen" id="fgen"></div><div class="readout" id="readout" aria-live="polite"></div></div>
+      <div class="fbody"><div class="fprob" id="fprob"></div><div class="fgen" id="fgen"></div><div class="readout" id="readout" aria-live="polite"></div></div>
       <button type="button" class="ibtn" id="maxBtn" title="全画面（プロジェクター用）">⛶ 全画面</button>
     </div>
     <div class="stage-area"><div class="stage" id="stage"></div><div class="stage-hint" id="hint"></div></div>
@@ -514,7 +534,8 @@ function open(id, push = true) {
   $("#fgen").innerHTML = def.formula ? `<span class="k">公式</span>${def.formula}` : "";
   document.querySelector(".tabs").hidden = !!def.lesson;
   $("#stageWrap").classList.remove("html-mode");
-  document.body.classList.remove("has-nav");
+  document.body.classList.remove("has-nav", "unit-mode");
+  $("#fprob").innerHTML = "";
   const ctx = makeCtx(def);
   $("#hint").classList.remove("part");
   ctx.hint(def.hint || "");
@@ -527,7 +548,7 @@ function open(id, push = true) {
   renderNav(def);
   setTab(store.get("tab", "point"));
   try { def.build(ctx); } catch (e) { console.error(e); ctx.out("表示できませんでした：" + e.message); }
-  setTimeout(fitStage, 30);
+  if (!ctx.fixedFit) setTimeout(fitStage, 30);
   if (push && location.hash !== "#" + def.id) history.replaceState(null, "", "#" + def.id);
   store.set("last", def.id);
 }
@@ -2738,7 +2759,7 @@ function runLesson(c, def) {
     get k() { return k; },
     /* from → to へ動かす（そのステップのときだけアニメーション） */
     move(el, from, to, delay, j) {
-      el.style.transition = "transform .7s cubic-bezier(.3,.7,.2,1)";
+      el.style.transition = j === k ? "transform .7s cubic-bezier(.3,.7,.2,1)" : "none";
       if (j === k) { el.style.transform = `translate(${from.x}px, ${from.y}px)`; setTimeout(() => { el.style.transform = `translate(${to.x}px, ${to.y}px)`; }, 40 + (delay || 0)); }
       else el.style.transform = `translate(${to.x}px, ${to.y}px)`;
     },
@@ -4214,16 +4235,14 @@ function runUnit(c, u) {
     now: j => j === k,
     get k() { return k; },
     move(el, from, to, delay, j) {
-      el.style.transition = "transform .7s cubic-bezier(.3,.7,.2,1)";
+      el.style.transition = j === k ? "transform .7s cubic-bezier(.3,.7,.2,1)" : "none";
       if (j === k) { el.style.transform = `translate(${from.x}px, ${from.y}px)`; setTimeout(() => { el.style.transform = `translate(${to.x}px, ${to.y}px)`; }, 40 + (delay || 0)); }
       else el.style.transform = `translate(${to.x}px, ${to.y}px)`;
     },
   };
   /* 操作パネル */
-  c.label("授業の流れ（タップでとべる）");
-  const chips = h("div", { class: "parts" });
-  c.ctrl.appendChild(chips);
-  const chipBtns = parts.map((p, i) => { const b = h("button", { type: "button", style: `--kc:${KIND[p.kind][1]}` }, `${KIND[p.kind][0]}`); b.addEventListener("click", () => goPart(i, 0)); chips.appendChild(b); return b; });
+  document.body.classList.add("unit-mode");
+  const chipBtns = parts.map(() => h("i"));
   const prev = c.btn("◀ もどる", () => go(k - 1)); prev.classList.add("big");
   const next = c.btn("次へ ▶", () => go(k + 1), { main: true }); next.classList.add("big");
   c.row(prev, next).classList.add("navrow");
@@ -4243,9 +4262,7 @@ function runUnit(c, u) {
     pi = clamp(i, 0, parts.length - 1);
     const p = parts[pi], [kname, kcol, kdesc] = KIND[p.kind];
     clear(text);
-    text.appendChild(h("div", { class: "khead", style: `--kc:${kcol}` }, h("b", {}, kname), ` ${pi + 1}/${parts.length}　${kdesc}`));
-    if (p.problem) text.appendChild(h("div", { class: "prob", "data-k": kname, style: `--kc:${kcol}`, html: p.problem }));
-    else if (p.lead) text.appendChild(h("div", { class: "prob", "data-k": kname, style: `--kc:${kcol}`, html: p.lead }));
+    $("#fprob").innerHTML = `<span class="kbadge" style="--kc:${kcol}">${kname}</span><span class="pnum">${pi + 1}/${parts.length}</span>${p.problem || p.lead || ""}`;
     askBox = null;
     const listWrap = h("div", {});
     if (ASK.has(p.kind)) {
@@ -4271,25 +4288,26 @@ function runUnit(c, u) {
         else fb.innerHTML = `正解は ${p.choices[0]}`;
         renderList();
       };
-      if (answered[pi]) showResult(); else fb.textContent = "答えをえらぼう（わからなければ「解説を見る ▶」）";
-      text.appendChild(h("div", { class: "lab", style: "font-size:12px;color:var(--muted);margin:2px 0 4px" }, "答え"));
+      if (answered[pi]) showResult(); else fb.textContent = "わからなければ「解説を見る ▶」";
+      text.appendChild(h("div", { class: "askh" }, "答えをえらぼう"));
       text.appendChild(askBox);
     }
     text.appendChild(listWrap);
     function renderList() {
       clear(listWrap);
-      if (!answered[pi]) { listWrap.appendChild(h("p", { style: "color:var(--muted);font-size:14px" }, "答えをえらぶと、図の解説が1ステップずつ見られます。")); ol = null; return; }
-      listWrap.appendChild(h("div", { class: "lab", style: "font-size:12px;color:var(--muted);margin-bottom:4px" }, p.kind === "intro" ? "考え方の流れ（タップでとべる）" : "図で解く流れ（タップでとべる）"));
+      if (!answered[pi]) { ol = null; return; }
+      const det = h("details", { class: "flow" }, h("summary", {}, p.kind === "intro" ? "考え方の流れを見る" : "解き方の流れを見る"));
       ol = h("ol", { class: "steps" });
       p.steps.forEach((st, j) => { const li = h("li", { html: `<span>${st}</span>` }); li.addEventListener("click", () => go(j)); ol.appendChild(li); });
-      listWrap.appendChild(ol);
+      det.appendChild(ol);
+      listWrap.appendChild(det);
       mark();
     }
     renderList();
     clear(dots);
     p.steps.forEach((_, j) => { const d = h("i"); d.addEventListener("click", () => { if (answered[pi]) go(j); }); dots.appendChild(d); });
     chipBtns.forEach((b, j) => { b.classList.toggle("cur", j === pi); b.classList.toggle("done", done[j]); });
-    const hint = $("#hint"); hint.hidden = false; hint.classList.add("part"); hint.textContent = `${kname}：${p.title || p.name || ""}`;
+    $("#hint").hidden = true;
     if (narrowMQ.matches) { k = p.steps.length - 1; clear(G); try { p.render(T, k); } catch (e) { } fitStage(); }
     go(step === "last" ? p.steps.length - 1 : step);
   }
@@ -4306,11 +4324,11 @@ function runUnit(c, u) {
     clear(G);
     try { p.render(T, k); } catch (e) { console.error(e); }
     const [kname, kcol] = KIND[p.kind];
-    const toks = (p.eq || []).filter(t => (t[3] == null || k <= t[3]) && (answered[pi] || t[1] <= k));
-    $("#fgen").innerHTML = `<span class="kbadge" style="--kc:${kcol}">${kname}</span>` + toks.map(([html, st, col]) =>
+    const toks = (p.eq || []).filter(t => (t[3] == null || k <= t[3]) && t[1] <= k);
+    $("#fgen").innerHTML = toks.map(([html, st, col]) =>
       `<span class="tok${col ? " c" + col : ""}${st > k ? " ghost" : st === k ? " now" : ""}">${html}</span>`).join("");
     let say = p.steps[k];
-    if (!answered[pi]) say += `<br><b style="color:var(--warm)">→ まず自分で解いてみよう！ 「答え」のボタンからえらんでね</b>`;
+    if (!answered[pi]) say += `<br><b style="color:var(--warm)">→ まず自分で解いてみよう！</b>`;
     const lastAll = pi === parts.length - 1 && k === N - 1;
     if (k === N - 1) { done[pi] = true; save(); chipBtns[pi].classList.add("done"); }
     if (lastAll) say += `<br><b style="color:var(--accent)">🎉 この単元はおわり！「挑戦」のクイズでたしかめよう</b>`;
