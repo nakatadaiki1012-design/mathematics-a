@@ -229,6 +229,10 @@ sub, sup { font-size: .68em; line-height: 0; }
 .ask .fb { grid-column: 1 / -1; font-weight: 700; font-size: 14px; }
 .kbadge { display: inline-block; font-family: var(--font-body); font-size: 13px; color: #fff; background: var(--kc); padding: 1px 9px; border-radius: 3px; margin-right: 10px; vertical-align: 4px; font-weight: 700; }
 .stage-hint.part::before { content: none; }
+.rot-tip { display: none; }
+@media (max-width: 900px) and (orientation: portrait) {
+  .stage-wrap.wide-fig:not(.html-mode) .rot-tip { display: block; font-size: 12px; color: var(--muted); text-align: center; padding: 3px 8px 5px; border-top: 1px dashed var(--line); background: var(--panel); }
+}
 /* HTMLで描くステージ（クイズなど） */
 .hstage { position: absolute; inset: 0; overflow: auto; padding: 22px; }
 .quiz { max-width: 640px; margin: 0 auto; }
@@ -252,7 +256,10 @@ sub, sup { font-size: .68em; line-height: 0; }
 .libsel { display: none; }
 @media (max-width: 1100px) { .app { grid-template-columns: 200px minmax(0, 1fr) 310px; } }
 @media (max-width: 900px) {
-  body { height: 100dvh; }
+  /* スマホ：ページ全体をスクロール。図は横はばいっぱい、高さは図に合わせる */
+  html, body { height: auto; }
+  body { overflow-x: hidden; overflow-y: auto; min-height: 100dvh; display: block; }
+  .top { position: sticky; top: 0; z-index: 20; }
   .top { padding: 4px 10px; gap: 6px; }
   .brand { font-size: 16px; }
   .secnav button { padding: 6px 8px; font-size: 13.5px; }
@@ -265,8 +272,15 @@ sub, sup { font-size: .68em; line-height: 0; }
   .item b { font-size: 13.5px; }
   .item small { display: none; }
   .item[aria-current="true"] { box-shadow: none; }
-  .stage-wrap { flex: 1 1 54%; min-height: 220px; }
-  .card { flex: 1 1 46%; min-height: 0; }
+  .stage-wrap { flex: none; min-height: 0; }
+  .stage-area { flex: none; height: var(--sh, 72vw); }
+  .stage-wrap.html-mode .stage-area { height: auto; min-height: 60vh; }
+  .stage-wrap.html-mode .hstage { position: static; }
+  .card { flex: none; overflow: visible; }
+  .card-body { overflow: visible; }
+  body.has-nav { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  .navrow { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0; background: var(--panel); border-top: 1.5px solid var(--ink); padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px)); flex-wrap: nowrap !important; }
+  .navrow .btn.big { flex: 1; font-size: 16px; padding: 10px 8px; }
   .card-head { padding: 6px 12px 4px; display: flex; align-items: baseline; gap: 8px; }
   .card-head h2 { font-size: 17px; }
   .card-body { padding: 8px 12px 12px; }
@@ -275,7 +289,7 @@ sub, sup { font-size: .68em; line-height: 0; }
   .stage-hint { display: none; }
   .fband { padding: 6px 10px; }
   .fgen { font-size: 16px; }
-  .fband .readout { font-size: 13.5px; max-height: 20vh; }
+  .fband .readout { font-size: 14px; max-height: none; }
   .fband .readout .big { font-size: 17px; }
   .lsay { font-size: 15px; }
   .fband .ibtn { display: none; }
@@ -299,6 +313,7 @@ sub, sup { font-size: .68em; line-height: 0; }
       <button type="button" class="ibtn" id="maxBtn" title="全画面（プロジェクター用）">⛶ 全画面</button>
     </div>
     <div class="stage-area"><div class="stage" id="stage"></div><div class="stage-hint" id="hint"></div></div>
+    <div class="rot-tip">📱 スマホを横向きにすると、図が大きくなります</div>
   </section>
   <aside class="panel card" id="card" aria-label="説明">
     <div class="card-head"><div class="cat" id="cardCat"></div><h2 id="cardTitle"></h2></div>
@@ -402,7 +417,9 @@ function makeCtx(def) {
       stage.appendChild(el);
       return el;
     },
-    html(cls = "hstage") { const d = h("div", { class: cls }); stage.appendChild(d); return d; },
+    html(cls = "hstage") { const d = h("div", { class: cls }); stage.appendChild(d); $("#stageWrap").classList.add("html-mode"); return d; },
+    fixedFit: false,
+    fit() { fitStage(); },
     out(html) { readout.innerHTML = html; },
     hint(t) { const el = $("#hint"); el.textContent = t || ""; el.hidden = !t; },
     on(target, ev, fn, opt) { target.addEventListener(ev, fn, opt); cleanups.push(() => target.removeEventListener(ev, fn, opt)); },
@@ -496,10 +513,13 @@ function open(id, push = true) {
   $("#stage").classList.remove("touched");
   $("#fgen").innerHTML = def.formula ? `<span class="k">公式</span>${def.formula}` : "";
   document.querySelector(".tabs").hidden = !!def.lesson;
+  $("#stageWrap").classList.remove("html-mode");
+  document.body.classList.remove("has-nav");
   const ctx = makeCtx(def);
   $("#hint").classList.remove("part");
   ctx.hint(def.hint || "");
-  current = { def, cleanups: ctx.cleanups };
+  current = { def, cleanups: ctx.cleanups, ctx };
+  $("#stageWrap").classList.toggle("wide-fig", !def.lesson);
   const cat = CATS.find(c => c.id === def.cat);
   $("#cardCat").textContent = cat.name;
   $("#cardTitle").textContent = def.name;
@@ -507,6 +527,7 @@ function open(id, push = true) {
   renderNav(def);
   setTab(store.get("tab", "point"));
   try { def.build(ctx); } catch (e) { console.error(e); ctx.out("表示できませんでした：" + e.message); }
+  setTimeout(fitStage, 30);
   if (push && location.hash !== "#" + def.id) history.replaceState(null, "", "#" + def.id);
   store.set("last", def.id);
 }
@@ -534,6 +555,83 @@ function renderNav(def) {
   const cur = lib.querySelector('[aria-current="true"]');
   if (cur && cur.scrollIntoView && window.innerWidth <= 900) cur.scrollIntoView({ inline: "center", block: "nearest" });
 }
+</script>
+<script>
+"use strict";
+/* ===== スマホ：図を大きく見せる =====
+   図のまわりの空白を切りとって拡大し、ラベルの文字も大きくする（丸や枠の中の数字はそのまま） */
+const narrowMQ = window.matchMedia("(max-width: 900px)");
+let textBoost = 1;
+function contentBox(svg, W, H) {
+  const inv = svg.getScreenCTM().inverse();
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  svg.querySelectorAll("circle,rect,line,path,polygon,polyline,text").forEach(el => {
+    if (el.closest("defs,clipPath,mask") || el.classList.contains("hit") || el.classList.contains("ring")) return;
+    if (el.getAttribute("fill") === "transparent" && !el.getAttribute("stroke")) return;
+    let bb; try { bb = el.getBBox(); } catch (e) { return; }
+    if (!bb.width && !bb.height) return;
+    if (bb.width > 1500 || bb.height > 1500) return; // 画面いっぱいの補助線は数えない
+    const m = inv.multiply(el.getScreenCTM());
+    [[bb.x, bb.y], [bb.x + bb.width, bb.y], [bb.x, bb.y + bb.height], [bb.x + bb.width, bb.y + bb.height]].forEach(([x, y]) => {
+      const px = m.a * x + m.c * y + m.e, py = m.b * x + m.d * y + m.f;
+      x1 = Math.min(x1, px); y1 = Math.min(y1, py); x2 = Math.max(x2, px); y2 = Math.max(y2, py);
+    });
+  });
+  x1 = Math.max(0, x1 - 14); y1 = Math.max(0, y1 - 14); x2 = Math.min(W, x2 + 14); y2 = Math.min(H, y2 + 14);
+  if (!(x2 - x1 > 80 && y2 - y1 > 60)) return [0, 0, W, H];
+  return [x1, y1, x2 - x1, y2 - y1];
+}
+function boostText(root) {
+  root.querySelectorAll("text").forEach(el => {
+    if (el.classList.contains("in") || el.closest(".in")) return;
+    const f = (el.style.fill || el.getAttribute("fill") || "").replace(/\s/g, "").toLowerCase();
+    if (f === "#fff" || f === "#ffffff" || f === "rgb(255,255,255)") return;
+    let base = +el.dataset.fs0;
+    if (!base) {
+      base = +el.getAttribute("font-size") || (el.classList.contains("pointlbl") ? 22 : el.classList.contains("tag") ? 14 : 0);
+      if (!base) return;
+      el.dataset.fs0 = base;
+    }
+    if (base < 13) return;
+    el.style.fontSize = textBoost > 1.01 ? `${base * textBoost}px` : "";
+  });
+}
+function fitStage(growOnly) {
+  const svg = $("#stage svg.sv"), area = $(".stage-area");
+  if (!svg) { area.style.removeProperty("--sh"); return; }
+  if (!svg.dataset.vb0) svg.dataset.vb0 = svg.getAttribute("viewBox");
+  const [, , W, H] = svg.dataset.vb0.split(" ").map(Number);
+  if (!narrowMQ.matches) { svg.setAttribute("viewBox", svg.dataset.vb0); area.style.removeProperty("--sh"); textBoost = 1; boostText(svg); return; }
+  const prevVB = svg.getAttribute("viewBox").split(" ").map(Number);
+  svg.setAttribute("viewBox", svg.dataset.vb0);
+  let [x, y, w, h] = contentBox(svg, W, H);
+  if (growOnly === true) {
+    const [px, py, pw0, ph0] = prevVB;
+    if (x >= px && y >= py && x + w <= px + pw0 && y + h <= py + ph0) { svg.setAttribute("viewBox", prevVB.join(" ")); return; }
+    const x2 = Math.max(x + w, px + pw0), y2 = Math.max(y + h, py + ph0); x = Math.min(x, px); y = Math.min(y, py); w = x2 - x; h = y2 - y;
+  }
+  svg.setAttribute("viewBox", `${x} ${y} ${w} ${h}`);
+  const pw = area.clientWidth || window.innerWidth;
+  const sh = clamp(pw * h / w, 200, window.innerHeight * 0.68);
+  area.style.setProperty("--sh", `${sh}px`);
+  const scale = Math.min(pw / w, sh / h);
+  textBoost = clamp(0.72 / scale, 1, 1.4);
+  boostText(svg);
+}
+/* あとから描かれた文字も大きくする */
+new MutationObserver(muts => {
+  if (textBoost <= 1.01) return;
+  muts.forEach(m => m.addedNodes.forEach(n => { if (n.nodeType === 1) { if (n.tagName === "text") boostText(n.parentNode); else if (n.querySelectorAll) boostText(n); } }));
+}).observe($("#stage"), { childList: true, subtree: true });
+/* 操作でようすが変わったら合わせなおす（授業はステップごとに変わらないよう固定） */
+let fitTimer = 0;
+const refit = grow => { clearTimeout(fitTimer); fitTimer = setTimeout(() => { if (current && current.ctx && !current.ctx.fixedFit) fitStage(grow); }, 350); };
+$("#ctrl").addEventListener("input", () => refit(false));
+$("#ctrl").addEventListener("click", () => refit(false));
+/* ドラッグのあとは、はみ出したときだけ広げる（図がとびはねないように） */
+$("#stage").addEventListener("pointerup", () => refit(true));
+$("#stage").addEventListener("click", () => refit(true));
+window.addEventListener("resize", () => { clearTimeout(fitTimer); fitTimer = setTimeout(fitStage, 200); });
 </script>
 <script>
 "use strict";
@@ -629,19 +727,20 @@ sim({
           if (!nd) {
             const g = s("g", { class: "anim" }, layer);
             const ci = s("circle", { r: 13 }, g);
-            const tx = s("text", { "text-anchor": "middle", y: 5, class: "mono", "font-size": 14, text: n }, g);
+            const tx = s("text", { "text-anchor": "middle", y: 5, class: "mono in", "font-size": 14, text: n }, g);
             nd = { g, ci, tx }; nodes.set(n, nd);
             g.style.transform = `translate(${p.x}px, ${p.y}px)`;
           }
-          const r = Math.min(15, sp * 0.42);
+          const big = narrowMQ.matches;
+          const r = big ? Math.min(18, sp * 0.44) : Math.min(15, sp * 0.42);
           setA(nd.ci, { r });
-          nd.tx.setAttribute("font-size", Math.round(r * 1.05));
+          nd.tx.setAttribute("font-size", Math.round(r * (big ? 1.2 : 1.05)));
           nd.tx.setAttribute("y", r * 0.38);
           nd.g.style.transform = `translate(${p.x}px, ${p.y}px)`;
           const hot = on.has(k);
           nd.ci.setAttribute("class", hot ? "f-pn ink s-ac" : "f-pn thin");
           nd.ci.setAttribute("stroke-width", hot ? 2.2 : 1);
-          nd.tx.setAttribute("class", "mono" + (hot ? "" : " mut"));
+          nd.tx.setAttribute("class", "mono in" + (hot ? "" : " mut"));
           nd.tx.style.fontWeight = hot ? 700 : 400;
           seen.add(n);
         });
@@ -1015,7 +1114,7 @@ sim({
         s("rect", { x: x(n, r) - w / 2, y: y(n) - hh / 2, width: w, height: hh, rx: Math.min(6, w / 4), class: cls, "stroke-width": isPick || isPar ? 2.5 : 1 }, g);
         if (showNum) {
           const fs = Math.min(18, cw / Math.max(2.2, String(v).length * 0.62));
-          s("text", { x: x(n, r), y: y(n) + fs * 0.36, "text-anchor": "middle", class: "mono", "font-size": fs, "font-weight": isPick ? 700 : 400, fill: odd && v % 2 && !isPick && !isPar ? "#fff" : null, text: v }, g);
+          s("text", { x: x(n, r), y: y(n) + fs * 0.36, "text-anchor": "middle", class: "mono in", "font-size": fs, "font-weight": isPick ? 700 : 400, fill: odd && v % 2 && !isPick && !isPar ? "#fff" : null, text: v }, g);
         }
         g.addEventListener("click", () => { pick = { n, r }; draw(); });
       }
@@ -2367,7 +2466,7 @@ sim({
         st.sq.forEach((q, k) => {
           const r = s("rect", { x: X + q.x * sc, y: Y + q.y * sc, width: q.s * sc, height: q.s * sc, fill: col, "fill-opacity": last ? .75 : .35, stroke: "var(--ink)", "stroke-width": 1.2, class: anim && i === step - 1 ? "pop" : "" }, svg);
           if (anim && i === step - 1) r.style.animationDelay = `${k * 0.08}s`;
-          if (q.s * sc > 34) s("text", { x: X + (q.x + q.s / 2) * sc, y: Y + (q.y + q.s / 2) * sc + 6, "text-anchor": "middle", class: "mono", "font-size": Math.min(18, q.s * sc / 3), text: q.s }, svg);
+          if (q.s * sc > 34) s("text", { x: X + (q.x + q.s / 2) * sc, y: Y + (q.y + q.s / 2) * sc + 6, "text-anchor": "middle", class: "mono in", "font-size": Math.min(18, q.s * sc / 3), text: q.s }, svg);
         });
       }
       // わり算の式
@@ -2599,7 +2698,7 @@ const LK = {
   ball(g, x, y, col, label, r = 18, o = {}) {
     const b = s("g", { transform: `translate(${x},${y})`, opacity: o.dim ? .22 : null }, g);
     s("circle", { r, fill: col, stroke: o.ring || "var(--ink)", "stroke-width": o.ring ? 4 : 1.5 }, b);
-    if (label != null) s("text", { "text-anchor": "middle", y: r * 0.35, "font-size": o.fs || r * 0.9, fill: o.ink || "#fff", "font-weight": 700, text: label }, b);
+    if (label != null) s("text", { class: "in", "text-anchor": "middle", y: r * 0.35, "font-size": o.fs || r * 0.9, fill: o.ink || "#fff", "font-weight": 700, text: label }, b);
     return b;
   },
   text(g, x, y, t, o = {}) {
@@ -2617,7 +2716,7 @@ const LK = {
     const gg = s("g", {}, g);
     const w = [...t].reduce((a, ch) => a + (ch.charCodeAt(0) > 255 ? size : size * 0.62), 0) + 16;
     s("rect", { x: x - w / 2, y: y - size * 0.95, width: w, height: size * 1.45, rx: 4, fill: "var(--panel)", stroke: color, "stroke-width": 2 }, gg);
-    s("text", { x, y: y + size * 0.05, "text-anchor": "middle", "font-size": size, "font-weight": 700, fill: color, text: t }, gg);
+    s("text", { class: "in", x, y: y + size * 0.05, "text-anchor": "middle", "font-size": size, "font-weight": 700, fill: color, text: t }, gg);
     return gg;
   },
   brace(g, x1, x2, y, label, color = "var(--warm)", up = false) {
@@ -4127,7 +4226,9 @@ function runUnit(c, u) {
   const chipBtns = parts.map((p, i) => { const b = h("button", { type: "button", style: `--kc:${KIND[p.kind][1]}` }, `${KIND[p.kind][0]}`); b.addEventListener("click", () => goPart(i, 0)); chips.appendChild(b); return b; });
   const prev = c.btn("◀ もどる", () => go(k - 1)); prev.classList.add("big");
   const next = c.btn("次へ ▶", () => go(k + 1), { main: true }); next.classList.add("big");
-  c.row(prev, next);
+  c.row(prev, next).classList.add("navrow");
+  document.body.classList.add("has-nav");
+  c.fixedFit = true;
   const dots = h("div", { class: "dots" });
   c.row(dots);
   c.on(document, "keydown", e => {
@@ -4189,6 +4290,7 @@ function runUnit(c, u) {
     p.steps.forEach((_, j) => { const d = h("i"); d.addEventListener("click", () => { if (answered[pi]) go(j); }); dots.appendChild(d); });
     chipBtns.forEach((b, j) => { b.classList.toggle("cur", j === pi); b.classList.toggle("done", done[j]); });
     const hint = $("#hint"); hint.hidden = false; hint.classList.add("part"); hint.textContent = `${kname}：${p.title || p.name || ""}`;
+    if (narrowMQ.matches) { k = p.steps.length - 1; clear(G); try { p.render(T, k); } catch (e) { } fitStage(); }
     go(step === "last" ? p.steps.length - 1 : step);
   }
   function mark() {
