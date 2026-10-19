@@ -213,6 +213,22 @@ sub, sup { font-size: .68em; line-height: 0; }
 .dots i.on { background: var(--accent); }
 .dots i.cur { background: var(--warm); }
 .btn.big { font-size: 17px; padding: 9px 18px; }
+/* 授業：導入→例題→類題→応用→発展 */
+.parts { display: flex; gap: 4px; flex-wrap: wrap; }
+.parts button { border: 1.5px solid var(--kc); background: var(--panel); color: var(--kc); border-radius: 4px; padding: 5px 11px; font-size: 14px; font-weight: 700; }
+.parts button.cur { background: var(--kc); color: #fff; }
+.parts button.done::after { content: " ✓"; }
+.khead { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.khead b { display: inline-block; background: var(--kc); color: #fff; padding: 1px 10px; border-radius: 3px; font-size: 15px; margin-right: 4px; }
+.prob[data-k]::before { content: attr(data-k); background: var(--kc, var(--ink)); }
+.ask { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.ask .choice { border: 1.5px solid var(--ink); background: var(--panel); border-radius: 4px; padding: 10px 6px; font-size: 17px; font-family: var(--font-data); font-weight: 600; box-shadow: 2px 2px 0 var(--ink); }
+.ask .choice:hover:not(:disabled) { background: var(--chip); }
+.ask .choice:disabled { opacity: .55; }
+.ask .choice.right { background: var(--accent); color: var(--accent-ink); opacity: 1; }
+.ask .fb { grid-column: 1 / -1; font-weight: 700; font-size: 14px; }
+.kbadge { display: inline-block; font-family: var(--font-body); font-size: 13px; color: #fff; background: var(--kc); padding: 1px 9px; border-radius: 3px; margin-right: 10px; vertical-align: 4px; font-weight: 700; }
+.stage-hint.part::before { content: none; }
 /* HTMLで描くステージ（クイズなど） */
 .hstage { position: absolute; inset: 0; overflow: auto; padding: 22px; }
 .quiz { max-width: 640px; margin: 0 auto; }
@@ -317,6 +333,7 @@ function s(tag, attrs, parent) {
     if (k === "text") el.textContent = attrs[k];
     else if (attrs[k] != null) el.setAttribute(k, attrs[k]);
   }
+  if (tag === "text" && attrs && attrs.fill) el.style.fill = attrs.fill;
   if (parent) parent.appendChild(el);
   return el;
 }
@@ -356,12 +373,11 @@ const COLORS = ["#c0392b", "#2c7a5f", "#2f5f9e", "#c9930e", "#7a4fa3", "#d9661f"
 
 /* ===== アプリの骨組み ===== */
 const CATS = [
-  { id: "formula", name: "式の意味", ico: "✏️" },
+  { id: "unit", name: "授業", ico: "📖" },
   { id: "cnt", name: "場合の数", ico: "🔢" },
   { id: "prob", name: "確率", ico: "🎲" },
   { id: "geo", name: "図形の性質", ico: "📐" },
   { id: "int", name: "整数の性質", ico: "🧮" },
-  { id: "word", name: "文章題", ico: "📝" },
   { id: "quiz", name: "挑戦", ico: "🏁" },
 ];
 const SIMS = [];
@@ -474,13 +490,14 @@ function makeCtx(def) {
 }
 
 function open(id, push = true) {
-  const def = SIMS.find(d => d.id === id) || SIMS[0];
+  const def = SIMS.find(d => d.id === id) || SIMS.find(d => d.id === "u-perm") || SIMS[0];
   if (current) { current.cleanups.forEach(f => { try { f(); } catch (e) { console.error(e); } }); }
   clear($("#stage")); clear($("#ctrl")); $("#readout").innerHTML = "";
   $("#stage").classList.remove("touched");
   $("#fgen").innerHTML = def.formula ? `<span class="k">公式</span>${def.formula}` : "";
   document.querySelector(".tabs").hidden = !!def.lesson;
   const ctx = makeCtx(def);
+  $("#hint").classList.remove("part");
   ctx.hint(def.hint || "");
   current = { def, cleanups: ctx.cleanups };
   const cat = CATS.find(c => c.id === def.cat);
@@ -2569,9 +2586,9 @@ sim({
 /* ===================== 式の意味・文章題：1ステップずつ進む図 ===================== */
 /* def.eq = [[html, ステップ, 色], ...]：式がステップごとに左からうまっていく
    def.steps = [説明, ...]、def.render(T, k)：k 番目のステップまでの図をかく */
-function lesson(def) {
-  sim(Object.assign({}, def, { lesson: true, hint: def.hint || "「次へ ▶」で1ステップずつ進みます", build(c) { runLesson(c, def); } }));
-}
+/* 授業（単元）の部品として登録する */
+const LESSONS = {};
+function lesson(def) { LESSONS[def.id] = def; }
 function seeded(n, seed) {
   let x = seed; const a = [...Array(n).keys()];
   for (let i = n - 1; i > 0; i--) { x = (x * 1103515245 + 12345) % 2147483648; const j = x % (i + 1); [a[i], a[j]] = [a[j], a[i]]; }
@@ -3452,6 +3469,874 @@ lesson({
 </script>
 <script>
 "use strict";
+/* ===================== 授業の図のひな形（数字をかえて使う） ===================== */
+const CYC = ["w", "a", "b", "v", "g"];
+const CV = { w: "var(--warm)", a: "var(--accent)", b: "var(--blue)", v: "var(--violet)", g: "var(--gold)" };
+function fs(n, d) { const g = gcd(n, d) || 1; n /= g; d /= g; return d === 1 ? String(n) : `${n}/${d}`; }
+const Csub = (n, r) => `<sub>${n}</sub>C<sub>${r}</sub>`;
+
+/* --- 順列：席を1つずつうめる --- */
+function T_perm({ n, r, names, slot = i => `${i + 1}番目`, unit = "人", intro }) {
+  names = names || NAMES.slice(0, n).split("");
+  const val = nPr(n, r);
+  const eq = [[P(n, r), 0], [" = ", 1]];
+  for (let j = 0; j < r; j++) { if (j) eq.push([" × ", j + 1]); eq.push([String(n - j), j + 1, CYC[j % 5]]); }
+  eq.push([` = ${val}`, r + 1]);
+  const steps = [intro || `${n}${unit}から ${r}${unit}をえらんで ならべる`];
+  for (let j = 0; j < r; j++) steps.push(`<b>${slot(j)}</b>：${j ? `前で使った ${j}${unit}は もう使えない。` : `${n}${unit}のだれでもよい。`}→ <b class=c${CYC[j % 5]}>${n - j} 通り</b>`);
+  steps.push(`かけ算（積の法則）：${Array.from({ length: r }, (_, j) => n - j).join(" × ")} = <b>${val} 通り</b>`);
+  return {
+    eq, steps,
+    render(T, k) {
+      const g0 = T.at(0), bw = Math.min(100, 700 / n), br = Math.min(26, bw * 0.4), bx = i => 400 + (i - (n - 1) / 2) * bw;
+      const usedN = clamp(k - 1, 0, r);
+      for (let i = 0; i < n; i++) LK.ball(g0, bx(i), 70, COLORS[i % 10], names[i], br, { dim: i < usedN, fs: br * (names[i].length > 1 ? 0.6 : 0.9) });
+      const sw = Math.min(150, 700 / r), sx = j => 400 + (j - (r - 1) / 2) * sw, SY = 250, bs = Math.min(84, sw - 18);
+      for (let j = 0; j < r; j++) { LK.box(g0, sx(j) - bs / 2, SY - bs / 2, bs, bs, { fill: "var(--chip)", stroke: "var(--line)" }); LK.text(g0, sx(j), SY - bs / 2 - 12, slot(j), { size: 15, cls: "mut" }); }
+      for (let j = 0; j < r; j++) {
+        if (k < j + 1) continue;
+        const col = CV[CYC[j % 5]];
+        if (T.now(j + 1)) { const g = T.at(j + 1); for (let i = j; i < n; i++) LK.arrow(g, { x: bx(i), y: 70 + br + 2 }, { x: sx(j), y: SY - bs / 2 - 26 }, col, 2); }
+        const g = T.at(j + 1);
+        LK.text(g, sx(j), SY + bs / 2 + 42, `${n - j}通り`, { size: 26, bold: true, fill: col });
+        if (j) LK.text(g, sx(j) - sw / 2, SY + bs / 2 + 42, "×", { size: 26 });
+        if (k >= j + 2) LK.ball(T.at(j + 2), sx(j), SY, COLORS[j % 10], names[j], bs * 0.38, { fs: bs * 0.38 * (names[j].length > 1 ? 0.6 : 0.9) });
+      }
+      if (k >= r + 1) LK.chip(T.at(r + 1), 400, 470, `${Array.from({ length: r }, (_, j) => n - j).join(" × ")} = ${val} 通り`, "var(--ink)", 26);
+    },
+  };
+}
+
+/* --- 組合せ：順番をつけて数えてから r! でわる --- */
+function T_comb({ n, r, names, unit = "人", intro }) {
+  names = names || NAMES.slice(0, n).split("");
+  const p = nPr(n, r), f = fact(r), v = nCr(n, r);
+  return {
+    eq: [[C(n, r), 0], [" = ", 1], [P(n, r), 1, "w"], [" ÷ ", 2], [`${r}!`, 2, "b"], [` = ${p} ÷ ${f} = ${v}`, 3]],
+    steps: [
+      intro || `${n}${unit}から ${r}${unit}を えらぶ（順番は関係ない）`,
+      `もし順番をつけて ならべるなら ${P(n, r)} = <b class=cw>${p} 通り</b>`,
+      `でも えらぶだけなら、同じ ${r}${unit}のならび方 <b class=cb>${r}! = ${f} 通り</b> は ぜんぶ同じ 1 組`,
+      `だから ${p} ÷ ${f} = <b>${v} 通り</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), bw = Math.min(90, 700 / n), br = Math.min(24, bw * 0.4);
+      for (let i = 0; i < n; i++) LK.ball(g0, 400 + (i - (n - 1) / 2) * bw, 70, COLORS[i % 10], names[i], br, { ring: k >= 2 && i < r ? "var(--warm)" : null, fs: br * (names[i].length > 1 ? 0.6 : 0.9) });
+      if (k >= 1) { const g = T.at(1); LK.text(g, 400, 160, `順番をつけると ${Array.from({ length: r }, (_, j) => n - j).join(" × ")} = ${p} 通り`, { size: 22, bold: true, fill: "var(--warm)" }); }
+      if (k >= 2) {
+        const g = T.at(2), pick = names.slice(0, r), perms = [];
+        const rec = (cur, rest) => { if (!rest.length) { perms.push(cur); return; } rest.forEach((x, i) => rec(cur.concat(x), rest.slice(0, i).concat(rest.slice(i + 1)))); };
+        rec([], pick);
+        const show = perms.slice(0, 12), cols = Math.min(show.length, r <= 2 ? 2 : 3), cw = 200, rh = 52;
+        const x0 = 400 - (cols - 1) * cw / 2, y0 = 225;
+        show.forEach((pm, i) => { const x = x0 + (i % cols) * cw, y = y0 + Math.floor(i / cols) * rh; pm.forEach((nm, q) => { const idx = names.indexOf(nm); LK.ball(g, x + (q - (r - 1) / 2) * 42, y, COLORS[idx % 10], nm, 18, { fs: nm.length > 1 ? 11 : 16 }); }); });
+        const rows = Math.ceil(show.length / cols);
+        LK.box(g, x0 - cw / 2 + 10, y0 - 32, cols * cw - 20, rows * rh + 16, { stroke: "var(--blue)", sw: 3, dash: "8 5" });
+        LK.text(g, 400, y0 + rows * rh + 22, `${r}! = ${f} 通り → ぜんぶ同じ 1 組${perms.length > show.length ? "（一部だけ表示）" : ""}`, { size: 18, bold: true, fill: "var(--blue)" });
+      }
+      if (k >= 3) LK.chip(T.at(3), 400, 520, `${p} ÷ ${f} = ${v} 通り`, "var(--ink)", 26);
+    },
+  };
+}
+
+/* --- ベン図：倍数の個数 --- */
+function T_venn({ N, a, b, outside }) {
+  const L = lcm(a, b), nA = Math.floor(N / a), nB = Math.floor(N / b), nAB = Math.floor(N / L), nU = nA + nB - nAB;
+  const div = (x, y) => `${x} ÷ ${y} = ${Math.floor(x / y)}${x % y ? ` あまり ${x % y}` : ""}`;
+  const steps = [
+    `全体は 1〜${N} の ${N} 個。A = ${a} の倍数、B = ${b} の倍数`,
+    `A：${div(N, a)} → <b class=cw>${nA} 個</b>`,
+    `B：${div(N, b)} → <b class=cb>${nB} 個</b>`,
+    `A∩B：${a} でも ${b} でもわり切れる = <b>${L} の倍数</b>${L !== a * b ? `（${a}×${b} = ${a * b} ではなく、最小公倍数 ${L}！）` : ""}。${div(N, L)} → <b class=ca>${nAB} 個</b>`,
+    `A∪B = ${nA} + ${nB} − ${nAB} = <b>${nU} 個</b>`,
+  ];
+  const eq = [["n(A∪B) = ", 4], [String(nA), 1, "w"], [" + ", 4], [String(nB), 2, "b"], [" − ", 4], [String(nAB), 3, "a"], [` = ${nU}`, 4]];
+  if (outside) { steps.push(`どちらでもわり切れない数は <b>外側</b>：${N} − ${nU} = <b>${N - nU} 個</b>`); eq.push([`　答え ${N} − ${nU} = ${N - nU}`, 5]); }
+  return {
+    eq, steps,
+    render(T, k) {
+      const g0 = T.at(0), A = { x: 320, y: 300, r: 170 }, B = { x: 480, y: 300, r: 170 };
+      const id = "tv" + (++uid);
+      const cp = s("clipPath", { id }, s("defs", {}, g0)); s("circle", { cx: B.x, cy: B.y, r: B.r }, cp);
+      if (k >= 5) { const g = T.at(5); s("rect", { x: 40, y: 40, width: 720, height: 490, fill: "var(--gold)", "fill-opacity": .3 }, g); [A, B].forEach(o => s("circle", { cx: o.x, cy: o.y, r: o.r, fill: "var(--stage-1)" }, g)); }
+      LK.box(g0, 40, 40, 720, 490, { sw: 2.5, rx: 4 });
+      LK.text(g0, 70, 75, "U", { size: 26, bold: true, cls: "disp" });
+      LK.text(g0, 690, 75, `${N} 個`, { size: 18, bold: true });
+      if (k >= 1) { const g = T.at(1); s("circle", { cx: A.x, cy: A.y, r: A.r, fill: k >= 4 ? "var(--accent-soft)" : "var(--warm-soft)", stroke: "var(--warm)", "stroke-width": 3 }, g); LK.text(g, A.x - 80, A.y - A.r + 30, `A：${a}の倍数`, { size: 17, bold: true, fill: "var(--warm)" }); if (k < 4) LK.text(g, A.x - 70, A.y + 12, String(nA), { size: 40, bold: true, fill: "var(--warm)" }); }
+      if (k >= 2) { const g = T.at(2); s("circle", { cx: B.x, cy: B.y, r: B.r, fill: k >= 4 ? "var(--accent-soft)" : "var(--blue-soft)", stroke: "var(--blue)", "stroke-width": 3 }, g); LK.text(g, B.x + 80, B.y - B.r + 30, `B：${b}の倍数`, { size: 17, bold: true, fill: "var(--blue)" }); if (k < 4) LK.text(g, B.x + 70, B.y + 12, String(nB), { size: 40, bold: true, fill: "var(--blue)" }); }
+      if (k >= 3) { const g = T.at(3); s("circle", { cx: A.x, cy: A.y, r: A.r, fill: "var(--accent)", "fill-opacity": .35, "clip-path": `url(#${id})` }, g); LK.text(g, 400, 312, String(nAB), { size: 40, bold: true, fill: "var(--accent)" }); LK.text(g, 400, 340, `${L}の倍数`, { size: 14, bold: true, fill: "var(--accent)" }); }
+      if (k >= 4) { const g = T.at(4); LK.text(g, 250, 312, String(nA - nAB), { size: 34, bold: true, fill: "var(--warm)" }); LK.text(g, 555, 312, String(nB - nAB), { size: 34, bold: true, fill: "var(--blue)" }); LK.text(g, 400, 505, `${nA - nAB} + ${nAB} + ${nB - nAB} = ${nU}`, { size: 18, bold: true }); }
+      if (k >= 5) LK.chip(T.at(5), 680, 480, `外側 ${N - nU}`, "var(--ink)", 22);
+    },
+  };
+}
+
+/* --- 円順列：1人を固定 --- */
+function circleSeats(n, R = 170, cx = 400, cy = 300) { return Array.from({ length: n }, (_, i) => { const a = -Math.PI / 2 + i * 2 * Math.PI / n; return { x: cx + R * Math.cos(a), y: cy + R * Math.sin(a) }; }); }
+function T_circ({ n }) {
+  const v = fact(n - 1), fl = Array.from({ length: n - 1 }, (_, i) => n - 1 - i);
+  return {
+    eq: [[`(${n}−1)!`, 0], [" = ", 2], [fl.join(" × "), 2, "w"], [` = ${v}`, 3]],
+    steps: [
+      `${n} 人が まるいテーブルにすわる。<b>回して重なるものは同じ</b>`,
+      `回すと同じになるので、<b>A の席を固定</b>（てっぺん）して考える`,
+      `のこり ${n - 1} 人を、A から時計回りに ならべる → <b class=cw>${fl.join("・")} 通り</b>`,
+      `(${n}−1)! = ${n - 1}! = <b>${v} 通り</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), S = circleSeats(n);
+      s("circle", { cx: 400, cy: 300, r: 110, fill: "var(--chip)", stroke: "var(--ink)", "stroke-width": 2 }, g0);
+      S.forEach(p => s("circle", { cx: p.x, cy: p.y, r: 28, fill: "var(--panel)", stroke: "var(--line)", "stroke-width": 2 }, g0));
+      if (k === 0) S.forEach((p, i) => LK.ball(g0, p.x, p.y, COLORS[i], NAMES[i], 24));
+      if (k >= 1) { const g = T.at(1); LK.ball(g, S[0].x, S[0].y, COLORS[0], "A", 26, { ring: "var(--warm)" }); LK.chip(g, S[0].x + 80, S[0].y, "固定", "var(--warm)", 16); }
+      if (k >= 2) { const g = T.at(2); S.slice(1).forEach((p, i) => { LK.text(g, p.x, p.y + 8, String(n - 1 - i), { size: 24, bold: true, fill: "var(--warm)" }); LK.text(g, p.x, p.y + 50, "通り", { size: 13, cls: "mut" }); }); }
+      if (k >= 3) LK.chip(T.at(3), 400, 308, `${v} 通り`, "var(--ink)", 26);
+    },
+  };
+}
+function T_circAdj({ n }) {
+  const m = n - 1, v = fact(n - 2) * 2;
+  return {
+    eq: [[`(${m}−1)!`, 2, "w"], [" × ", 3], ["2!", 3, "b"], [` = ${fact(n - 2)} × 2 = ${v}`, 4]],
+    steps: [
+      `${n} 人（A・B をふくむ）が円卓にすわる。<b>A と B がとなり合う</b>`,
+      `A と B を <b>ひとかたまり</b> にする`,
+      `かたまり 1 つ と のこり ${n - 2} 人、合わせて <b>${m} 個</b> を円にならべる → (${m}−1)! = <b class=cw>${fact(n - 2)} 通り</b>`,
+      `かたまりの中：AB か BA の <b class=cb>2 通り</b>`,
+      `${fact(n - 2)} × 2 = <b>${v} 通り</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0);
+      s("circle", { cx: 400, cy: 300, r: 110, fill: "var(--chip)", stroke: "var(--ink)", "stroke-width": 2 }, g0);
+      if (k === 0) { circleSeats(n).forEach((p, i) => LK.ball(g0, p.x, p.y, COLORS[i], NAMES[i], 24)); return; }
+      const S = circleSeats(m, 175);
+      const g = T.at(1);
+      LK.box(g, S[0].x - 62, S[0].y - 30, 124, 60, { stroke: "var(--blue)", sw: 3.5, rx: 30, fill: "var(--blue-soft)" });
+      LK.ball(g, S[0].x - 28, S[0].y, COLORS[0], "A", 22); LK.ball(g, S[0].x + 28, S[0].y, COLORS[1], "B", 22);
+      S.slice(1).forEach((p, i) => LK.ball(g, p.x, p.y, COLORS[i + 2], NAMES[i + 2], 24));
+      if (k >= 2) LK.chip(T.at(2), 400, 308, `${m} 個 → ${fact(n - 2)} 通り`, "var(--warm)", 20);
+      if (k >= 3) { const g3 = T.at(3); [[640, ["A", "B"]], [640, ["B", "A"]]].forEach(([x, ns], i) => { const y = 430 + i * 70; LK.box(g3, x - 55, y - 26, 110, 52, { stroke: "var(--blue)", sw: 2.5, rx: 26 }); ns.forEach((nm, q) => LK.ball(g3, x - 24 + q * 48, y, COLORS[nm === "A" ? 0 : 1], nm, 20)); }); LK.text(g3, 735, 470, "2通り", { size: 20, bold: true, fill: "var(--blue)" }); }
+      if (k >= 4) LK.chip(T.at(4), 160, 520, `${fact(n - 2)} × 2 = ${v}`, "var(--ink)", 24);
+    },
+  };
+}
+function T_juzu({ n }) {
+  const v = fact(n - 1) / 2;
+  return {
+    eq: [[`(${n}−1)!`, 1, "w"], [" ÷ ", 3], ["2", 2, "b"], [` = ${fact(n - 1)} ÷ 2 = ${v}`, 3]],
+    steps: [
+      `${n} 色の玉で 輪（ブレスレット）をつくる。何通り？`,
+      `まず 円順列 として (${n}−1)! = <b class=cw>${fact(n - 1)} 通り</b>`,
+      `でも 輪は <b>うら返せる</b>。うら返すと 左右反対のならびになるが、同じ輪 → <b class=cb>2 つずつ同じ</b>`,
+      `${fact(n - 1)} ÷ 2 = <b>${v} 通り</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), ring = (cx, order, g) => { s("circle", { cx, cy: 290, r: 110, fill: "none", stroke: "var(--ink)", "stroke-width": 3 }, g); circleSeats(n, 110, cx, 290).forEach((p, i) => s("circle", { cx: p.x, cy: p.y, r: 22, fill: COLORS[order[i]], stroke: "var(--ink)", "stroke-width": 1.5 }, g)); };
+      const ord = [...Array(n).keys()];
+      if (k < 2) { ring(400, ord, g0); if (k >= 1) LK.chip(T.at(1), 400, 470, `円順列 ${fact(n - 1)} 通り`, "var(--warm)", 22); return; }
+      const g = T.at(2);
+      ring(220, ord, g); ring(580, [0, ...ord.slice(1).reverse()], g);
+      LK.arrow(g, { x: 350, y: 290 }, { x: 450, y: 290 }, "var(--blue)", 3);
+      LK.text(g, 400, 270, "うら返す", { size: 16, bold: true, fill: "var(--blue)" });
+      LK.text(g, 400, 460, "左右反対だけど 同じ輪", { size: 20, bold: true, fill: "var(--blue)" });
+      if (k >= 3) LK.chip(T.at(3), 400, 520, `${fact(n - 1)} ÷ 2 = ${v} 通り`, "var(--ink)", 24);
+    },
+  };
+}
+
+/* --- 2つのサイコロ --- */
+function T_dice({ label, pred, intro, val = (a, b) => a + b }) {
+  let cnt = 0; for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) if (pred(a, b)) cnt++;
+  return {
+    eq: [["P", 0], [" = ", 2], [String(cnt), 1, "w"], [" ／ ", 2], ["36", 0], [` = ${fs(cnt, 36)}`, 2]],
+    steps: [
+      intro || `2つのサイコロ（大・小）をふる。目の出方は 6 × 6 = <b>36 通り</b>。どれも同じくらい起こる（同様に確からしい）`,
+      `${label} になるマスに色をぬる → <b class=cw>${cnt} マス</b>`,
+      `確率 = （あてはまる数）÷（全部の数）= ${cnt}/36 = <b>${fs(cnt, 36)}</b>`,
+    ],
+    render(T, k) {
+      const x0 = 230, y0 = 100, cs = 58, g0 = T.at(0);
+      for (let i = 1; i <= 6; i++) { diceFace(g0, x0 + (i - 0.5) * cs, y0 - 32, 36, i); diceFace(g0, x0 - 32, y0 + (i - 0.5) * cs, 36, i); }
+      LK.text(g0, x0 + 3 * cs, y0 - 62, "小", { size: 15, cls: "mut" }); LK.text(g0, x0 - 62, y0 + 3 * cs, "大", { size: 15, cls: "mut" });
+      for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
+        const on = k >= 1 && pred(a, b);
+        LK.box(g0, x0 + (b - 1) * cs + 2, y0 + (a - 1) * cs + 2, cs - 4, cs - 4, { fill: on ? "var(--warm-soft)" : "var(--panel)", stroke: on ? "var(--warm)" : "var(--line)", sw: on ? 2.5 : 1.5, rx: 4 });
+        LK.text(g0, x0 + (b - 0.5) * cs, y0 + (a - 0.5) * cs + 7, String(val(a, b)), { size: 18, cls: "mono", bold: on, fill: on ? "var(--warm)" : "var(--muted)" });
+      }
+      LK.text(g0, x0, y0 + 6 * cs + 26, "マスの数字 = 目の和", { size: 13, cls: "mut", anchor: "start" });
+      if (k >= 2) LK.chip(T.at(2), 670, 300, `${cnt}/36 = ${fs(cnt, 36)}`, "var(--ink)", 24);
+    },
+  };
+}
+
+/* --- 袋から2個 --- */
+function T_balls({ red, white, want = "rr" }) {
+  const n = red + white, tot = nCr(n, 2), fav = want === "rr" ? nCr(red, 2) : want === "ww" ? nCr(white, 2) : red * white;
+  const wantT = { rr: "2 個とも赤", ww: "2 個とも白", rw: "赤 1 個・白 1 個" }[want];
+  const favT = want === "rr" ? `${Csub(red, 2)} = ${fav}` : want === "ww" ? `${Csub(white, 2)} = ${fav}` : `${red} × ${white} = ${fav}`;
+  return {
+    problem: `赤玉 ${red} 個と白玉 ${white} 個が入った袋から、同時に 2 個取り出す。<b>${wantT}</b>である確率は？`,
+    eq: [["P", 0], [" = ", 3], [favT.split(" = ")[0], 3, "w"], [" ／ ", 2], [Csub(n, 2), 2, "b"], [` = ${fav}/${tot} = ${fs(fav, tot)}`, 4]],
+    steps: [
+      `袋の中は 赤 ${red}・白 ${white}`,
+      `同じ色でも <b>1 個ずつ区別</b>する。こうすると どの取り出し方も同じくらい起こる`,
+      `2 個の取り出し方（全部）：<b class=cb>${Csub(n, 2)} = ${tot} 通り</b>`,
+      `${wantT}：<b class=cw>${favT} 通り</b>`,
+      `確率 = ${fav} ／ ${tot} = <b>${fs(fav, tot)}</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), RED = "#c0392b", WH = "#f3efe6";
+      s("path", { d: "M60,200 q-20,250 115,270 q135,-20 115,-270 Z", fill: "var(--chip)", stroke: "var(--ink)", "stroke-width": 2.5 }, g0);
+      const bl = [];
+      for (let i = 0; i < red; i++) bl.push([`赤${i + 1}`, RED]);
+      for (let i = 0; i < white; i++) bl.push([`白${i + 1}`, WH]);
+      bl.forEach(([nm, c], i) => LK.ball(g0, 110 + (i % 3) * 65, 270 + Math.floor(i / 3) * 65, c, k >= 1 ? nm : "", 27, { ink: c === WH ? "var(--ink)" : "#fff", fs: 15 }));
+      if (k >= 2) {
+        const g = T.at(2), pairs = [];
+        for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) pairs.push([a, b]);
+        const cols = pairs.length > 10 ? 3 : 2, rows = Math.ceil(pairs.length / cols), rh = Math.min(84, 470 / rows), cw = cols === 3 ? 145 : 200;
+        pairs.forEach(([a, b], i) => {
+          const x = 360 + (i % cols) * cw, y = 50 + Math.floor(i / cols) * rh;
+          const ok = want === "rr" ? a < red && b < red : want === "ww" ? a >= red && b >= red : (a < red) !== (b < red);
+          const hot = k >= 3 && ok;
+          LK.box(g, x, y, cw - 14, rh - 10, { stroke: hot ? "var(--warm)" : "var(--line)", sw: hot ? 3.5 : 1.2, fill: hot ? "var(--warm-soft)" : "var(--panel)" });
+          const r = Math.min(20, (rh - 14) / 2);
+          [a, b].forEach((m, q) => LK.ball(g, x + 30 + q * 50, y + (rh - 10) / 2, bl[m][1], bl[m][0], r, { ink: bl[m][1] === WH ? "var(--ink)" : "#fff", fs: r * 0.62 }));
+        });
+      }
+      if (k >= 4) LK.chip(T.at(4), 175, 530, `${fav} / ${tot} = ${fs(fav, tot)}`, "var(--warm)", 24);
+    },
+  };
+}
+
+/* --- 反復試行 --- */
+function T_binom({ n, k: K, pn, pd, yes, no, intro }) {
+  const q = pd - pn, combos = [];
+  const rec = (st, cur) => { if (cur.length === K) { combos.push(cur.slice()); return; } for (let i = st; i < n; i++) { cur.push(i); rec(i + 1, cur); cur.pop(); } };
+  rec(0, []);
+  const oneN = pn ** K * q ** (n - K), oneD = pd ** n, cnt = combos.length;
+  const pS = fs(pn, pd), qS = fs(q, pd);
+  return {
+    eq: [[Csub(n, K), 1], [" × ", 2], [`(${pS})<sup>${K}</sup>`, 2, "w"], [" × ", 2], [`(${qS})<sup>${n - K}</sup>`, 2, "b"], [` = ${cnt} × ${oneN}/${oneD} = ${fs(cnt * oneN, oneD)}`, 3]],
+    steps: [
+      intro,
+      `${yes} を ○、${no} を × とする。○ が ${K} 回のならび方は ${Csub(n, K)} = <b>${cnt} 通り</b>`,
+      `どのならびも確率は <b class=cw>(${pS})<sup>${K}</sup></b> × <b class=cb>(${qS})<sup>${n - K}</sup></b> = ${oneN}/${oneD}（かける順番がちがうだけ）`,
+      `${cnt} 通りは同時に起こらないので たす：${cnt} × ${oneN}/${oneD} = <b>${fs(cnt * oneN, oneD)}</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), cw = Math.min(80, 420 / n), X = i => 220 + i * cw;
+      for (let i = 0; i < n; i++) LK.text(g0, X(i), 40, `${i + 1}回目`, { size: 14, cls: "mut" });
+      if (k === 0) { for (let i = 0; i < n; i++) LK.box(g0, X(i) - cw * 0.4, 70, cw * 0.8, cw * 0.8, { fill: "var(--chip)", stroke: "var(--line)" }); return; }
+      const g = T.at(1), rh = Math.min(80, 450 / combos.length), sz = Math.min(cw * 0.75, rh * 0.75);
+      combos.forEach((cb, ri) => {
+        const y = 80 + ri * rh;
+        for (let i = 0; i < n; i++) {
+          const o = cb.includes(i);
+          if (o) s("circle", { cx: X(i), cy: y, r: sz / 2, fill: "var(--warm-soft)", stroke: "var(--warm)", "stroke-width": 2.5 }, g);
+          else LK.box(g, X(i) - sz / 2, y - sz / 2, sz, sz, { fill: "var(--blue-soft)", stroke: "var(--blue)", rx: 4 });
+          LK.text(g, X(i), y + sz * 0.17, o ? yes : no, { size: Math.min(16, sz * 0.45), bold: true, fill: o ? "var(--warm)" : "var(--blue)" });
+        }
+        if (k >= 2) LK.text(T.at(2), X(n - 1) + cw * 0.7, y + 6, `= ${oneN}/${oneD}`, { size: Math.min(20, rh * 0.45), bold: true, anchor: "start" });
+      });
+      if (k >= 3) { const g3 = T.at(3), y1 = 80 - rh / 2 + 4, y2 = 80 + (combos.length - 0.5) * rh - 4; s("path", { d: `M680,${y1} L700,${y1} L700,${y2} L680,${y2}`, fill: "none", stroke: "var(--ink)", "stroke-width": 2.5 }, g3); LK.text(g3, 710, (y1 + y2) / 2 + 8, `×${cnt}`, { size: 24, bold: true, anchor: "start" }); }
+    },
+  };
+}
+function T_atleast({ n, pn, pd, what }) {
+  const q = pd - pn, nn = q ** n, dd = pd ** n;
+  return {
+    eq: [["P", 0], [" = 1 − ", 3], [`(${fs(q, pd)})<sup>${n}</sup>`, 2, "b"], [` = 1 − ${nn}/${dd} = ${fs(dd - nn, dd)}`, 3]],
+    steps: [
+      `${what} が <b>少なくとも 1 回</b> 出る確率（${n} 回）。1 回・2 回・… と分けると 大変`,
+      `反対（余事象）は「<b>1 回も出ない</b>」= 毎回 × だけ`,
+      `1 回も出ない確率：<b class=cb>(${fs(q, pd)})<sup>${n}</sup> = ${nn}/${dd}</b>`,
+      `全体 1 からひく：1 − ${nn}/${dd} = <b>${fs(dd - nn, dd)}</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), cw = Math.min(100, 560 / n), X = i => 400 + (i - (n - 1) / 2) * cw;
+      for (let i = 0; i < n; i++) { LK.text(g0, X(i), 80, `${i + 1}回目`, { size: 14, cls: "mut" }); LK.box(g0, X(i) - 32, 100, 64, 64, { fill: k >= 1 ? "var(--blue-soft)" : "var(--chip)", stroke: k >= 1 ? "var(--blue)" : "var(--line)" }); if (k >= 1) LK.text(T.at(1), X(i), 140, "×", { size: 30, bold: true, fill: "var(--blue)" }); if (k >= 2) LK.text(T.at(2), X(i), 196, fs(q, pd), { size: 17, bold: true, fill: "var(--blue)" }); }
+      if (k >= 2) {
+        const g = T.at(2), W = 600, x0 = 100, y = 300, wb = W * nn / dd;
+        LK.box(g, x0, y, W, 60, { fill: "var(--warm-soft)", stroke: "var(--ink)", rx: 0 });
+        LK.box(g, x0, y, wb, 60, { fill: "var(--blue-soft)", stroke: "var(--blue)", sw: 2.5, rx: 0 });
+        LK.text(g, x0 + wb / 2, y + 38, "1 回も出ない", { size: 16, bold: true, fill: "var(--blue)" });
+        if (k >= 3) LK.text(T.at(3), x0 + wb + (W - wb) / 2, y + 38, "少なくとも 1 回", { size: 16, bold: true, fill: "var(--warm)" });
+        LK.text(g, x0, y + 90, "全体 = 1", { size: 15, cls: "mut", anchor: "start" });
+      }
+      if (k >= 3) LK.chip(T.at(3), 400, 470, `1 − ${nn}/${dd} = ${fs(dd - nn, dd)}`, "var(--ink)", 24);
+    },
+  };
+}
+
+/* --- 条件付き確率（2×2 の表） --- */
+function T_cond2({ rows, A, nA, B, nB, intro }) {
+  const [[ab, anb], [nab, nanb]] = rows, at = ab + anb;
+  return {
+    eq: [["P<sub>A</sub>(B)", 0], [" = ", 3], [String(ab), 2, "a"], [" ／ ", 3], [String(at), 1, "w"], [` = ${fs(ab, at)}`, 3]],
+    steps: [
+      intro,
+      `条件「<b class=cw>${A}</b>」→ ${A} の行だけを見る。<b class=cw>${at} 人</b>（もう一方の行は わすれる）`,
+      `その中で ${B} は <b class=ca>${ab} 人</b>`,
+      `P<sub>A</sub>(B) = ${ab} ／ ${at} = <b>${fs(ab, at)}</b>（分母は 全体 ${at + nab + nanb} 人 ではない！）`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), X0 = 200, Y0 = 110, CW = 270, RH = 170;
+      LK.text(g0, X0 + CW / 2, Y0 - 16, B, { size: 18, bold: true }); LK.text(g0, X0 + CW * 1.5, Y0 - 16, nB, { size: 18, bold: true });
+      [[A, 0], [nA, 1]].forEach(([t, i]) => LK.text(g0, X0 - 14, Y0 + (i + 0.5) * RH + 6, t, { size: 18, bold: true, anchor: "end" }));
+      const cell = (i, j, cnt) => {
+        const dim = k >= 1 && i === 1, hot = k >= 2 && i === 0 && j === 0;
+        const g = s("g", { opacity: dim ? .2 : 1 }, g0);
+        LK.box(g, X0 + j * CW, Y0 + i * RH, CW, RH, { fill: hot ? "var(--accent-soft)" : "var(--panel)", stroke: "var(--ink)", sw: 1.5, rx: 0 });
+        const per = 10, sz = 20;
+        for (let q = 0; q < cnt; q++) s("circle", { cx: X0 + j * CW + 24 + (q % per) * 24, cy: Y0 + i * RH + 30 + Math.floor(q / per) * sz * 1.25, r: 8, fill: hot ? "var(--accent)" : i === 0 ? "var(--warm)" : "var(--muted)" }, g);
+        LK.text(g, X0 + j * CW + CW - 20, Y0 + i * RH + RH - 16, `${cnt}人`, { size: 20, bold: true, anchor: "end" });
+      };
+      cell(0, 0, ab); cell(0, 1, anb); cell(1, 0, nab); cell(1, 1, nanb);
+      if (k >= 1) LK.box(T.at(1), X0 - 6, Y0 - 6, CW * 2 + 12, RH + 12, { stroke: "var(--warm)", sw: 4 });
+      if (k >= 3) LK.chip(T.at(3), 400, 510, `${ab} ／ ${at} = ${fs(ab, at)}`, "var(--ink)", 26);
+    },
+  };
+}
+function T_test({ prev, sens, fp }) {
+  const sick = prev * 10, sp = sick * sens / 100, hl = 1000 - sick, fpp = hl * fp / 100, pos = sp + fpp, pct = (sp / pos * 100).toFixed(1);
+  return {
+    eq: [["P", 0], [" = ", 4], [String(sp), 1, "w"], [" ／ (", 4], [String(sp), 1, "w"], [" + ", 4], [String(fpp), 2, "b"], [`) = ${fs(sp, pos)} ≒ ${pct}%`, 4]],
+    steps: [
+      `1000 人で考える。病気の人は ${prev}% → <b>${sick} 人</b>`,
+      `病気の人のうち 陽性（検査で＋）は ${sens}% → <b class=cw>${sp} 人</b>`,
+      `病気でない ${hl} 人のうち、まちがって陽性は ${fp}% → <b class=cb>${fpp} 人</b>`,
+      `陽性の人は ${sp} + ${fpp} = <b>${pos} 人</b>。そのうち本当に病気なのは ${sp} 人だけ`,
+      `P<sub>陽性</sub>(病気) = ${sp}/${pos} ≒ <b>${pct}%</b>。「${sens}% 当たる検査」でも、思ったよりずっと小さい！`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), cols = 40, sz = 17, x0 = 400 - cols * sz / 2, y0 = 70;
+      const kinds = [["sp", sp], ["sn", sick - sp], ["fp", fpp], ["hn", hl - fpp]];
+      const col = t => ({ sp: k >= 1 ? "var(--warm)" : "var(--violet)", sn: k >= 1 ? "var(--warm-soft)" : "var(--violet)", fp: k >= 2 ? "var(--blue)" : "var(--chip)", hn: "var(--chip)" }[t]);
+      let i = 0;
+      kinds.forEach(([t, m]) => { for (let q = 0; q < m; q++, i++) { const x = x0 + (i % cols) * sz, y = y0 + Math.floor(i / cols) * sz; const dim = k >= 3 && (t === "sn" || t === "hn"); s("rect", { x: x + 1.5, y: y + 1.5, width: sz - 3, height: sz - 3, rx: 2, fill: col(t), opacity: dim ? .25 : 1 }, g0); } });
+      LK.text(g0, x0, y0 + 25 * sz + 22, "1マス = 1人（1000人）", { size: 13, cls: "mut", anchor: "start" });
+      if (k >= 4) LK.chip(T.at(4), 600, y0 + 25 * sz + 18, `${sp} / ${pos} ≒ ${pct}%`, "var(--ink)", 20);
+    },
+  };
+}
+
+/* --- 円周角 --- */
+const circAt = (O, R, d) => ({ x: O.x + R * Math.cos(d * Math.PI / 180), y: O.y + R * Math.sin(d * Math.PI / 180) });
+function lbl4(g, O, pts) { pts.forEach(([p, n]) => { const d = V.norm(V.sub(p, O)); s("text", { x: p.x + d.x * 24, y: p.y + d.y * 24 + 7, class: "pointlbl", "text-anchor": "middle", text: n }, g); }); }
+function T_inscX({ central }) {
+  return {
+    problem: `円 O で ∠AOB = ${central}° のとき、<b>x = ∠APB</b> を求めよ。`,
+    eq: [["x", 0], [" = ", 2], [`${central}°`, 1, "w"], [" ÷ 2", 2], [` = ${central / 2}°`, 2]],
+    steps: [`中心角 ∠AOB = ${central}°。円周上の点 P で x = ∠APB`, `x と ∠AOB は、<b class=cw>同じ弧 AB</b> に対する 円周角と中心角`, `円周角 = 中心角 ÷ 2 → x = ${central} ÷ 2 = <b>${central / 2}°</b>`],
+    render(T, k) {
+      const O = { x: 400, y: 290 }, R = 200, A = circAt(O, R, 90 + central / 2), B = circAt(O, R, 90 - central / 2), Pp = circAt(O, R, 250), g0 = T.at(0);
+      s("circle", { cx: O.x, cy: O.y, r: R, class: "ink", "stroke-width": 2.5 }, g0);
+      if (k >= 1) { const pts = Array.from({ length: 31 }, (_, i) => circAt(O, R, 90 - central / 2 + central * i / 30)); s("path", { d: "M" + pts.map(p => `${p.x},${p.y}`).join(" L"), fill: "none", stroke: "var(--warm)", "stroke-width": 8, "stroke-opacity": .6, "stroke-linecap": "round" }, T.at(1)); }
+      seg(g0, O, A, "ink s-wm", { "stroke-width": 2.5 }); seg(g0, O, B, "ink s-wm", { "stroke-width": 2.5 });
+      arcAt(g0, O, A, B, 34, "", { fill: "var(--warm)", "fill-opacity": .3, stroke: "var(--warm)" }); angleLabel(g0, O, A, B, 58, `${central}°`, "tag tw");
+      seg(g0, Pp, A, "ink s-ac", { "stroke-width": 2.5 }); seg(g0, Pp, B, "ink s-ac", { "stroke-width": 2.5 });
+      arcAt(g0, Pp, A, B, 40, "", { fill: "var(--accent)", "fill-opacity": .3, stroke: "var(--accent)" }); angleLabel(g0, Pp, A, B, 66, k >= 2 ? `${central / 2}°` : "x", "tag ta");
+      s("circle", { cx: O.x, cy: O.y, r: 4, class: "f-ink" }, g0); s("text", { x: O.x - 18, y: O.y - 8, class: "pointlbl", text: "O" }, g0);
+      lbl4(g0, O, [[A, "A"], [B, "B"], [Pp, "P"]]);
+    },
+  };
+}
+function T_diam({ angA }) {
+  return {
+    problem: `AB は円の直径。∠CAB = ${angA}° のとき、<b>x = ∠ABC</b> を求めよ。`,
+    eq: [["x = 180° − ", 2], ["90°", 1, "b"], [" − ", 2], [`${angA}°`, 0, "a"], [` = ${90 - angA}°`, 2]],
+    steps: [`AB は直径、∠CAB = ${angA}°`, `<b class=cb>直径に対する円周角は 90°</b> → ∠ACB = 90°`, `△ABC の内角の和 180°：x = 180° − 90° − ${angA}° = <b>${90 - angA}°</b>`],
+    render(T, k) {
+      const O = { x: 400, y: 300 }, R = 200, A = circAt(O, R, 180), B = circAt(O, R, 0), Cc = circAt(O, R, -2 * angA), g0 = T.at(0);
+      s("circle", { cx: O.x, cy: O.y, r: R, class: "ink", "stroke-width": 2.5 }, g0);
+      seg(g0, A, B, "ink", { "stroke-width": 2.5 }); seg(g0, A, Cc, "ink", { "stroke-width": 2.2 }); seg(g0, B, Cc, "ink", { "stroke-width": 2.2 });
+      s("circle", { cx: O.x, cy: O.y, r: 4, class: "f-ink" }, g0); s("text", { x: O.x, y: O.y + 24, class: "pointlbl", "text-anchor": "middle", text: "O" }, g0);
+      arcAt(g0, A, B, Cc, 46, "", { fill: "var(--accent)", "fill-opacity": .3, stroke: "var(--accent)" }); angleLabel(g0, A, B, Cc, 72, `${angA}°`, "tag ta");
+      arcAt(g0, B, A, Cc, 40, "", { fill: "var(--gold)", "fill-opacity": .35, stroke: "var(--gold)" }); angleLabel(g0, B, A, Cc, 64, k >= 2 ? `${90 - angA}°` : "x", "tag");
+      if (k >= 1) { const g = T.at(1), u = V.norm(V.sub(A, Cc)), w = V.norm(V.sub(B, Cc)), q = 18; s("path", { d: `M${Cc.x + u.x * q},${Cc.y + u.y * q} L${Cc.x + (u.x + w.x) * q},${Cc.y + (u.y + w.y) * q} L${Cc.x + w.x * q},${Cc.y + w.y * q}`, fill: "var(--blue-soft)", stroke: "var(--blue)", "stroke-width": 2.5 }, g); LK.text(g, Cc.x, Cc.y + 52, "90°", { size: 18, bold: true, fill: "var(--blue)" }); }
+      lbl4(g0, O, [[A, "A"], [B, "B"], [Cc, "C"]]);
+    },
+  };
+}
+function T_quad({ A: a, B: b }) {
+  const z = Math.max(30, 2 * a + 2 * b - 320), y = 2 * a - z, w = 2 * b - z, x = 360 - y - z - w;
+  return {
+    problem: `四角形 ABCD は円に内接している。∠A = ${a}°、∠B = ${b}° のとき、<b>∠C と ∠D</b> を求めよ。`,
+    eq: [["∠C = 180° − ", 1], [`${a}°`, 1, "w"], [` = ${180 - a}°`, 1], ["　∠D = 180° − ", 2], [`${b}°`, 2, "b"], [` = ${180 - b}°`, 2]],
+    steps: [`円に内接する四角形 ABCD。∠A = ${a}°、∠B = ${b}°`, `<b>向かい合う角の和は 180°</b>：∠C = 180° − <b class=cw>${a}°</b> = <b>${180 - a}°</b>`, `同じように ∠D = 180° − <b class=cb>${b}°</b> = <b>${180 - b}°</b>`],
+    render(T, k) {
+      const O = { x: 400, y: 290 }, R = 210, t0 = 200, Ap = circAt(O, R, t0), Bp = circAt(O, R, t0 + x), Cp = circAt(O, R, t0 + x + y), Dp = circAt(O, R, t0 + x + y + z), g0 = T.at(0);
+      s("circle", { cx: O.x, cy: O.y, r: R, class: "ink", "stroke-width": 2.5 }, g0);
+      s("polygon", { points: [Ap, Bp, Cp, Dp].map(p => `${p.x},${p.y}`).join(" "), fill: "var(--panel)", "fill-opacity": .6, stroke: "var(--ink)", "stroke-width": 2.5 }, g0);
+      const ang = (p, q, r, txt, col, show) => { arcAt(g0, p, q, r, 34, "", { fill: col, "fill-opacity": .3, stroke: col }); angleLabel(g0, p, q, r, 58, show ? txt : "?", "tag"); };
+      ang(Ap, Dp, Bp, `${a}°`, "var(--warm)", true); ang(Bp, Ap, Cp, `${b}°`, "var(--blue)", true);
+      ang(Cp, Bp, Dp, `${180 - a}°`, "var(--warm)", k >= 1); ang(Dp, Cp, Ap, `${180 - b}°`, "var(--blue)", k >= 2);
+      if (k >= 1) seg(T.at(1), Ap, Cp, "", { stroke: "var(--warm)", "stroke-width": 2, "stroke-dasharray": "6 5" });
+      if (k >= 2) seg(T.at(2), Bp, Dp, "", { stroke: "var(--blue)", "stroke-width": 2, "stroke-dasharray": "6 5" });
+      lbl4(g0, O, [[Ap, "A"], [Bp, "B"], [Cp, "C"], [Dp, "D"]]);
+    },
+  };
+}
+
+/* --- 約数の個数（素因数2種類） --- */
+function T_div({ N }) {
+  const f = factorize(N), [p, a] = f[0], [q, b] = f[1];
+  const P_ = Array.from({ length: a + 1 }, (_, i) => p ** i), Q_ = Array.from({ length: b + 1 }, (_, i) => q ** i);
+  const sP = P_.reduce((x, y) => x + y), sQ = Q_.reduce((x, y) => x + y);
+  return {
+    eq: [[`${N} = ${p}${sup(a)} × ${q}${sup(b)}`, 1], ["　個数 ", 4], [`(${a}+1)`, 4, "w"], [`(${b}+1)`, 4, "b"], [` = ${(a + 1) * (b + 1)}`, 4], ["　和 ", 5], [`(${P_.join("+")})`, 5, "w"], [`(${Q_.join("+")})`, 5, "b"], [` = ${sP * sQ}`, 5]],
+    steps: [
+      `${N} の正の約数は いくつ？ 全部たすと？`,
+      `素因数分解：${N} = <b class=cw>${p}${sup(a)}</b> × <b class=cb>${q}${sup(b)}</b>`,
+      `約数は（${p} の部分）×（${q} の部分）。${p} の部分は ${P_.join("・")}、${q} の部分は ${Q_.join("・")}`,
+      `かけ算の表をつくると、約数が 全部 1 回ずつ 出てくる`,
+      `マスの数 = <b class=cw>(${a}+1)</b> × <b class=cb>(${b}+1)</b> = <b>${(a + 1) * (b + 1)} 個</b>（指数 + 1 をかける）`,
+      `和：(${P_.join("+")})(${Q_.join("+")}) を展開すると表の全部のマス → ${sP} × ${sQ} = <b>${sP * sQ}</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0);
+      if (k === 0) { LK.text(g0, 400, 300, String(N), { size: 96, bold: true, cls: "mono" }); return; }
+      const g1 = T.at(1); let m = N, i = 0;
+      while (m > 1) { const pr = factorize(m)[0][0], x = 110 + i * 12, y = 60 + i * Math.min(70, 420 / (a + b)); LK.text(g1, x, y, String(m), { size: 20, bold: true, cls: "mono" }); if (m / pr > 1) { LK.ball(g1, x - 38, y + 34, pr === p ? "var(--warm)" : "var(--blue)", String(pr), 17, { fs: 17 }); s("line", { x1: x - 5, y1: y + 8, x2: x - 28, y2: y + 22, class: "ink", "stroke-width": 1.5 }, g1); } else LK.ball(g1, x, y + 32, pr === p ? "var(--warm)" : "var(--blue)", String(pr), 17, { fs: 17 }); m /= pr; i++; }
+      const X = 380, Y = 110, cw = Math.min(100, 360 / (b + 1)), ch = Math.min(66, 340 / (a + 1));
+      if (k >= 2) { const g = T.at(2); Q_.forEach((v, j) => LK.chip(g, X + (j + 0.5) * cw, Y - 20, String(v), "var(--blue)", 18)); P_.forEach((v, r) => LK.chip(g, X - 40, Y + (r + 0.5) * ch + 7, String(v), "var(--warm)", 18)); }
+      if (k >= 3) { const g = T.at(3); P_.forEach((u, r) => Q_.forEach((v, j) => { LK.box(g, X + j * cw + 3, Y + r * ch + 3, cw - 6, ch - 6, { fill: "var(--panel)", sw: 1.5, rx: 4 }); LK.text(g, X + (j + 0.5) * cw, Y + (r + 0.5) * ch + 8, String(u * v), { size: 20, bold: true, cls: "mono" }); })); }
+      if (k >= 4) { const g = T.at(4); s("line", { x1: X + Q_.length * cw + 18, y1: Y, x2: X + Q_.length * cw + 18, y2: Y + P_.length * ch, stroke: "var(--warm)", "stroke-width": 5 }, g); LK.text(g, X + Q_.length * cw + 44, Y + P_.length * ch / 2 + 8, String(a + 1), { size: 26, bold: true, fill: "var(--warm)" }); s("line", { x1: X, y1: Y + P_.length * ch + 18, x2: X + Q_.length * cw, y2: Y + P_.length * ch + 18, stroke: "var(--blue)", "stroke-width": 5 }, g); LK.text(g, X + Q_.length * cw / 2, Y + P_.length * ch + 50, String(b + 1), { size: 26, bold: true, fill: "var(--blue)" }); }
+      if (k >= 5) LK.text(T.at(5), 560, 540, `全部のマスの和 = ${sP} × ${sQ} = ${sP * sQ}`, { size: 20, bold: true });
+    },
+  };
+}
+
+/* --- ユークリッドの互除法 --- */
+function T_euclid({ a, b }) {
+  const divs = []; let A = Math.max(a, b), B = Math.min(a, b);
+  while (B) { divs.push([A, B, Math.floor(A / B), A % B]); [A, B] = [B, A % B]; }
+  const g = A, m = divs.length;
+  const eq = [[`gcd(${Math.max(a, b)}, ${Math.min(a, b)})`, 0]];
+  divs.forEach(([x, y, q, r], i) => eq.push([r ? ` = gcd(${y}, ${r})` : ` = ${y}`, i + 1, i === m - 1 ? "w" : ""]));
+  const steps = [`${a} と ${b} の最大公約数を求める。長方形から 一番大きい正方形を 切りとっていく`];
+  divs.forEach(([x, y, q, r]) => steps.push(`${x} = ${y} × ${q} + ${r}${r ? `　→ 次は ${y} と ${r}` : `　→ 余り 0！`}`));
+  steps.push(`最後の わる数 = 一番小さい正方形の 1 辺 → 最大公約数は <b>${g}</b>`);
+  return {
+    eq, steps,
+    render(T, k) {
+      const W = Math.max(a, b), H = Math.min(a, b), sc = Math.min(600 / W, 300 / H), X = 400 - W * sc / 2, Y = 50, g0 = T.at(0);
+      LK.box(g0, X, Y, W * sc, H * sc, { fill: "var(--panel)", sw: 2, rx: 0 });
+      LK.text(g0, X + W * sc / 2, Y + H * sc + 22, String(W), { size: 14, cls: "mono mut" }); LK.text(g0, X - 8, Y + H * sc / 2 + 5, String(H), { size: 14, cls: "mono mut", anchor: "end" });
+      let x = 0, y = 0, w = W, h = H;
+      divs.forEach(([A2, B2, q], i) => {
+        const side = Math.min(w, h), sq = [];
+        if (w >= h) { for (let j = 0; j < q; j++) sq.push([x + j * side, y]); x += q * side; w -= q * side; } else { for (let j = 0; j < q; j++) sq.push([x, y + j * side]); y += q * side; h -= q * side; }
+        if (k < i + 1) return;
+        const gg = T.at(i + 1), last = i === m - 1;
+        sq.forEach(([sx, sy]) => { s("rect", { x: X + sx * sc, y: Y + sy * sc, width: side * sc, height: side * sc, fill: COLORS[i % 10], "fill-opacity": last ? .75 : .35, stroke: "var(--ink)", "stroke-width": 1.2 }, gg); if (side * sc > 30) LK.text(gg, X + (sx + side / 2) * sc, Y + (sy + side / 2) * sc + 6, String(side), { size: Math.min(18, side * sc / 3), cls: "mono" }); });
+        LK.text(gg, 400, Y + H * sc + 56 + i * 28, `${A2} = ${B2} × ${q} + ${divs[i][3]}`, { size: 18, cls: "mono", bold: T.now(i + 1) });
+      });
+      if (k >= m + 1) LK.chip(T.at(m + 1), 680, 520, `最大公約数 ${g}`, "var(--warm)", 22);
+    },
+  };
+}
+
+/* --- n進法 --- */
+function T_base({ N, b }) {
+  const rows = [[N, null]]; let q = N; while (q > 0) { rows.push([Math.floor(q / b), q % b]); q = Math.floor(q / b); }
+  const digits = rows.slice(1).map(r => r[1]).reverse().join(""), nd = rows.length - 1;
+  const grp = rows.map((_, i) => i === 0 ? 0 : Math.floor(i / 2) + 1);
+  const lastDiv = grp[nd];
+  const steps = [`10 進法の ${N} を ${b} 進法に直す。${b} でわっていく（すだれ算）`];
+  for (let s2 = 1; s2 <= lastDiv; s2++) { const rs = rows.slice(1).map((r, i) => [r, i]).filter(([, i]) => grp[i + 1] === s2); steps.push(rs.map(([[qq, rr], i]) => `${rows[i][0]} ÷ ${b} = ${qq} 余り <b class=cw>${rr}</b>`).join("、") + (s2 === lastDiv ? "。商が 0 になったら終わり" : "")); }
+  steps.push(`余りを <b>下から上へ</b> 読む → <b class=cw>${digits}<sub>(${b})</sub></b>`);
+  const place = digits.split("").map((d, i) => [+d, b ** (nd - 1 - i)]);
+  steps.push(`確かめ：${place.map(([d, w]) => `${d}×${w}`).join(" + ")} = ${N}`);
+  return {
+    eq: [[String(N), 0], [" = ", lastDiv + 1], [digits, lastDiv + 1, "w"], [`<sub>(${b})</sub>`, lastDiv + 1], [`　= ${place.filter(([d]) => d).map(([d, w]) => d > 1 ? `${d}×${w}` : w).join(" + ")}`, lastDiv + 2]],
+    steps,
+    render(T, k) {
+      const x0 = 190, y0 = 70, rh = Math.min(64, 440 / rows.length);
+      rows.forEach(([qq, rr], i) => {
+        const st = i === 0 ? 0 : grp[i]; if (st > k) return;
+        const g = T.at(st), y = y0 + i * rh;
+        if (i < rows.length - 1 && grp[i + 1] <= k) { LK.text(g, x0 - 50, y + 10, String(b), { size: 26, bold: true, cls: "mono" }); s("path", { d: `M${x0 - 30},${y - 20} q10,15 0,38 L${x0 + 110},${y + 18}`, fill: "none", stroke: "var(--ink)", "stroke-width": 2 }, g); }
+        LK.text(g, x0 + 40, y + 10, String(qq), { size: 28, bold: true, cls: "mono" });
+        if (rr != null) LK.text(g, x0 + 150, y - 20, `… ${rr}`, { size: 24, bold: true, fill: "var(--warm)", anchor: "start" });
+      });
+      if (k >= lastDiv + 1) { const g = T.at(lastDiv + 1); LK.arrow(g, { x: 400, y: y0 + nd * rh - 26 }, { x: 400, y: y0 + 10 }, "var(--warm)", 4); LK.text(g, 400, y0 - 22, "↑ 下から上へ読む", { size: 17, bold: true, fill: "var(--warm)" }); LK.chip(g, 640, 130, `${digits}(${b})`, "var(--warm)", 28); }
+      if (k >= lastDiv + 2) {
+        const g = T.at(lastDiv + 2), cw = Math.min(56, 300 / nd);
+        place.forEach(([d, w], i) => { const x = 640 - (nd - 1) * cw / 2 + i * cw; LK.box(g, x - cw * 0.42, 250, cw * 0.84, 50, { fill: d ? "var(--warm-soft)" : "var(--panel)", sw: 1.5 }); LK.text(g, x, 284, String(d), { size: 24, bold: true, cls: "mono" }); LK.text(g, x, 326, String(w), { size: 14, cls: "mut" }); });
+        LK.text(g, 640, 380, `= ${N}`, { size: 26, bold: true });
+      }
+    },
+  };
+}
+function T_toDec({ digs, b, intro }) {
+  const nd = digs.length, place = digs.split("").map((d, i) => [+d, b ** (nd - 1 - i), nd - 1 - i]), val = place.reduce((t, [d, w]) => t + d * w, 0);
+  return {
+    eq: [[`${digs}<sub>(${b})</sub>`, 0], [" = ", 2], [place.map(([d, , e]) => `${d}×${b}${sup(e)}`).join(" + "), 2, "w"], [` = ${val}`, 3]],
+    steps: [
+      intro ? `${b} 進法は「<b>${b} 個たまったら 1 つ上の位へ</b>」。${digs}<sub>(${b})</sub> はいくつ？` : `${b} 進法の ${digs}<sub>(${b})</sub> を 10 進法に直す`,
+      `位の重みは 右から 1、${b}、${b}²＝${b * b}、${b}³＝${b ** 3} … と ${b} 倍ずつ`,
+      `それぞれ（数字）×（重み）を計算`,
+      `ぜんぶ たす → <b>${val}</b>`,
+    ],
+    render(T, k) {
+      const g0 = T.at(0), cw = Math.min(110, 680 / nd), X = i => 400 + (i - (nd - 1) / 2) * cw;
+      place.forEach(([d, w, e], i) => {
+        LK.box(g0, X(i) - cw * 0.42, 120, cw * 0.84, 90, { fill: d ? "var(--warm-soft)" : "var(--panel)", sw: 2 });
+        LK.text(g0, X(i), 182, String(d), { size: 48, bold: true, cls: "mono" });
+        if (intro && b === 2) { s("circle", { cx: X(i), cy: 70, r: 18, fill: d ? "var(--gold)" : "var(--panel)", stroke: "var(--ink)", "stroke-width": 2 }, g0); }
+        if (k >= 1) { const g = T.at(1); LK.text(g, X(i), 250, `${b}${sup(e)}`, { size: 18, cls: "mono mut" }); LK.text(g, X(i), 280, `= ${w}`, { size: 20, bold: true, fill: "var(--blue)" }); }
+        if (k >= 2) LK.text(T.at(2), X(i), 340, `${d}×${w}`, { size: 20, bold: true, fill: d ? "var(--warm)" : "var(--muted)" });
+        if (k >= 2) LK.text(T.at(2), X(i), 372, `= ${d * w}`, { size: 18, cls: "mono" });
+      });
+      if (k >= 3) LK.chip(T.at(3), 400, 460, `${place.map(([d, w]) => d * w).join(" + ")} = ${val}`, "var(--ink)", 26);
+    },
+  };
+}
+
+/* --- 方べきの定理 --- */
+function powerGeo(pairs, inside) {
+  const halves = pairs.map(([a, b]) => inside ? (a + b) / 2 : (b - a) / 2), pw = pairs[0][0] * pairs[0][1];
+  const R = Math.max(...halves) + (inside ? 0.7 : 1.3), d = inside ? Math.sqrt(R * R - pw) : Math.sqrt(R * R + pw);
+  const u = inside ? Math.min(40, 230 / R) : Math.min(36, 470 / (d + R));
+  const O = inside ? { x: 320, y: 290 } : { x: 60 + R * u, y: 290 }, Pp = { x: O.x + d * u, y: O.y };
+  const lines = pairs.map(([a, b], i) => {
+    const sign = i ? 1 : -1;
+    if (inside) { const ph = Math.acos(clamp((b - a) / (2 * d), -1, 1)) * sign, dir = { x: Math.cos(ph), y: Math.sin(ph) }; return [V.add(Pp, V.mul(dir, a * u)), V.add(Pp, V.mul(dir, -b * u))]; }
+    const h = Math.sqrt(R * R - halves[i] ** 2), al = Math.asin(Math.min(1, h / d)) * sign, dir = { x: -Math.cos(al), y: Math.sin(al) };
+    return [V.add(Pp, V.mul(dir, a * u)), V.add(Pp, V.mul(dir, b * u))];
+  });
+  return { O, R: R * u, Pp, lines, u, d, pw };
+}
+function lenLabel(g, p, q, t, col, off) { const m = V.mid(p, q), n = V.mul(V.perp(V.norm(V.sub(q, p))), off); LK.text(g, m.x + n.x, m.y + n.y + 6, t, { size: 18, bold: true, fill: col }); }
+function rects(g, list, x0 = 600, y0 = 300, sc = 10) {
+  let y = y0;
+  list.forEach(([w, h, t, col]) => { LK.box(g, x0, y, w * sc, h * sc, { fill: col === "var(--warm)" ? "var(--warm-soft)" : col === "var(--blue)" ? "var(--blue-soft)" : "rgba(122,79,163,.15)", stroke: col, rx: 0 }); LK.text(g, x0 + w * sc / 2, y - 8, t, { size: 15, bold: true, fill: col }); y += h * sc + 36; });
+  LK.text(g, x0 + 60, y, "面積が同じ", { size: 15, bold: true });
+}
+function T_power({ PA, AB, PC, intro }) {
+  const PB = PA + AB, PD = PA * PB / PC, CD = PD - PC, G = powerGeo([[PA, PB], [PC, PD]]);
+  const [[A, B], [Cc, D]] = G.lines;
+  const base = T => { const g0 = T.at(0); s("circle", { cx: G.O.x, cy: G.O.y, r: G.R, class: "ink", "stroke-width": 2.5 }, g0); seg(g0, G.Pp, B, "", { stroke: "var(--warm)", "stroke-width": 3 }); seg(g0, G.Pp, D, "", { stroke: "var(--blue)", "stroke-width": 3 }); [[A, "A"], [B, "B"], [Cc, "C"], [D, "D"]].forEach(([p, n]) => { s("circle", { cx: p.x, cy: p.y, r: 5.5, class: "f-ink" }, g0); const dd = V.norm(V.sub(p, G.O)); s("text", { x: p.x + dd.x * 22, y: p.y + dd.y * 22 + 7, class: "pointlbl", "text-anchor": "middle", text: n }, g0); }); s("circle", { cx: G.Pp.x, cy: G.Pp.y, r: 6, class: "f-ink" }, g0); s("text", { x: G.Pp.x + 20, y: G.Pp.y + 7, class: "pointlbl", text: "P" }, g0); return g0; };
+  if (intro) return {
+    eq: [["PA × PB", 3, "w"], [" = ", 3], ["PC × PD", 3, "b"]],
+    steps: [
+      `円の外の点 P から 2 本の直線。円と A・B、C・D で交わる`,
+      `△PAC と △PDB に注目。∠P は共通。四角形 ABDC は円に内接するので ∠PAC = ∠PDB（外角 = 内対角）`,
+      `2 つの角が等しいので <b>相似</b>。対応する辺の比：PA : PD = PC : PB`,
+      `外側どうし・内側どうし をかけて <b class=cw>PA × PB</b> = <b class=cb>PC × PD</b>（右の長方形の面積が同じ）`,
+    ],
+    render(T, k) {
+      if (k >= 1) { const g = T.at(1); s("polygon", { points: [G.Pp, A, Cc].map(p => `${p.x},${p.y}`).join(" "), fill: "var(--warm-soft)", stroke: "var(--warm)", "stroke-width": 2 }, g); s("polygon", { points: [G.Pp, D, B].map(p => `${p.x},${p.y}`).join(" "), fill: "var(--blue-soft)", stroke: "var(--blue)", "stroke-width": 2, "stroke-dasharray": "6 4" }, g); arcAt(g, A, G.Pp, Cc, 26, "", { fill: "var(--gold)", "fill-opacity": .5 }); arcAt(g, D, G.Pp, B, 26, "", { fill: "var(--gold)", "fill-opacity": .5 }); }
+      base(T);
+      if (k >= 3) rects(T.at(3), [[PB, PA, "PA × PB", "var(--warm)"], [PD, PC, "PC × PD", "var(--blue)"]]);
+    },
+  };
+  return {
+    problem: `円の外の点 P から 2 本の直線をひき、円と A・B、C・D で交わる。PA = ${PA}、AB = ${AB}、PC = ${PC} のとき、<b>CD</b> の長さは？`,
+    eq: [["PA × PB", 2, "w"], [" = ", 2], ["PC × PD", 2, "b"], [`　${PA} × ${PB} = ${PC} × PD → PD = ${PD}`, 3], [`　CD = ${PD} − ${PC} = ${CD}`, 4]],
+    steps: [`わかっているのは PA = ${PA}、AB = ${AB}、PC = ${PC}`, `まず PB = PA + AB = ${PA} + ${AB} = <b>${PB}</b>（P から B まで）`, `方べきの定理：<b class=cw>PA × PB</b> = <b class=cb>PC × PD</b>`, `${PA} × ${PB} = ${PC} × PD → PD = ${PA * PB} ÷ ${PC} = <b>${PD}</b>`, `CD = PD − PC = ${PD} − ${PC} = <b>${CD}</b>`],
+    render(T, k) {
+      const g0 = base(T);
+      lenLabel(g0, G.Pp, A, String(PA), "var(--warm)", 22); lenLabel(g0, A, B, String(AB), "var(--warm)", 22); lenLabel(g0, G.Pp, Cc, String(PC), "var(--blue)", -22); lenLabel(g0, Cc, D, k >= 4 ? String(CD) : "?", "var(--blue)", -22);
+      if (k >= 1) { const m = V.mid(G.Pp, B); LK.chip(T.at(1), m.x, m.y - 60, `PB = ${PB}`, "var(--warm)", 17); }
+      if (k >= 2) rects(T.at(2), [[PB, PA, `${PA} × ${PB}`, "var(--warm)"], [k >= 3 ? PD : PB, PC, k >= 3 ? `${PC} × ${PD}` : `${PC} × PD`, "var(--blue)"]], 600, 330, Math.min(12, 180 / Math.max(PB, PD)));
+    },
+  };
+}
+function T_tangent({ PA, AB }) {
+  const PB = PA + AB, PT = Math.sqrt(PA * PB), G = powerGeo([[PA, PB]]), [[A, B]] = G.lines;
+  const th = Math.acos(G.R / (G.d * G.u)), Tp = { x: G.O.x + G.R * Math.cos(th), y: G.O.y + G.R * Math.sin(th) };
+  return {
+    problem: `円の外の点 P から 円に接線 PT をひく。また P を通る直線が円と A・B で交わる。PA = ${PA}、AB = ${AB} のとき、<b>PT</b> の長さは？`,
+    eq: [["PA × PB", 2, "w"], [" = ", 2], ["PT²", 2, "v"], [`　${PA} × ${PB} = ${PA * PB} → PT = ${PT}`, 3]],
+    steps: [`P から接線 PT と、A・B で交わる直線`, `PB = PA + AB = ${PA} + ${AB} = <b>${PB}</b>`, `接線のときの方べきの定理：<b class=cw>PA × PB</b> = <b class=cv>PT²</b>（C と D が重なって T になったと考える）`, `PT² = ${PA} × ${PB} = ${PA * PB} → PT = <b>${PT}</b>`],
+    render(T, k) {
+      const g0 = T.at(0);
+      s("circle", { cx: G.O.x, cy: G.O.y, r: G.R, class: "ink", "stroke-width": 2.5 }, g0);
+      seg(g0, G.Pp, B, "", { stroke: "var(--warm)", "stroke-width": 3 }); seg(g0, G.Pp, Tp, "", { stroke: "var(--violet)", "stroke-width": 3 }); seg(g0, G.O, Tp, "thin dash");
+      [[A, "A"], [B, "B"], [Tp, "T"]].forEach(([p, n]) => { s("circle", { cx: p.x, cy: p.y, r: 5.5, class: "f-ink" }, g0); const dd = V.norm(V.sub(p, G.O)); s("text", { x: p.x + dd.x * 22, y: p.y + dd.y * 22 + 7, class: "pointlbl", "text-anchor": "middle", text: n }, g0); });
+      s("text", { x: G.Pp.x + 20, y: G.Pp.y + 7, class: "pointlbl", text: "P" }, g0);
+      lenLabel(g0, G.Pp, A, String(PA), "var(--warm)", 22); lenLabel(g0, A, B, String(AB), "var(--warm)", 22); lenLabel(g0, G.Pp, Tp, k >= 3 ? String(PT) : "?", "var(--violet)", -22);
+      if (k >= 2) rects(T.at(2), [[PB, PA, `${PA} × ${PB}`, "var(--warm)"], [PT, PT, "PT × PT", "var(--violet)"]], 600, 300, Math.min(12, 180 / PB));
+    },
+  };
+}
+function T_powerIn({ PA, PB, PC }) {
+  const PD = PA * PB / PC, G = powerGeo([[PA, PB], [PC, PD]], true), [[A, B], [Cc, D]] = G.lines;
+  return {
+    problem: `円の 2 本の弦 AB、CD が 円の中の点 P で交わる。PA = ${PA}、PB = ${PB}、PC = ${PC} のとき、<b>PD</b> は？`,
+    eq: [["PA × PB", 1, "w"], [" = ", 1], ["PC × PD", 1, "b"], [`　${PA} × ${PB} = ${PC} × PD → PD = ${PD}`, 2]],
+    steps: [`P は円の <b>中</b>。弦 AB と CD が P で交わる`, `P が中でも 方べきの定理は同じ：<b class=cw>PA × PB</b> = <b class=cb>PC × PD</b>`, `${PA} × ${PB} = ${PC} × PD → PD = ${PA * PB} ÷ ${PC} = <b>${PD}</b>`],
+    render(T, k) {
+      const g0 = T.at(0);
+      s("circle", { cx: G.O.x, cy: G.O.y, r: G.R, class: "ink", "stroke-width": 2.5 }, g0);
+      seg(g0, A, B, "", { stroke: "var(--warm)", "stroke-width": 3 }); seg(g0, Cc, D, "", { stroke: "var(--blue)", "stroke-width": 3 });
+      [[A, "A"], [B, "B"], [Cc, "C"], [D, "D"]].forEach(([p, n]) => { s("circle", { cx: p.x, cy: p.y, r: 5.5, class: "f-ink" }, g0); const dd = V.norm(V.sub(p, G.O)); s("text", { x: p.x + dd.x * 22, y: p.y + dd.y * 22 + 7, class: "pointlbl", "text-anchor": "middle", text: n }, g0); });
+      s("circle", { cx: G.Pp.x, cy: G.Pp.y, r: 6, class: "f-ink" }, g0); s("text", { x: G.Pp.x + 10, y: G.Pp.y + 26, class: "pointlbl", text: "P" }, g0);
+      lenLabel(g0, G.Pp, A, String(PA), "var(--warm)", 18); lenLabel(g0, G.Pp, B, String(PB), "var(--warm)", -18); lenLabel(g0, G.Pp, Cc, String(PC), "var(--blue)", -18); lenLabel(g0, G.Pp, D, k >= 2 ? String(PD) : "?", "var(--blue)", 18);
+      if (k >= 1) rects(T.at(1), [[PB, PA, `${PA} × ${PB}`, "var(--warm)"], [k >= 2 ? PD : PB, PC, k >= 2 ? `${PC} × ${PD}` : `${PC} × PD`, "var(--blue)"]], 590, 300, Math.min(14, 180 / Math.max(PB, PD)));
+    },
+  };
+}
+</script>
+<script>
+"use strict";
+/* ===================== 授業：導入 → 例題 → 類題 → 応用 → 発展 ===================== */
+const KIND = {
+  intro: ["導入", "var(--accent)", "このタイプの問題と考え方"],
+  example: ["例題", "var(--blue)", "先生といっしょに解く"],
+  practice: ["類題", "var(--warm)", "自分で解いてみよう"],
+  apply: ["応用", "var(--violet)", "少しひねった問題"],
+  hard: ["発展", "var(--gold)", "むずかしい問題"],
+};
+const ASK = new Set(["practice", "apply", "hard"]);
+
+function unit(u) {
+  sim({ id: u.id, cat: "unit", name: u.name, sub: u.sub, lesson: true, build(c) { runUnit(c, u); } });
+}
+
+function runUnit(c, u) {
+  const parts = u.parts.map(p => {
+    const base = p.ref ? LESSONS[p.ref] : p.tpl;
+    return Object.assign({}, base, p);
+  });
+  const svg = c.svg(800, 560), G = s("g", {}, svg);
+  const saved = store.get("unit:" + u.id, {});
+  const answered = parts.map((p, i) => !ASK.has(p.kind) || !!(saved.ans && saved.ans[i] != null));
+  const result = parts.map((p, i) => (saved.ans && saved.ans[i]) || null);
+  const done = parts.map((p, i) => !!(saved.done && saved.done[i]));
+  let pi = 0, k = 0;
+  const save = () => store.set("unit:" + u.id, { done, ans: result });
+  const T = {
+    c, svg,
+    at(j) { if (j > k) return document.createElementNS(NS, "g"); const g = s("g", {}, G); if (j === k && k > 0) g.setAttribute("class", "fadein"); return g; },
+    now: j => j === k,
+    get k() { return k; },
+    move(el, from, to, delay, j) {
+      el.style.transition = "transform .7s cubic-bezier(.3,.7,.2,1)";
+      if (j === k) { el.style.transform = `translate(${from.x}px, ${from.y}px)`; setTimeout(() => { el.style.transform = `translate(${to.x}px, ${to.y}px)`; }, 40 + (delay || 0)); }
+      else el.style.transform = `translate(${to.x}px, ${to.y}px)`;
+    },
+  };
+  /* 操作パネル */
+  c.label("授業の流れ（タップでとべる）");
+  const chips = h("div", { class: "parts" });
+  c.ctrl.appendChild(chips);
+  const chipBtns = parts.map((p, i) => { const b = h("button", { type: "button", style: `--kc:${KIND[p.kind][1]}` }, `${KIND[p.kind][0]}`); b.addEventListener("click", () => goPart(i, 0)); chips.appendChild(b); return b; });
+  const prev = c.btn("◀ もどる", () => go(k - 1)); prev.classList.add("big");
+  const next = c.btn("次へ ▶", () => go(k + 1), { main: true }); next.classList.add("big");
+  c.row(prev, next);
+  const dots = h("div", { class: "dots" });
+  c.row(dots);
+  c.on(document, "keydown", e => {
+    if (e.target.closest && e.target.closest("input")) return;
+    if (e.key === "ArrowRight") { e.preventDefault(); go(k + 1); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); go(k - 1); }
+  });
+  const text = $("#text");
+  let ol = null, askBox = null;
+
+  function goPart(i, step) {
+    pi = clamp(i, 0, parts.length - 1);
+    const p = parts[pi], [kname, kcol, kdesc] = KIND[p.kind];
+    clear(text);
+    text.appendChild(h("div", { class: "khead", style: `--kc:${kcol}` }, h("b", {}, kname), ` ${pi + 1}/${parts.length}　${kdesc}`));
+    if (p.problem) text.appendChild(h("div", { class: "prob", "data-k": kname, style: `--kc:${kcol}`, html: p.problem }));
+    else if (p.lead) text.appendChild(h("div", { class: "prob", "data-k": kname, style: `--kc:${kcol}`, html: p.lead }));
+    askBox = null;
+    const listWrap = h("div", {});
+    if (ASK.has(p.kind)) {
+      askBox = h("div", { class: "ask" });
+      const opts = shuffle(p.choices.map((t, j) => ({ t, ok: j === 0 })));
+      const fb = h("div", { class: "fb" });
+      const btns = opts.map(o => {
+        const b = h("button", { type: "button", class: "choice", html: o.t });
+        b.addEventListener("click", () => answer(o, b));
+        askBox.appendChild(b); return b;
+      });
+      askBox.appendChild(fb);
+      const answer = (o, b) => {
+        if (answered[pi] && result[pi]) return;
+        answered[pi] = true; result[pi] = o.ok ? "ok" : "ng"; save();
+        showResult();
+        if (k === 0) go(1);
+      };
+      const showResult = () => {
+        btns.forEach((x, j) => { x.disabled = true; if (opts[j].ok) x.classList.add("right"); });
+        if (result[pi] === "ng") fb.innerHTML = `<span style="color:var(--warm)">ざんねん。正解は ${p.choices[0]}</span>　図で解説を見よう ▶`;
+        else if (result[pi] === "ok") fb.innerHTML = `<span style="color:var(--accent)">正解！</span>　図でたしかめよう ▶`;
+        else fb.innerHTML = `正解は ${p.choices[0]}`;
+        renderList();
+      };
+      if (answered[pi]) showResult(); else fb.textContent = "答えをえらぼう（わからなければ「解説を見る ▶」）";
+      text.appendChild(h("div", { class: "lab", style: "font-size:12px;color:var(--muted);margin:2px 0 4px" }, "答え"));
+      text.appendChild(askBox);
+    }
+    text.appendChild(listWrap);
+    function renderList() {
+      clear(listWrap);
+      if (!answered[pi]) { listWrap.appendChild(h("p", { style: "color:var(--muted);font-size:14px" }, "答えをえらぶと、図の解説が1ステップずつ見られます。")); ol = null; return; }
+      listWrap.appendChild(h("div", { class: "lab", style: "font-size:12px;color:var(--muted);margin-bottom:4px" }, p.kind === "intro" ? "考え方の流れ（タップでとべる）" : "図で解く流れ（タップでとべる）"));
+      ol = h("ol", { class: "steps" });
+      p.steps.forEach((st, j) => { const li = h("li", { html: `<span>${st}</span>` }); li.addEventListener("click", () => go(j)); ol.appendChild(li); });
+      listWrap.appendChild(ol);
+      mark();
+    }
+    renderList();
+    clear(dots);
+    p.steps.forEach((_, j) => { const d = h("i"); d.addEventListener("click", () => { if (answered[pi]) go(j); }); dots.appendChild(d); });
+    chipBtns.forEach((b, j) => { b.classList.toggle("cur", j === pi); b.classList.toggle("done", done[j]); });
+    const hint = $("#hint"); hint.hidden = false; hint.classList.add("part"); hint.textContent = `${kname}：${p.title || p.name || ""}`;
+    go(step === "last" ? p.steps.length - 1 : step);
+  }
+  function mark() {
+    if (ol) [...ol.children].forEach((li, j) => li.className = j < k ? "done" : j === k ? "cur" : "");
+    [...dots.children].forEach((d, j) => d.className = j < k ? "on" : j === k ? "cur" : "");
+  }
+  function go(n) {
+    const p = parts[pi], N = p.steps.length;
+    if (n >= N) { if (pi < parts.length - 1) goPart(pi + 1, 0); return; }
+    if (n < 0) { if (pi > 0) goPart(pi - 1, "last"); return; }
+    if (n > 0 && !answered[pi]) { answered[pi] = true; result[pi] = result[pi] || "skip"; save(); goPart(pi, n); return; }
+    k = n;
+    clear(G);
+    try { p.render(T, k); } catch (e) { console.error(e); }
+    const [kname, kcol] = KIND[p.kind];
+    const toks = (p.eq || []).filter(t => (t[3] == null || k <= t[3]) && (answered[pi] || t[1] <= k));
+    $("#fgen").innerHTML = `<span class="kbadge" style="--kc:${kcol}">${kname}</span>` + toks.map(([html, st, col]) =>
+      `<span class="tok${col ? " c" + col : ""}${st > k ? " ghost" : st === k ? " now" : ""}">${html}</span>`).join("");
+    let say = p.steps[k];
+    if (!answered[pi]) say += `<br><b style="color:var(--warm)">→ まず自分で解いてみよう！ 「答え」のボタンからえらんでね</b>`;
+    const lastAll = pi === parts.length - 1 && k === N - 1;
+    if (k === N - 1) { done[pi] = true; save(); chipBtns[pi].classList.add("done"); }
+    if (lastAll) say += `<br><b style="color:var(--accent)">🎉 この単元はおわり！「挑戦」のクイズでたしかめよう</b>`;
+    c.out(`<div class="lsay"><span style="font-family:var(--font-data);color:var(--muted);font-size:13px">${k + 1}/${N}　</span>${say}</div>`);
+    mark();
+    prev.disabled = pi === 0 && k === 0;
+    next.disabled = lastAll;
+    if (!answered[pi]) next.textContent = "解説を見る ▶";
+    else if (k === N - 1) next.textContent = lastAll ? "おわり" : `次は ${KIND[parts[pi + 1].kind][0]} ▶`;
+    else next.textContent = "次へ ▶";
+  }
+  goPart(0, 0);
+}
+
+/* ---------- 単元 ---------- */
+unit({
+  id: "u-perm", name: "順列", sub: "ならべ方の数え方",
+  parts: [
+    { kind: "intro", ref: "f-perm", title: "順列とは", lead: "「えらんで <b>1列にならべる</b>」タイプの問題。なぜ かけ算で数えられるのかを図で見よう。" },
+    { kind: "example", title: "委員長と副委員長", problem: "A・B・C・D の 4 人から、委員長と副委員長を 1 人ずつえらぶ方法は何通り？", tpl: T_perm({ n: 4, r: 2, slot: i => ["委員長", "副委員長"][i], intro: "4 人から 委員長 → 副委員長 の順に席をうめる（役がちがうので ならべるのと同じ）" }) },
+    { kind: "practice", title: "リレーの走順", problem: "6 人の選手から、第1走者・第2走者・第3走者を決める方法は何通り？", tpl: T_perm({ n: 6, r: 3, names: ["1", "2", "3", "4", "5", "6"], slot: i => `第${i + 1}走者`, intro: "6 人から 3 つの走順の席をうめる" }), choices: ["120 通り", "20 通り", "216 通り", "18 通り"] },
+    { kind: "apply", ref: "w-ends", title: "両はしが女子", choices: ["12 通り", "24 通り", "6 通り", "120 通り"] },
+    { kind: "hard", ref: "w-adj", title: "となり合う", choices: ["48 通り", "24 通り", "120 通り", "96 通り"] },
+  ],
+});
+unit({
+  id: "u-comb", name: "組合せ", sub: "えらぶだけの数え方",
+  parts: [
+    { kind: "intro", ref: "f-comb", title: "組合せとは", lead: "「<b>えらぶだけ</b>（順番は関係ない）」タイプの問題。順列とのちがいを図で見よう。" },
+    { kind: "example", title: "そうじ当番", problem: "A〜E の 5 人から、そうじ当番を 2 人えらぶ方法は何通り？", tpl: T_comb({ n: 5, r: 2, intro: "5 人から 2 人えらぶ。当番に順番はない" }) },
+    { kind: "practice", title: "トッピング", problem: "7 種類のトッピングから 3 種類をえらぶ方法は何通り？", tpl: T_comb({ n: 7, r: 3, unit: "種類", intro: "7 種類から 3 種類えらぶ（えらぶ順番は関係ない）" }), choices: ["35 通り", "210 通り", "21 通り", "343 通り"] },
+    { kind: "apply", ref: "w-group", title: "組に分ける", choices: ["15 通り", "90 通り", "30 通り", "45 通り"] },
+    { kind: "hard", ref: "w-route", title: "最短経路", choices: ["30 通り", "56 通り", "13 通り", "26 通り"] },
+  ],
+});
+unit({
+  id: "u-set", name: "集合の要素の個数", sub: "ベン図で数える",
+  parts: [
+    { kind: "intro", ref: "f-union", title: "n(A∪B) の公式", lead: "「<b>または</b>」の個数を数えるタイプ。重なりを 2 回数えないしくみを図で見よう。" },
+    { kind: "example", title: "2 または 5 の倍数", problem: "1 から 30 までの整数のうち、2 または 5 でわり切れる数はいくつ？", tpl: T_venn({ N: 30, a: 2, b: 5 }) },
+    { kind: "practice", title: "3 または 4 の倍数", problem: "1 から 50 までの整数のうち、3 または 4 でわり切れる数はいくつ？", tpl: T_venn({ N: 50, a: 3, b: 4 }), choices: ["24 個", "28 個", "20 個", "26 個"] },
+    { kind: "apply", ref: "w-venn", title: "どちらでもわり切れない", choices: ["33 個", "67 個", "17 個", "50 個"] },
+    { kind: "hard", title: "最小公倍数に注意", problem: "1 から 60 までの整数のうち、<b>4 でも 6 でもわり切れない</b>数はいくつ？", tpl: T_venn({ N: 60, a: 4, b: 6, outside: true }), choices: ["40 個", "37 個", "35 個", "20 個"] },
+  ],
+});
+unit({
+  id: "u-circ", name: "円順列", sub: "まるくならべる",
+  parts: [
+    { kind: "intro", ref: "f-circ", title: "円順列とは", lead: "「<b>まるくならべる</b>」タイプ。回して同じものをどう数えるかを図で見よう。" },
+    { kind: "example", title: "5 人の円卓", problem: "5 人が円卓にすわる方法は何通り？", tpl: T_circ({ n: 5 }) },
+    { kind: "practice", title: "6 人の円卓", problem: "6 人が円卓にすわる方法は何通り？", tpl: T_circ({ n: 6 }), choices: ["120 通り", "720 通り", "60 通り", "24 通り"] },
+    { kind: "apply", title: "2 人がとなり合う", problem: "A・B をふくむ 6 人が円卓にすわる。<b>A と B がとなり合う</b>すわり方は何通り？", tpl: T_circAdj({ n: 6 }), choices: ["48 通り", "24 通り", "120 通り", "240 通り"] },
+    { kind: "hard", title: "じゅず順列", problem: "色のちがう 5 個の玉にひもを通して、輪（ブレスレット）をつくる方法は何通り？", tpl: T_juzu({ n: 5 }), choices: ["12 通り", "24 通り", "60 通り", "6 通り"] },
+  ],
+});
+unit({
+  id: "u-prob", name: "確率の基本", sub: "同様に確からしい・余事象",
+  parts: [
+    { kind: "intro", title: "確率の考え方", lead: "確率 = <b>（あてはまる数）÷（全部の数）</b>。ただし、どれも同じくらい起こるように数えるのがポイント。", tpl: T_dice({ label: "和が 7", pred: (a, b) => a + b === 7 }) },
+    { kind: "example", ref: "w-balls", title: "袋から 2 個" },
+    { kind: "practice", title: "袋から 2 個（類題）", tpl: T_balls({ red: 4, white: 3, want: "rr" }), choices: ["2/7", "4/7", "3/7", "1/2"] },
+    { kind: "apply", ref: "f-comp", title: "少なくとも 1 つ", problem: "2 つのサイコロをふる。<b>少なくとも 1 つ</b> 6 の目が出る確率は？", choices: ["11/36", "1/6", "1/3", "25/36"] },
+    { kind: "hard", ref: "w-janken", title: "じゃんけん", choices: ["1/3", "1/9", "2/9", "1/27"] },
+  ],
+});
+unit({
+  id: "u-binom", name: "独立な試行・反復試行", sub: "かけ算でつなぐ確率",
+  parts: [
+    { kind: "intro", ref: "f-indep", title: "独立な試行", lead: "おたがいに影響しない 2 つの試行。確率は <b>かけ算</b>。そのわけを面積で見よう。" },
+    { kind: "example", ref: "f-binom", title: "サイコロ 3 回", problem: "サイコロを 3 回ふる。1 の目が <b>ちょうど 2 回</b> 出る確率は？" },
+    { kind: "practice", title: "コイン 4 回", problem: "コインを 4 回なげる。表が <b>ちょうど 2 回</b> 出る確率は？", tpl: T_binom({ n: 4, k: 2, pn: 1, pd: 2, yes: "表", no: "裏", intro: "コインを 4 回なげる。表がちょうど 2 回" }), choices: ["3/8", "1/4", "1/2", "3/16"] },
+    { kind: "apply", title: "くじを 5 回", problem: "当たる確率 1/3 のくじを 5 回引く（毎回もとにもどす）。<b>ちょうど 3 回</b> 当たる確率は？", tpl: T_binom({ n: 5, k: 3, pn: 1, pd: 3, yes: "当", no: "外", intro: "当たる確率 1/3 のくじを 5 回。ちょうど 3 回当たる" }), choices: ["40/243", "10/243", "4/243", "80/243"] },
+    { kind: "hard", title: "少なくとも 1 回", problem: "サイコロを 4 回ふる。1 の目が <b>少なくとも 1 回</b> 出る確率は？", tpl: T_atleast({ n: 4, pn: 1, pd: 6, what: "サイコロの 1 の目" }), choices: ["671/1296", "625/1296", "2/3", "1/1296"] },
+  ],
+});
+unit({
+  id: "u-cond", name: "条件付き確率", sub: "分母がかわる確率",
+  parts: [
+    { kind: "intro", ref: "f-cond", title: "条件付き確率とは", lead: "「<b>A だったとき</b> B である確率」。分母が「全体」から「A」にかわることを図で見よう。" },
+    { kind: "example", title: "部活と通学", problem: "40 人のクラスで、運動部は 20 人、そのうち自転車通学は 12 人。運動部でない 20 人のうち自転車通学は 6 人。<b>運動部の人をえらんだとき</b>、自転車通学である確率は？", tpl: T_cond2({ rows: [[12, 8], [6, 14]], A: "運動部", nA: "運動部でない", B: "自転車", nB: "自転車でない", intro: "表にまとめる。A = 運動部、B = 自転車通学" }) },
+    { kind: "practice", title: "女子とめがね", problem: "30 人のクラスで、女子 15 人のうち めがねは 6 人、男子 15 人のうち めがねは 5 人。<b>女子をえらんだとき</b>、めがねである確率は？", tpl: T_cond2({ rows: [[6, 9], [5, 10]], A: "女子", nA: "男子", B: "めがね", nB: "めがねなし", intro: "表にまとめる。A = 女子、B = めがね" }), choices: ["2/5", "1/5", "6/11", "11/30"] },
+    { kind: "apply", ref: "w-lot", title: "くじ引きの順番", choices: ["3/10", "2/9", "1/3", "27/100"] },
+    { kind: "hard", title: "検査の陽性", problem: "ある病気にかかっている人は 2%。検査は、病気の人の 90% を陽性にし、病気でない人の 10% もまちがって陽性にする。<b>陽性だった人が本当に病気である確率</b>は？", tpl: T_test({ prev: 2, sens: 90, fp: 10 }), choices: ["約 16%", "約 90%", "約 50%", "約 2%"] },
+  ],
+});
+unit({
+  id: "u-circle", name: "円周角の定理", sub: "円の中の角",
+  parts: [
+    { kind: "intro", ref: "f-insc", title: "円周角 = 中心角 ÷ 2", lead: "同じ弧に対する <b>円周角は中心角の半分</b>。なぜそうなるかを図で証明しよう。" },
+    { kind: "example", title: "中心角から円周角", tpl: T_inscX({ central: 100 }) },
+    { kind: "practice", title: "直径と円周角", tpl: T_diam({ angA: 28 }), choices: ["62°", "28°", "90°", "56°"] },
+    { kind: "apply", ref: "w-angle", title: "同じ弧をさがす", choices: ["105°", "75°", "70°", "110°"] },
+    { kind: "hard", title: "円に内接する四角形", tpl: T_quad({ A: 85, B: 110 }), choices: ["∠C = 95°, ∠D = 70°", "∠C = 85°, ∠D = 110°", "∠C = 95°, ∠D = 110°", "∠C = 105°, ∠D = 70°"] },
+  ],
+});
+unit({
+  id: "u-power", name: "方べきの定理", sub: "円と線分の長さ",
+  parts: [
+    { kind: "intro", title: "方べきの定理とは", lead: "円と 2 本の直線の長さの関係：<b>PA × PB = PC × PD</b>。なぜ成り立つかを相似で見よう。", tpl: T_power({ PA: 4, AB: 5, PC: 3, intro: true }) },
+    { kind: "example", ref: "w-power", title: "長さを求める" },
+    { kind: "practice", title: "長さを求める（類題）", tpl: T_power({ PA: 3, AB: 5, PC: 4 }), choices: ["2", "6", "4", "3"] },
+    { kind: "apply", title: "接線の長さ", tpl: T_tangent({ PA: 4, AB: 5 }), choices: ["6", "9", "20", "3"] },
+    { kind: "hard", title: "P が円の中", tpl: T_powerIn({ PA: 3, PB: 4, PC: 2 }), choices: ["6", "8/3", "5", "3"] },
+  ],
+});
+unit({
+  id: "u-div", name: "約数と最大公約数", sub: "素因数分解・互除法",
+  parts: [
+    { kind: "intro", ref: "f-div", title: "約数の個数と和", lead: "素因数分解すると、約数は <b>表にならべて数えられる</b>。" },
+    { kind: "example", title: "36 の約数", problem: "36 の正の約数の個数と、その和を求めよ。", tpl: T_div({ N: 36 }) },
+    { kind: "practice", title: "200 の約数", problem: "200 の正の約数は何個？", tpl: T_div({ N: 200 }), choices: ["12 個", "6 個", "10 個", "8 個"] },
+    { kind: "apply", title: "互除法", problem: "91 と 35 の最大公約数を、ユークリッドの互除法で求めよ。", tpl: T_euclid({ a: 91, b: 35 }), choices: ["7", "1", "5", "35"] },
+    { kind: "hard", title: "大きな数の互除法", problem: "1001 と 221 の最大公約数を求めよ。", tpl: T_euclid({ a: 1001, b: 221 }), choices: ["13", "7", "11", "17"] },
+  ],
+});
+unit({
+  id: "u-base", name: "n 進法", sub: "位取りと変換",
+  parts: [
+    { kind: "intro", title: "2 進法のしくみ", lead: "10 進法は 10 個で くり上がり。<b>2 進法は 2 個で くり上がり</b>。電球のオン（1）・オフ（0）で数を表す。", tpl: T_toDec({ digs: "1011", b: 2, intro: true }) },
+    { kind: "example", ref: "w-base", title: "10 進法 → 2 進法" },
+    { kind: "practice", title: "50 を 2 進法に", problem: "10 進法の 50 を 2 進法で表せ。", tpl: T_base({ N: 50, b: 2 }), choices: ["110010", "100110", "110001", "101100"] },
+    { kind: "apply", title: "100 を 3 進法に", problem: "10 進法の 100 を 3 進法で表せ。", tpl: T_base({ N: 100, b: 3 }), choices: ["10201", "10210", "12001", "2101"] },
+    { kind: "hard", title: "2 進法 → 10 進法", problem: "2 進法の 101101<sub>(2)</sub> を 10 進法で表せ。", tpl: T_toDec({ digs: "101101", b: 2 }), choices: ["45", "43", "101", "54"] },
+  ],
+});
+</script>
+<script>
+"use strict";
 /* ===================== 挑戦（クイズ） ===================== */
 function fracStr(n, d) { const g = gcd(n, d); n /= g; d /= g; return d === 1 ? String(n) : `${n}/${d}`; }
 function distinct(ans, cands) {
@@ -3564,7 +4449,7 @@ $("#maxBtn").addEventListener("click", () => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#stageWrap").classList.contains("is-max")) $("#maxBtn").click(); });
 window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (id && (!current || current.def.id !== id)) open(id, false); });
-open(location.hash.slice(1) || store.get("last", "f-perm"));
+open(location.hash.slice(1) || store.get("last", "u-perm"));
 </script>
 </body>
 </html>
