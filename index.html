@@ -317,6 +317,21 @@ body.fz2 .fband, body.fz2 .card-body, body.fz2 .lib { zoom: 1.3; }
 .rec th:first-child, .rec td:first-child { text-align: left; }
 .rec .ok { color: var(--accent); font-weight: 700; } .rec .ng { color: var(--warm); font-weight: 700; } .rec .no { color: var(--muted); }
 .rv { display: flex; flex-wrap: wrap; gap: 8px; }
+.task .tname { font-size: 15px; margin-bottom: 10px; }
+.tmsg { border-left: 4px solid var(--warm); background: var(--warm-soft); padding: 10px 14px; margin: 0 0 14px; font-size: 16px; line-height: 1.6; border-radius: 0 4px 4px 0; }
+.tmsg .tdue { font-weight: 700; color: var(--warm); margin-top: 2px; }
+.tcard { border: 1.5px solid var(--line); border-radius: 6px; padding: 12px 14px; margin: 0 0 10px; background: var(--panel); }
+.tcard.next { border: 2.5px solid var(--accent); box-shadow: 3px 3px 0 var(--accent-soft); }
+.tcard.clear { opacity: .72; }
+.tcard .tt { font-size: 13px; font-weight: 700; color: var(--muted); }
+.tcard.next .tt { color: var(--accent); } .tcard.clear .tt { color: var(--accent); }
+.tcard .tn { font-family: var(--font-display); font-size: 21px; font-weight: 800; margin: 2px 0 6px; }
+.tsteps { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.tsteps .on { color: var(--accent); font-weight: 700; }
+.tpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin-bottom: 8px; }
+.tpick label { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; font-size: 15px; background: var(--panel); cursor: pointer; }
+.tpick input { width: 18px; height: 18px; accent-color: var(--accent); }
+.tshare { margin-top: 8px; }
 .rv a { text-decoration: none; }
 @media print {
   .top, .lib, .card, .stage-hint, .rot-tip, .btools, .fsnav, .penbar, .tools { display: none !important; }
@@ -517,6 +532,7 @@ const COLORS = ["#c0392b", "#2c7a5f", "#2f5f9e", "#c9930e", "#7a4fa3", "#d9661f"
 /* ===== アプリの骨組み ===== */
 const CATS = [
   { id: "unit", name: "授業", ico: "📖" },
+  { id: "task", name: "課題", ico: "📮" },
   { id: "cnt", name: "場合の数", ico: "🔢" },
   { id: "prob", name: "確率", ico: "🎲" },
   { id: "geo", name: "図形の性質", ico: "📐" },
@@ -668,7 +684,7 @@ function open(id, push = true) {
   try { def.build(ctx); } catch (e) { console.error(e); ctx.out("表示できませんでした：" + e.message); }
   if (!ctx.fixedFit) setTimeout(fitStage, 30);
   $(".fsnav").classList.toggle("has", !!ctx.nav);
-  if (push && !def.maker && location.hash !== "#" + def.id) history.replaceState(null, "", "#" + def.id);
+  if (push && !def.maker && !def.keepHash && location.hash !== "#" + def.id) history.replaceState(null, "", "#" + def.id);
   store.set("last", def.id);
 }
 function setTab(t) {
@@ -690,9 +706,9 @@ function renderNav(def) {
   const cat = CATS.find(c => c.id === def.cat);
   let lastKind = null, num = 0;
   listOf(def.cat).forEach(d => {
-    const kind = d.maker ? "maker" : d.cat === "unit" ? "unit" : d.cat === "quiz" ? "quiz" : "sim";
+    const kind = d.maker ? "maker" : d.teacher ? "teacher" : d.cat === "unit" ? "unit" : d.cat === "quiz" || d.cat === "task" ? "quiz" : "sim";
     if (kind !== lastKind) {
-      lib.appendChild(h("h2", {}, { maker: "例題を入れて図で解説", sim: "さわって確かめる", unit: cat.name, quiz: cat.name }[kind]));
+      lib.appendChild(h("h2", {}, { maker: "例題を入れて図で解説", sim: "さわって確かめる", unit: cat.name, quiz: cat.name, teacher: "先生用" }[kind]));
       lastKind = kind; num = 0;
     }
     num++;
@@ -4765,8 +4781,9 @@ const KIND = {
   practice: ["類題", "var(--warm)", "自分で解いてみよう"],
   apply: ["応用", "var(--violet)", "少しひねった問題"],
   hard: ["発展", "var(--gold)", "むずかしい問題"],
+  test: ["テスト", "var(--warm)", "確認テスト"],
 };
-const ASK = new Set(["practice", "apply", "hard"]);
+const ASK = new Set(["practice", "apply", "hard", "test"]);
 
 function unit(u) {
   sim({ id: u.id, cat: "unit", name: u.name, sub: u.sub, lesson: true, build(c) { runUnit(c, u); } });
@@ -4782,7 +4799,13 @@ function runUnit(c, u) {
   const answered = parts.map((p, i) => !ASK.has(p.kind) || !!(saved.ans && saved.ans[i] != null));
   const result = parts.map((p, i) => (saved.ans && saved.ans[i]) || null);
   const done = parts.map((p, i) => !!(saved.done && saved.done[i]));
-  let pi = 0, k = 0, resumed = false;
+  let pi = 0, k = 0, resumed = false, lastT = 0;
+  const meta = UNIT_META[u.unitId || u.id] || {};
+  /* 勉強した時間（5 分以上 何もしなかったときは数えない） */
+  const tick = () => {
+    const now = Date.now(), d = now - lastT; lastT = now;
+    if (d > 0 && d < 300000) { const key = "time:" + (u.unitId || u.id); store.set(key, store.get(key, 0) + Math.round(d / 1000)); }
+  };
   const save = () => store.set("unit:" + u.id, { done, ans: result });
   const T = {
     c, svg,
@@ -4821,7 +4844,8 @@ function runUnit(c, u) {
     goPart(pi, 0);
   }
   function summaryCard() {
-    const meta = UNIT_META[u.id] || {}, asks = parts.map((p, i) => [p, i]).filter(([p]) => ASK.has(p.kind));
+    if (u.summary) return u.summary(result);
+    const asks = parts.map((p, i) => [p, i]).filter(([p]) => ASK.has(p.kind));
     const okN = asks.filter(([, i]) => result[i] === "ok" || result[i] === "ok2").length;
     const box = h("div", { class: "summary" });
     if (okN === asks.length) box.appendChild(h("div", { class: "stamp" }, "合格"));
@@ -4829,6 +4853,9 @@ function runUnit(c, u) {
     box.appendChild(h("ul", { html: (meta.summary || []).map(x => `<li>${termify(x)}</li>`).join("") }));
     const lab = { ok: "○", ok2: "○（2回目）", ng: "×", skip: "−" };
     box.appendChild(h("div", { class: "score", html: asks.map(([p, i]) => `${KIND[p.kind][0]} ${lab[result[i]] || "−"}`).join("　") + `<br>${okN === asks.length ? "全部できた！" : "× や − の問題は「挑戦 → 学習のきろく」から もう一度できるよ"}` }));
+    if (SIMS.some(d => d.id === "unittest") && VARIANTS[u.id]) box.appendChild(h("div", { class: "rv", style: "margin-top:10px" },
+      h("a", { class: "btn main", href: `#unittest?u=${u.id}` }, "📝 確認テストへ ▶"),
+      store.get("task", null) ? h("a", { class: "btn", href: "#task" }, "📮 課題の画面へ") : null));
     return box;
   }
 
@@ -4854,7 +4881,7 @@ function runUnit(c, u) {
       const answer = (o, b) => {
         if (answered[pi] && result[pi]) return;
         /* 1回目のまちがいは答えを見せず、ヒントを出してもう一度 */
-        if (!o.ok && tries === 0) {
+        if (!o.ok && tries === 0 && !u.isTest) {
           tries++; b.disabled = true; b.classList.add("wrong");
           fb.innerHTML = `<span style="color:var(--warm)">ざんねん！</span> ${p.hint ? "ヒントを見て、" : ""}もう一度えらんでみよう`;
           moreHint();
@@ -4877,7 +4904,7 @@ function runUnit(c, u) {
       text.appendChild(h("div", { class: "askh" }, "答えをえらぼう"));
       text.appendChild(askBox);
       /* ヒント：おすたびに1つずつ */
-      if (p.hint) {
+      if (p.hint && !u.isTest) {
         const hs = [].concat(p.hint), box = h("div", { class: "hints" });
         let shown = 0;
         const hb = h("button", { type: "button", class: "hintbtn" }, "💡 ヒントを見る");
@@ -4925,6 +4952,7 @@ function runUnit(c, u) {
     if (n < 0) { if (pi > 0) goPart(pi - 1, "last"); return; }
     if (n > 0 && !answered[pi]) { answered[pi] = true; result[pi] = result[pi] || "skip"; save(); goPart(pi, n); return; }
     k = n;
+    tick();
     clear(G);
     try { p.render(T, k); } catch (e) { console.error(e); }
     const [kname, kcol] = KIND[p.kind];
@@ -4937,7 +4965,8 @@ function runUnit(c, u) {
     if (k === N - 1) { done[pi] = true; save(); chipBtns[pi].classList.add("done"); }
     if (k === N - 1 && result[pi] === "ng" && p.more) say += `<br><span style="color:var(--muted);font-size:.9em">まちがえたところは「📖 くわしい解説」で確かめよう</span>`;
     if (resumed) { say = `<span style="color:var(--accent);font-size:.9em">▶ 前回の続きから（「◀ もどる」で前の段階へ）</span><br>` + say; resumed = false; }
-    if (pi === 0 && k === 0 && meta.goal) say = `<span style="color:var(--accent);font-weight:700">🎯 めあて：${meta.goal}</span><br>` + say;
+    if (pi === 0 && k === 0 && u.isTest) say = `<span style="color:var(--accent);font-weight:700">📝 確認テスト：${parts.length} 問中 ${u.pass || 4} 問以上で合格。ヒントなし・1 回勝負！</span><br>` + say;
+    else if (pi === 0 && k === 0 && meta.goal) say = `<span style="color:var(--accent);font-weight:700">🎯 めあて：${meta.goal}</span><br>` + say;
     if (lastAll) say += `<br><b style="color:var(--accent)">🎉 この単元はおわり！ 下の「まとめ」を見よう</b>`;
     c.out(`<div class="lsay"><span style="font-family:var(--font-data);color:var(--muted);font-size:13px">${k + 1}/${N}　</span>${termify(say)}</div>`);
     /* 段階の最後：数字をかえてもう1問 */
@@ -4952,7 +4981,6 @@ function runUnit(c, u) {
     else next.textContent = "次へ ▶";
   }
   c.refit = () => { const kk = k, p = parts[pi]; k = p.steps.length - 1; clear(G); try { p.render(T, k); } catch (e) { } fitStage(); go(kk); };
-  const meta = UNIT_META[u.id] || {};
   const todo = done.findIndex(d => !d);
   if (hashQuery.part != null) {
     const pp = clamp(+hashQuery.part, 0, parts.length - 1);
@@ -5213,7 +5241,15 @@ const ri = (a, b) => a + rnd(b - a + 1);
 function choices4(ans, cands, unit = "") {
   const out = [String(ans) + unit];
   cands.forEach(c2 => { const t = String(c2) + unit; if (c2 != null && !Number.isNaN(c2) && !out.includes(t)) out.push(t); });
-  let d = 1; while (out.length < 4) { const t = (typeof ans === "number" ? ans + d * (d % 2 ? 1 : -1) * 2 : ans + "?") + unit; if (!out.includes(t)) out.push(t); d++; }
+  /* たりないときは 答えを少しずらした まちがいを作る */
+  const alt = d => {
+    const a = String(ans), fr = a.match(/^(\d+)\/(\d+)$/);
+    if (typeof ans === "number" || /^\d+$/.test(a)) { const v = +a + d * (d % 2 ? 1 : -1); return v > 0 ? v : +a + d + 1; }
+    if (fr) { const x = +fr[1], y = +fr[2]; return d % 2 ? fs(x + (d + 1) / 2, y + (d + 1)) : fs(x, y + d / 2); }
+    if (/^[01]+$/.test(a)) { const i = 1 + (d - 1) % Math.max(1, a.length - 1); return a.slice(0, i) + (a[i] === "1" ? "0" : "1") + a.slice(i + 1); }
+    return a + "′".repeat(d);
+  };
+  let d = 1; while (out.length < 4 && d < 60) { const t = String(alt(d)) + unit; if (!out.includes(t)) out.push(t); d++; }
   return out.slice(0, 4);
 }
 const stepsMore = tpl => `<div class="calc">${tpl.steps.join("<br>")}</div>`;
@@ -5224,6 +5260,17 @@ const VARIANTS = {
   "u-circ": () => { const n = ri(4, 8), tpl = T_circ({ n }); return { problem: `${n} 人が円卓にすわる方法は何通り？`, tpl, choices: choices4(fact(n - 1), [fact(n), fact(n - 1) / 2, fact(n - 2)], " 通り"), hint: ["回して同じものは 1 通り → 1 人を固定", `のこり ${n - 1} 人のならべ方`], more: stepsMore(tpl) }; },
   "u-prob": () => { const red = ri(3, 5), white = ri(2, 4), n = red + white, tpl = T_balls({ red, white, want: "rr" }), a = nCr(red, 2), t = nCr(n, 2); return { problem: tpl.problem, tpl, choices: choices4(fs(a, t), [fs(red, n), fs(a + nCr(white, 2), t), fs(red * red, n * n)]), hint: [`全部の取り出し方は ${n} 個から 2 個 → ${Csub(n, 2)}`, `赤 ${red} 個から 2 個 → ${Csub(red, 2)}`], more: stepsMore(tpl) }; },
   "u-binom": () => { const n = ri(3, 5), k = ri(1, n - 1), tpl = T_binom({ n, k, pn: 1, pd: 2, yes: "表", no: "裏", intro: `コインを ${n} 回なげる。表がちょうど ${k} 回` }), d = 2 ** n; return { problem: `コインを ${n} 回なげる。表が <b>ちょうど ${k} 回</b> 出る確率は？`, tpl, choices: choices4(fs(nCr(n, k), d), [fs(1, d), fs(k, n), fs(1, 2 ** k)]), hint: [`表が出る ${k} 回の場所をえらぶ → ${Csub(n, k)}`, `1 つのならびの確率は (1/2)<sup>${n}</sup>`], more: stepsMore(tpl) }; },
+  "u-cond": () => {
+    const [A, nA, B, nB] = [["女子", "男子", "めがね", "めがねなし"], ["運動部", "運動部でない", "自転車通学", "自転車でない"], ["1 年生", "2 年生", "犬を飼っている", "飼っていない"], ["朝食を食べた", "食べなかった", "テスト合格", "不合格"]][rnd(4)];
+    let ab, anb, nab, nanb, at, tot;
+    for (let t = 0; t < 80; t++) {
+      at = ri(10, 24); ab = ri(2, at - 2); anb = at - ab; const nt = ri(10, 24); nab = ri(1, nt - 2); nanb = nt - nab; tot = at + nt;
+      const set = new Set([fs(ab, at), fs(ab, tot), fs(ab, ab + nab), fs(at, tot)]);
+      if (set.size === 4 && fs(ab, at).includes("/")) break;
+    }
+    const tpl = T_cond2({ rows: [[ab, anb], [nab, nanb]], A, nA, B, nB, intro: `表にまとめる。A = ${A}、B = ${B}` });
+    return { problem: `${tot} 人を調べると、「${A}」が ${at} 人で そのうち「${B}」は ${ab} 人、「${nA}」が ${tot - at} 人で そのうち「${B}」は ${nab} 人。<b>「${A}」の人をえらんだとき</b>、「${B}」である確率は？`, tpl, choices: choices4(fs(ab, at), [fs(ab, tot), fs(ab, ab + nab), fs(at, tot)]), hint: [`「${A}」の人をえらんだとき → 「${A}」の行だけを見る`, `「${A}」${at} 人のうち、「${B}」は ${ab} 人`], more: stepsMore(tpl) };
+  },
   "u-circle": () => { const a = ri(3, 15) * 5, tpl = T_diam({ angA: a }); return { problem: tpl.problem, tpl, choices: choices4(90 - a, [a, 180 - a, 2 * a], "°"), hint: ["直径に対する円周角は 90°", "△ABC の内角の和は 180°"], more: stepsMore(tpl) }; },
   "u-power": () => { let PA, AB, PC, prod; for (let t = 0; t < 50; t++) { PA = ri(2, 5); AB = ri(2, 7); prod = PA * (PA + AB); const ds = []; for (let d = 2; d * d < prod; d++) if (prod % d === 0 && d !== PA) ds.push(d); if (ds.length) { PC = ds[rnd(ds.length)]; break; } } const tpl = T_power({ PA, AB, PC }), PD = prod / PC; return { problem: tpl.problem, tpl, choices: choices4(PD - PC, [PD, prod / PA, AB]), hint: ["まず PB = PA + AB", "PA × PB = PC × PD から PD、CD = PD − PC"], more: stepsMore(tpl) }; },
   "u-div": () => { const N = [24, 36, 48, 54, 72, 80, 96, 100, 108, 112, 144, 200, 225, 288, 392, 500][rnd(16)], f = factorize(N), cnt = f.reduce((s2, [, e]) => s2 * (e + 1), 1), tpl = T_div({ N }); return { problem: `${N} の正の約数は何個？`, tpl, choices: choices4(cnt, [f.reduce((s2, [, e]) => s2 * e, 1), cnt - 1, cnt * 2], " 個"), hint: [`${N} を素因数分解しよう`, "指数に 1 をたして かける"], more: stepsMore(tpl) }; },
@@ -6147,6 +6194,270 @@ maker({
 </script>
 <script>
 "use strict";
+/* ===================== 課題（通信教育用：先生がリンクで出す → 生徒がやる → 結果を送る） ===================== */
+const UNIT_IDS = () => SIMS.filter(d => d.cat === "unit").map(d => d.id);
+const unitName = id => (SIMS.find(d => d.id === id) || {}).name || id;
+const PASS = 4, TESTN = 5;
+
+/* 単元ごとの進み具合 */
+function unitStat(id) {
+  const sv = store.get("unit:" + id, {}), ans = sv.ans || [];
+  const asks = [2, 3, 4], ok = asks.filter(i => ans[i] === "ok" || ans[i] === "ok2").length;
+  const t = store.get("test:" + id, null);
+  return { done: (sv.done || []).filter(Boolean).length, ok, asks: asks.length, best: t ? t.best : null, last: t ? t.score : null, min: Math.round(store.get("time:" + id, 0) / 60) };
+}
+const unitClear = (st, test) => st.done >= 5 && (!test || (st.best != null && st.best >= PASS));
+function taskLeft() {
+  const t = store.get("task", null);
+  return !!(t && t.units && t.units.some(id => !unitClear(unitStat(id), t.test)));
+}
+
+/* 日本語も入る JSON を URL に入れる（base64url） */
+function pack(obj) {
+  const b = new TextEncoder().encode(JSON.stringify(obj));
+  let bin = ""; b.forEach(x => { bin += String.fromCharCode(x); });
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function unpack(str) {
+  try {
+    const b64 = String(str).trim().replace(/-/g, "+").replace(/_/g, "/");
+    const bin = atob(b64 + "===".slice((b64.length + 3) % 4));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))));
+  } catch (e) { return null; }
+}
+const baseURL = () => location.href.split("#")[0];
+function copyText(text, msgEl, okMsg) {
+  const ok = () => { msgEl.textContent = okMsg; };
+  const fail = () => { msgEl.textContent = "コピーできなかったので、下の文字を長押しでコピーしてください"; };
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(ok, fail); else fail();
+}
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const jdate = s2 => { const m = String(s2 || "").match(/^(\d+)-(\d+)-(\d+)$/); return m ? `${+m[2]}月${+m[3]}日` : s2 || ""; };
+
+/* ---------- 生徒：今日の課題 ---------- */
+sim({
+  id: "task", cat: "task", name: "今日の課題", sub: "先生から出された課題をやろう",
+  point: "<ul><li>先生から送られたリンクを開くと、ここに課題が出ます。</li><li>上から順に <b>授業 → 確認テスト</b> をやりましょう。テストは 5 問中 4 問以上で合格。</li><li>全部おわったら「📤 先生に結果を送る」。</li></ul>",
+  detail: "<p>記録は このブラウザ（この端末）に保存されます。同じ端末・同じブラウザで続けてください。</p><p>新しい課題のリンクを開くと、課題が入れかわります（それまでの授業の記録は消えません）。</p>",
+  build(c) {
+    /* リンクから課題を取りこむ */
+    if (hashQuery.u) {
+      const ids = String(hashQuery.u).split(/[.,]/).filter(id => UNIT_IDS().includes(id));
+      if (ids.length) {
+        const key = [ids.join("."), hashQuery.t, hashQuery.m, hashQuery.d].join("|"), old = store.get("task", null);
+        if (!old || old.key !== key) store.set("task", { key, units: ids, test: hashQuery.t !== "0", msg: hashQuery.m || "", due: hashQuery.d || "", got: today() });
+      }
+      history.replaceState(null, "", "#task");
+    }
+    const task = store.get("task", null);
+    const box = c.html(), w = h("div", { class: "quiz task" });
+    box.appendChild(w);
+    const nameIn = h("input", { class: "mkin txt", style: "width:10em;text-align:left", placeholder: "名前を入れてね", value: store.get("name", "") });
+    nameIn.addEventListener("input", () => store.set("name", nameIn.value.trim()));
+    w.appendChild(h("div", { class: "tname" }, "なまえ：", nameIn));
+
+    if (!task) {
+      const ids = UNIT_IDS(), nxt = ids.find(id => unitStat(id).done < 5);
+      w.appendChild(h("div", { class: "qtext" }, "いまは 課題がありません"));
+      w.appendChild(h("p", {}, "先生から課題のリンクが届いたら、それを開くと ここに出ます。"));
+      if (nxt) w.appendChild(h("div", { class: "tcard" }, h("div", { class: "tt" }, "おすすめ：次はこれ"), h("div", { class: "tn" }, unitName(nxt)), h("div", { class: "rv" }, h("a", { class: "btn main", href: "#" + nxt }, "📖 授業をはじめる"))));
+      w.appendChild(h("p", { style: "font-size:13px;color:var(--muted);margin-top:18px" }, "先生の方へ：左の一覧の「先生用 → 課題をつくる」からリンクを作れます。"));
+      c.out(`<span class="mt">課題はまだありません</span>`);
+      return;
+    }
+    if (task.msg || task.due) w.appendChild(h("div", { class: "tmsg" },
+      task.msg ? h("div", {}, h("b", {}, "先生から："), task.msg) : null,
+      task.due ? h("div", { class: "tdue" }, `しめきり：${jdate(task.due)}`) : null));
+
+    const stats = task.units.map(id => [id, unitStat(id)]);
+    const clearN = stats.filter(([, st]) => unitClear(st, task.test)).length;
+    w.appendChild(h("div", { class: "qtext" }, `課題 ${clearN} / ${task.units.length} クリア`));
+    w.appendChild(h("div", { class: "bar" }, h("i", { style: `width:${100 * clearN / task.units.length}%` })));
+    let nextSet = false;
+    stats.forEach(([id, st], n) => {
+      const cl = unitClear(st, task.test), lessonDone = st.done >= 5;
+      const isNext = !cl && !nextSet; if (isNext) nextSet = true;
+      const steps = h("div", { class: "tsteps" },
+        h("span", { class: lessonDone ? "on" : "" }, `① 授業 ${lessonDone ? "✓" : st.done + "/5"}`),
+        task.test ? h("span", { class: st.best >= PASS ? "on" : "" }, `② テスト ${st.best == null ? "まだ" : st.best + "/" + TESTN + (st.best >= PASS ? " 合格" : "")}`) : null,
+        st.min ? h("span", { class: "tm" }, `⏱ ${st.min} 分`) : null);
+      const btns = h("div", { class: "rv" },
+        h("a", { class: "btn" + (isNext && !lessonDone ? " main" : ""), href: "#" + id }, lessonDone ? "📖 授業を見なおす" : st.done ? "📖 授業のつづき" : "📖 授業をはじめる"),
+        task.test ? h("a", { class: "btn" + (isNext && lessonDone ? " main" : ""), href: `#unittest?u=${id}` }, st.best == null ? "📝 確認テスト" : "📝 もう一度テスト") : null);
+      w.appendChild(h("div", { class: "tcard" + (cl ? " clear" : isNext ? " next" : "") },
+        h("div", { class: "tt" }, cl ? "✓ クリア" : isNext ? "▶ 次はこれ" : `${n + 1}`),
+        h("div", { class: "tn" }, unitName(id)), steps, btns));
+    });
+    if (clearN === task.units.length) w.appendChild(h("div", { class: "summary", style: "text-align:center" }, h("div", { class: "stamp", style: "float:none;margin:6px auto" }, "完了"), h("p", {}, "課題は全部おわり！ 下のボタンで先生に結果を送ろう。")));
+
+    /* 先生に送る */
+    const msg = h("div", { class: "tshare" });
+    const sendBtn = h("button", { type: "button", class: "btn main", style: "font-size:17px;padding:10px 22px", onclick: () => {
+      const nm = nameIn.value.trim();
+      if (!nm) { msg.textContent = "先に名前を入れてね"; nameIn.focus(); return; }
+      const data = { n: nm, at: today(), due: task.due, t: task.test ? 1 : 0, r: task.units.map(id => { const st = unitStat(id); return [id, st.done, st.ok, st.best == null ? -1 : st.best, st.min]; }) };
+      const url = baseURL() + "#task-report?d=" + pack(data);
+      const lines = [`【数学A 課題の報告】${nm}（${jdate(data.at)}）`, ...task.units.map(id => { const st = unitStat(id); return `・${unitName(id)}：授業 ${st.done}/5${task.test ? `、テスト ${st.best == null ? "未" : st.best + "/" + TESTN}` : ""}、${st.min} 分`; }), url];
+      const text = lines.join("\n");
+      clear(msg);
+      const pre = h("textarea", { class: "mkta", rows: 5, readonly: true }); pre.value = text;
+      const st2 = h("div", { style: "font-size:14px;margin:6px 0" });
+      msg.appendChild(st2); msg.appendChild(pre);
+      if (navigator.share) navigator.share({ title: "数学A 課題の報告", text }).then(() => { st2.textContent = "✓ 送りました"; }, () => copyText(text, st2, "✓ コピーしました。先生へのメッセージに はりつけて送ってね"));
+      else copyText(text, st2, "✓ コピーしました。先生へのメッセージに はりつけて送ってね");
+    } }, "📤 先生に結果を送る");
+    w.appendChild(h("div", { style: "margin-top:20px" }, sendBtn, msg));
+    c.out(`課題 <span class="big hl">${clearN}</span> / ${task.units.length} クリア${task.due ? `　しめきり ${jdate(task.due)}` : ""}`);
+  },
+});
+
+/* ---------- 生徒：確認テスト（数字は毎回かわる 5 問） ---------- */
+sim({
+  id: "unittest", cat: "task", name: "確認テスト", sub: "5 問中 4 問以上で合格", lesson: true, keepHash: true,
+  build(c) {
+    const id = hashQuery.u, fn = VARIANTS[id];
+    if (!fn) {
+      clear($("#text"));
+      const box = c.html(), w = h("div", { class: "quiz" });
+      box.appendChild(w);
+      w.appendChild(h("div", { class: "qtext" }, "どの単元のテストをする？"));
+      w.appendChild(h("p", {}, `数字は毎回かわる ${TESTN} 問。${PASS} 問以上で合格です。授業をおえてから やってみよう。`));
+      w.appendChild(h("div", { class: "rv" }, ...Object.keys(VARIANTS).map(uid => { const st = unitStat(uid); return h("a", { class: "btn" + (st.best >= PASS ? " main" : ""), href: `#unittest?u=${uid}` }, `${unitName(uid)}${st.best != null ? `（${st.best}/${TESTN}）` : ""}`); })));
+      c.out(`<span class="mt">単元をえらんでね</span>`);
+      return;
+    }
+    const seen = new Set(), parts = [];
+    for (let t = 0; parts.length < TESTN && t < 40; t++) {
+      const v = fn();
+      if (seen.has(v.problem) && t < 30) continue;
+      seen.add(v.problem);
+      parts.push({ kind: "test", tpl: v.tpl, title: `第${parts.length + 1}問`, problem: v.problem, choices: v.choices, more: v.more });
+    }
+    const tid = "test-" + id;
+    store.set("unit:" + tid, {});
+    let saved = false;
+    runUnit(c, {
+      id: tid, unitId: id, name: unitName(id) + " 確認テスト", isTest: true, pass: PASS, parts,
+      summary(result) {
+        const score = result.filter(r => r === "ok").length, pass = score >= PASS;
+        const old = store.get("test:" + id, null);
+        if (!saved) { store.set("test:" + id, { score, best: Math.max(score, old ? old.best : 0), date: today() }); saved = true; }
+        const best = store.get("test:" + id).best;
+        const box = h("div", { class: "summary" });
+        if (pass) box.appendChild(h("div", { class: "stamp" }, "合格"));
+        box.appendChild(h("h3", {}, `${unitName(id)} 確認テスト：${score} / ${parts.length} 問`));
+        box.appendChild(h("div", { class: "score", html: result.map((r, i) => `${i + 1}問目 ${r === "ok" ? "○" : "×"}`).join("　") + `<br>${pass ? "合格！ よくできました。" : `あと ${PASS - score} 問で合格。まちがえた問題の解説（◀ もどる）を見てから、もう一度やってみよう。`}<br>これまでの最高：${best} / ${parts.length}` }));
+        box.appendChild(h("div", { class: "rv", style: "margin-top:10px" },
+          h("button", { type: "button", class: "btn" + (pass ? "" : " main"), onclick: () => open(`unittest?u=${id}`, false) }, "🔁 新しい問題で もう一度"),
+          h("a", { class: "btn", href: "#" + id }, "📖 授業を見なおす"),
+          store.get("task", null) ? h("a", { class: "btn" + (pass ? " main" : ""), href: "#task" }, "📮 課題の画面へ") : null));
+        return box;
+      },
+    });
+  },
+});
+
+/* ---------- 先生：課題をつくる ---------- */
+sim({
+  id: "task-make", cat: "task", teacher: true, name: "課題をつくる", sub: "リンクを生徒に送るだけ",
+  point: "<ul><li>やってほしい単元にチェック → できたリンクを 生徒に送ります（LINE・メール・プリントの QR など）。</li><li>生徒はリンクを開くだけで「今日の課題」が出ます。</li><li>「確認テストまで」にすると、5 問中 4 問以上で合格するまで クリアになりません。</li></ul>",
+  detail: "<p>生徒の記録は 生徒の端末に保存されます。生徒が「📤 先生に結果を送る」をおすと、結果のリンクが届きます。それを開くと「結果を見る」に表になります。</p>",
+  build(c) {
+    const box = c.html(), w = h("div", { class: "quiz task" });
+    box.appendChild(w);
+    const st = store.get("mkTask", { units: [], test: true, msg: "", due: "" });
+    w.appendChild(h("div", { class: "qtext" }, "① やってほしい単元をえらぶ"));
+    const list = h("div", { class: "tpick" });
+    UNIT_IDS().forEach(id => {
+      const cb = h("input", { type: "checkbox", value: id }); cb.checked = st.units.includes(id);
+      cb.addEventListener("change", upd);
+      list.appendChild(h("label", {}, cb, unitName(id)));
+    });
+    w.appendChild(list);
+    w.appendChild(h("div", { class: "qtext" }, "② やり方"));
+    const testSeg = c.seg(null, [{ t: "授業 ＋ 確認テスト", v: true }, { t: "授業だけ", v: false }], st.test, upd, w);
+    w.appendChild(h("div", { class: "qtext" }, "③ ひとこと・しめきり（なくてもOK）"));
+    const msgIn = h("textarea", { class: "mkta", rows: 2, placeholder: "例：今週中に 順列 と 組合せ をやっておこう！" }); msgIn.value = st.msg;
+    const dueIn = h("input", { type: "date", class: "mkin txt", value: st.due });
+    msgIn.addEventListener("input", upd); dueIn.addEventListener("input", upd);
+    w.appendChild(msgIn);
+    w.appendChild(h("div", { style: "margin:8px 0" }, "しめきり：", dueIn));
+    w.appendChild(h("div", { class: "qtext" }, "④ このリンクを生徒に送る"));
+    const linkBox = h("textarea", { class: "mkta", rows: 3, readonly: true });
+    const note = h("div", { style: "font-size:14px;margin:6px 0;min-height:1.4em" });
+    const copyB = c.btn("🔗 リンクをコピー", () => copyText(linkBox.value, note, "✓ コピーしました。生徒への連絡に はりつけてください"), { main: true });
+    const prevB = c.btn("👀 生徒の画面を見る", () => { if (url) open(url.split("#")[1], false); });
+    w.appendChild(linkBox);
+    w.appendChild(h("div", { class: "rv" }, copyB, prevB));
+    w.appendChild(note);
+    let url = "";
+    function upd() {
+      const units = [...list.querySelectorAll("input:checked")].map(x => x.value);
+      const cur = { units, test: testSeg.get(), msg: msgIn.value.trim(), due: dueIn.value };
+      store.set("mkTask", cur);
+      if (!units.length) { url = ""; linkBox.value = "（単元を 1 つ以上えらんでください）"; copyB.disabled = prevB.disabled = true; c.out(`<span class="mt">単元をえらんでね</span>`); return; }
+      const q = new URLSearchParams({ u: units.join(".") });
+      if (!cur.test) q.set("t", "0");
+      if (cur.msg) q.set("m", cur.msg);
+      if (cur.due) q.set("d", cur.due);
+      url = baseURL() + "#task?" + q.toString();
+      linkBox.value = url; copyB.disabled = prevB.disabled = false;
+      c.out(`課題：<span class="big hl">${units.length}</span> 単元${cur.test ? "（確認テストまで）" : "（授業だけ）"}`);
+    }
+    upd();
+  },
+});
+
+/* ---------- 先生：結果を見る ---------- */
+sim({
+  id: "task-report", cat: "task", teacher: true, name: "結果を見る", sub: "生徒から届いた報告",
+  point: "<ul><li>生徒から届いた報告のリンクを開くと、ここに表で出ます。</li><li>文章ごと はりつけても読みとれます。</li><li>見た報告は このブラウザに たまっていきます。</li></ul>",
+  detail: "<p>授業：5 段階（導入・例題・類題・応用・発展）のうち、いくつ進んだか。類題〜発展：3 問のうち正解した数。テスト：確認テスト 5 問の最高点（4 以上で合格）。</p>",
+  build(c) {
+    const box = c.html(), w = h("div", { class: "quiz task" });
+    box.appendChild(w);
+    const reps = store.get("reports", []);
+    const add = d => { if (!d || !d.n || !Array.isArray(d.r)) return false; const k = JSON.stringify(d); if (!reps.some(x => JSON.stringify(x) === k)) { reps.unshift(d); store.set("reports", reps.slice(0, 100)); } return true; };
+    let bad = false;
+    if (hashQuery.d) { if (!add(unpack(hashQuery.d))) bad = true; history.replaceState(null, "", "#task-report"); }
+    const view = h("div", {});
+    w.appendChild(view);
+    w.appendChild(h("div", { class: "qtext", style: "font-size:17px;margin-top:22px" }, "報告を はりつけて読む"));
+    const ta = h("textarea", { class: "mkta", rows: 3, placeholder: "生徒から届いた文章 または リンクを ここに はりつけ" });
+    const err = h("div", { class: "mkerr" });
+    w.appendChild(ta);
+    w.appendChild(h("div", { class: "rv", style: "margin-top:6px" }, c.btn("読みとる", () => {
+      const m = ta.value.match(/task-report\?d=([A-Za-z0-9_-]+)/);
+      if (m && add(unpack(m[1]))) { ta.value = ""; err.textContent = ""; render(0); } else err.textContent = "読みとれませんでした。「#task-report?d=…」のリンクが入っているか確かめてください。";
+    }, { main: true }), reps.length ? c.btn("記録をけす", () => { if (confirm("この端末にたまった報告をすべてけしますか？")) { reps.length = 0; store.set("reports", []); render(0); } }) : null));
+    w.appendChild(err);
+    function render(sel) {
+      clear(view);
+      if (bad) view.appendChild(h("div", { class: "mkerr" }, "リンクが途中で切れているようです。生徒にもう一度送ってもらってください。"));
+      if (!reps.length) { view.appendChild(h("div", { class: "qtext" }, "まだ報告はありません")); c.out(`<span class="mt">報告はまだありません</span>`); return; }
+      const d = reps[sel];
+      if (reps.length > 1) view.appendChild(h("div", { class: "rv", style: "margin-bottom:10px" }, ...reps.slice(0, 20).map((x, i) => h("button", { type: "button", class: "btn" + (i === sel ? " main" : ""), onclick: () => render(i) }, `${x.n}（${jdate(x.at)}）`))));
+      const clearN = d.r.filter(([, dn, , best]) => dn >= 5 && (!d.t || best >= PASS)).length;
+      view.appendChild(h("div", { class: "qtext" }, `${d.n} さん　${clearN} / ${d.r.length} クリア`));
+      view.appendChild(h("p", { style: "font-size:14px;color:var(--muted)" }, `報告日 ${jdate(d.at)}${d.due ? `　しめきり ${jdate(d.due)}` : ""}`));
+      const tb = h("table", { class: "rec" }, h("tr", {}, h("th", {}, "単元"), h("th", {}, "授業"), h("th", {}, "類題〜発展"), d.t ? h("th", {}, "テスト") : null, h("th", {}, "時間")));
+      d.r.forEach(([id, dn, ok, best, min]) => tb.appendChild(h("tr", {},
+        h("td", {}, unitName(id)),
+        h("td", { class: dn >= 5 ? "ok" : "ng" }, dn >= 5 ? "✓" : `${dn}/5`),
+        h("td", { class: ok >= 2 ? "ok" : "ng" }, `${ok}/3`),
+        d.t ? h("td", { class: best >= PASS ? "ok" : best < 0 ? "no" : "ng" }, best < 0 ? "未" : `${best}/${TESTN}`) : null,
+        h("td", {}, `${min} 分`))));
+      view.appendChild(tb);
+      const weak = d.r.filter(([, dn, ok, best]) => dn >= 5 && (ok < 2 || (d.t && best >= 0 && best < PASS))).map(([id]) => unitName(id));
+      if (weak.length) view.appendChild(h("p", {}, h("b", { style: "color:var(--warm)" }, "つまずいていそう："), weak.join("、")));
+      c.out(`${d.n} さん：<span class="big hl">${clearN}</span> / ${d.r.length} クリア`);
+    }
+    render(0);
+  },
+});
+</script>
+<script>
+"use strict";
 /* ===================== 挑戦（クイズ） ===================== */
 function fracStr(n, d) { const g = gcd(n, d); n /= g; d /= g; return d === 1 ? String(n) : `${n}/${d}`; }
 function distinct(ans, cands) {
@@ -6259,7 +6570,7 @@ $("#maxBtn").addEventListener("click", () => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#stageWrap").classList.contains("is-max")) $("#maxBtn").click(); });
 window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (id) open(id, false); });
-open(location.hash.slice(1) || store.get("last", "u-perm"));
+open(location.hash.slice(1) || (taskLeft() ? "task" : store.get("last", "u-perm")));
 </script>
 </body>
 </html>
