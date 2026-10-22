@@ -337,6 +337,7 @@ body.fz2 .fband, body.fz2 .card-body, body.fz2 .lib { zoom: 1.3; }
 .ttip { font-size: 14px; font-weight: 700; color: var(--accent); margin: -2px 0 8px; }
 .taskchip { display: inline-flex; gap: 4px; align-items: center; font-size: 13px; font-weight: 700; color: var(--warm); background: var(--warm-soft); border-radius: 12px; padding: 3px 10px; margin-bottom: 8px; text-decoration: none; }
 .taskchip span { color: var(--ink); font-weight: 500; }
+.rec.pick tr { cursor: pointer; } .rec.pick tr.sel td { background: var(--accent-soft); font-weight: 700; } .rec.pick tr:hover td { background: var(--chip); }
 .cert { margin: 6px 0 12px; }
 .cert-in { position: relative; border: 3px double var(--gold, #b8902a); outline: 1.5px solid var(--gold, #b8902a); outline-offset: 5px; margin: 8px; padding: 22px 20px 18px; background: var(--panel); text-align: center; }
 .cert-ttl { font-family: var(--font-display); font-size: 34px; font-weight: 800; letter-spacing: .1em; }
@@ -5009,7 +5010,7 @@ function runUnit(c, u) {
     const toTest = !u.isTest && VARIANTS[u.id] && SIMS.some(d => d.id === "unittest");
     if (u.isTest) {
       /* テスト：答えたら すぐ次の問題へ（解説は「図の解説をすすめる」で） */
-      if (!answered[pi]) next.textContent = "とばす ▶";
+      if (!answered[pi]) next.textContent = "わからない（とばす）▶";
       else if (pi < parts.length - 1) { next.textContent = "次の問題 ▶"; nextAct = () => goPart(pi + 1, 0); }
       else { next.textContent = "結果を見る ▼"; nextAct = () => { if (!allAnswered()) return; go(k); const sb = sumBox && sumBox.firstChild; if (sb) sb.scrollIntoView({ behavior: "smooth", block: "center" }); }; }
     }
@@ -5343,6 +5344,7 @@ sim({
       tb,
       h("div", { class: "qtext", style: "font-size:18px" }, "もう一度やってみよう"),
       todo.length ? h("div", { class: "rv" }, ...todo.map(([d, i]) => h("a", { class: "btn", href: `#${d.id}?part=${i}&retry=1` }, `${d.name}：${["", "", "類題", "応用", "発展"][i]}`))) : h("p", {}, "まちがえた問題はありません。授業を進めよう！")));
+    if (typeof moveBox === "function") box.querySelector(".quiz").appendChild(moveBox(c));
     c.out(`終わった単元 <span class="big hl">${doneU}</span> / ${units.length}　もう一度：${todo.length} 問`);
   },
 });
@@ -6245,7 +6247,7 @@ function unitStat(id) {
   const sv = store.get("unit:" + id, {}), ans = sv.ans || [];
   const asks = [2, 3, 4], ok = asks.filter(i => ans[i] === "ok" || ans[i] === "ok2").length;
   const t = store.get("test:" + id, null);
-  return { done: (sv.done || []).filter(Boolean).length, ok, asks: asks.length, best: t ? t.best : null, last: t ? t.score : null, min: Math.round(store.get("time:" + id, 0) / 60) };
+  return { done: (sv.done || []).filter(Boolean).length, ok, asks: asks.length, best: t ? t.best : null, last: t ? t.score : null, min: Math.round(store.get("time:" + id, 0) / 60), sec: store.get("time:" + id, 0) };
 }
 const unitClear = (st, test) => st.done >= 5 && (!test || (st.best != null && st.best >= PASS));
 function taskLeft() {
@@ -6267,9 +6269,45 @@ function unpack(str) {
   } catch (e) { return null; }
 }
 const baseURL = () => location.href.split("#")[0];
+const minText = st => st.sec > 0 && st.min < 1 ? "1 分未満" : `${st.min} 分`;
+
+/* 記録の引っこし：この端末の記録を 1 つの文字列にして、別の端末で読みこむ */
+function exportAll() {
+  const o = {};
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith("mathA:")) o[k.slice(6)] = JSON.parse(localStorage.getItem(k)); } } catch (e) { }
+  return "MATHA1." + pack(o);
+}
+function importAll(str) {
+  const m = String(str).match(/MATHA1\.([A-Za-z0-9_-]+)/);
+  const o = m && unpack(m[1]);
+  if (!o || typeof o !== "object") return 0;
+  let n = 0;
+  Object.entries(o).forEach(([k, v]) => {
+    if (/^(unit|test|time):/.test(k)) { /* 時間は たす、進み具合は 多い方を残す */
+      if (k.startsWith("time:")) store.set(k, (store.get(k, 0) || 0) + (+v || 0));
+      else if (k.startsWith("test:")) { const c2 = store.get(k, null); store.set(k, !c2 || (v && v.best > c2.best) ? v : c2); }
+      else { const c2 = store.get(k, {}); const dn = (c2.done || []).filter(Boolean).length, dv = ((v && v.done) || []).filter(Boolean).length; if (dv > dn) store.set(k, v); }
+      n++;
+    } else if (/^(task|name|certs|best:)/.test(k) && store.get(k, null) == null) { store.set(k, v); n++; }
+  });
+  return n;
+}
+function moveBox(c) {
+  const det = h("details", { class: "flow", style: "margin-top:22px" }, h("summary", {}, "📦 別の端末に記録を引っこす"));
+  const out = h("textarea", { class: "mkta", rows: 3, readonly: true, placeholder: "「記録を取り出す」をおすと ここに出ます" });
+  const inp = h("textarea", { class: "mkta", rows: 3, placeholder: "前の端末で取り出した文字を ここに はりつけ" });
+  const note = h("div", { style: "font-size:14px;margin:6px 0;min-height:1.4em" });
+  det.appendChild(h("p", { style: "font-size:14px;color:var(--muted)" }, "記録は端末ごとに保存されます。スマホ → パソコン のように移るときは、前の端末で「取り出す」→ 文字をコピーして自分に送る → 新しい端末で「読みこむ」。"));
+  det.appendChild(h("div", { class: "rv" }, c.btn("📤 記録を取り出す", () => { out.value = exportAll(); copyText(out.value, note, "✓ コピーしました。メモや自分あてのメッセージに はりつけて、新しい端末で読みこんでね"); })));
+  det.appendChild(out);
+  det.appendChild(inp);
+  det.appendChild(h("div", { class: "rv" }, c.btn("📥 読みこむ", () => { const n = importAll(inp.value); if (n) { note.textContent = `✓ ${n} 件の記録を読みこみました`; setTimeout(() => open(current.def.id, false), 600); } else note.textContent = "読みこめませんでした。「MATHA1.」で始まる文字が入っているか確かめてください。"; })));
+  det.appendChild(note);
+  return det;
+}
 function copyText(text, msgEl, okMsg) {
   const ok = () => { msgEl.textContent = okMsg; };
-  const fail = () => { msgEl.textContent = "コピーできなかったので、下の文字を長押しでコピーしてください"; };
+  const fail = () => { msgEl.textContent = "コピーできなかったので、文字を長押しして コピーしてください"; };
   if (navigator.clipboard) navigator.clipboard.writeText(text).then(ok, fail); else fail();
 }
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
@@ -6299,7 +6337,7 @@ function syncTask() {
   if (ch) store.set("task", t);
   return t;
 }
-const reportRows = t => t.units.map(id => { const st = unitStat(id); return [id, st.done, st.ok, st.best == null ? -1 : st.best, st.min, (t.cl || {})[id] || ""]; });
+const reportRows = t => t.units.map(id => { const st = unitStat(id); return [id, st.done, st.ok, st.best == null ? -1 : st.best, st.sec ? Math.max(1, st.min) : 0, (t.cl || {})[id] || ""]; });
 
 /* 修了証 */
 function certCard(d, opts = {}) {
@@ -6392,7 +6430,7 @@ sim({
       const steps = h("div", { class: "tsteps" },
         h("span", { class: lessonDone ? "on" : "" }, `① 授業 ${lessonDone ? "✓" : st.done + "/5"}`),
         task.test ? h("span", { class: st.best >= PASS ? "on" : "" }, `② テスト ${st.best == null ? "まだ" : st.best + "/" + TESTN + (st.best >= PASS ? " 合格" : "")}`) : null,
-        st.min ? h("span", { class: "tm" }, `⏱ ${st.min} 分`) : null);
+        st.sec ? h("span", { class: "tm" }, `⏱ ${minText(st)}`) : null);
       let tip = null;
       if (!cl && isNext) tip = !lessonDone ? (st.done ? `授業のつづき（${st.done + 1} 段階目）から` : "まず授業から。図を見ながら すすめよう") : task.test && st.best == null ? "授業はおわり！ 次は確認テスト" : task.test ? `あと ${PASS - st.best} 問で合格！ もう一度テストしよう` : "";
       const btns = h("div", { class: "rv" },
@@ -6411,7 +6449,7 @@ sim({
       const data = { n: nm, at: today(), due: task.due, t: task.test ? 1 : 0, k: taskCode(task.key), fin: task.fin || "", r: reportRows(task) };
       data.v = certSig(data);
       const url = baseURL() + "#task-report?d=" + pack(data);
-      const lines = [`【数学A 課題の報告】${nm}（${jdate(data.at)}）`, all ? `🏅 課題を全部クリア！（完了日 ${jdate(task.fin)}・確認コード ${data.v}）` : `課題 ${clearN} / ${task.units.length} クリア`, ...task.units.map(id => { const st = unitStat(id); return `・${unitName(id)}：授業 ${st.done}/5${task.test ? `、テスト ${st.best == null ? "未" : st.best + "/" + TESTN}` : ""}、${st.min} 分`; }), url];
+      const lines = [`【数学A 課題の報告】${nm}（${jdate(data.at)}）`, all ? `🏅 課題を全部クリア！（完了日 ${jdate(task.fin)}・確認コード ${data.v}）` : `課題 ${clearN} / ${task.units.length} クリア`, ...task.units.map(id => { const st = unitStat(id); return `・${unitName(id)}：授業 ${st.done}/5${task.test ? `、テスト ${st.best == null ? "未" : st.best + "/" + TESTN}` : ""}、${minText(st)}`; }), url];
       const text = lines.join("\n");
       clear(msg);
       const pre = h("textarea", { class: "mkta", rows: 5, readonly: true }); pre.value = text;
@@ -6421,6 +6459,7 @@ sim({
       else copyText(text, st2, "✓ コピーしました。先生へのメッセージに はりつけて送ってね");
     } }, all ? "📤 修了証を先生に送る" : "📤 先生に途中経過を送る");
     w.appendChild(h("div", { style: "margin-top:20px" }, sendBtn, msg));
+    w.appendChild(moveBox(c));
     c.out(all ? `🏅 課題クリア！　<span class="mt">修了証ができました</span>` : `課題 <span class="big hl">${clearN}</span> / ${task.units.length} クリア${task.due ? "　" + dueText(task.due) : ""}`);
   },
 });
@@ -6528,7 +6567,7 @@ sim({
     w.appendChild(h("div", { class: "qtext" }, "④ このリンクを生徒に送る"));
     const linkBox = h("textarea", { class: "mkta", rows: 3, readonly: true });
     const note = h("div", { style: "font-size:14px;margin:6px 0;min-height:1.4em" });
-    const remember = () => { const iss = store.get("issued", []); if (!iss.some(x => x.k === code)) { iss.unshift({ k: code, units: cur.units, date: today(), due: cur.due }); store.set("issued", iss.slice(0, 100)); } };
+    const remember = () => { const iss = store.get("issued", []); if (!iss.some(x => x.k === code)) { iss.unshift({ k: code, units: cur.units, date: today(), due: cur.due, url }); store.set("issued", iss.slice(0, 100)); renderIssued(); } };
     const copyB = c.btn("🔗 リンクをコピー", () => { remember(); copyText(linkBox.value, note, "✓ コピーしました。生徒への連絡に はりつけてください"); }, { main: true });
     const prevB = c.btn("👀 生徒の画面を見る", () => { if (url) open(url.split("#")[1], false); });
     const codeEl = h("div", { class: "tnote", style: "margin-top:4px" });
@@ -6536,6 +6575,20 @@ sim({
     w.appendChild(h("div", { class: "rv" }, copyB, prevB));
     w.appendChild(codeEl);
     w.appendChild(note);
+    const issBox = h("div", {});
+    w.appendChild(issBox);
+    function renderIssued() {
+      clear(issBox);
+      const iss = store.get("issued", []);
+      if (!iss.length) return;
+      const det = h("details", { class: "flow", style: "margin-top:18px" }, h("summary", {}, `📋 これまでに出した課題（${iss.length}）`));
+      const tb = h("table", { class: "rec" }, h("tr", {}, h("th", {}, "出した日"), h("th", {}, "コード"), h("th", {}, "単元"), h("th", {}, "しめきり"), h("th", {}, "")));
+      iss.forEach(it => tb.appendChild(h("tr", {}, h("td", {}, jdate(it.date)), h("td", { style: "font-family:var(--font-data)" }, it.k), h("td", { style: "text-align:left" }, it.units.map(unitName).join("・")), h("td", {}, jdate(it.due) || "−"),
+        h("td", {}, it.url ? h("button", { type: "button", class: "mini", onclick: () => copyText(it.url, note, "✓ リンクをコピーしました") }, "🔗") : null))));
+      det.appendChild(tb);
+      issBox.appendChild(det);
+    }
+    renderIssued();
     let url = "", code = "", cur = null;
     function upd() {
       const units = [...list.querySelectorAll("input:checked")].map(x => x.value);
@@ -6584,7 +6637,16 @@ sim({
       if (bad) view.appendChild(h("div", { class: "mkerr" }, "リンクが途中で切れているようです。生徒にもう一度送ってもらってください。"));
       if (!reps.length) { view.appendChild(h("div", { class: "qtext" }, "まだ報告はありません")); c.out(`<span class="mt">報告はまだありません</span>`); return; }
       const d = reps[sel];
-      if (reps.length > 1) view.appendChild(h("div", { class: "rv", style: "margin-bottom:10px" }, ...reps.slice(0, 20).map((x, i) => h("button", { type: "button", class: "btn" + (i === sel ? " main" : ""), onclick: () => render(i) }, `${x.n}（${jdate(x.at)}）`))));
+      if (reps.length > 1) {
+        const tb = h("table", { class: "rec pick" }, h("tr", {}, h("th", {}, "生徒"), h("th", {}, "報告日"), h("th", {}, "クリア"), h("th", {}, "修了証")));
+        reps.slice(0, 50).forEach((x, i) => {
+          const cn = x.r.filter(([, dn, , best]) => dn >= 5 && (!x.t || best >= PASS)).length, okv = x.fin && x.v && x.v === certSig(x);
+          const tr = h("tr", { class: i === sel ? "sel" : "", onclick: () => render(i) }, h("td", {}, x.n), h("td", {}, jdate(x.at)), h("td", { class: cn === x.r.length ? "ok" : "" }, `${cn}/${x.r.length}`), h("td", { class: okv ? "ok" : x.fin ? "ng" : "no" }, okv ? "✓" : x.fin ? "⚠" : "・"));
+          tb.appendChild(tr);
+        });
+        view.appendChild(h("p", { style: "font-size:13px;color:var(--muted);margin:0 0 4px" }, "行をおすと くわしく見られます"));
+        view.appendChild(tb);
+      }
       const clearN = d.r.filter(([, dn, , best]) => dn >= 5 && (!d.t || best >= PASS)).length;
       const iss = store.get("issued", []).find(x => x.k === d.k);
       if (d.fin) view.appendChild(certCard(d, { verify: d.v && d.v === certSig(d) ? "ok" : "ng" }));
@@ -6597,7 +6659,7 @@ sim({
         h("td", { class: dn >= 5 ? "ok" : "ng" }, dn >= 5 ? "✓" : `${dn}/5`),
         h("td", { class: ok >= 2 ? "ok" : "ng" }, `${ok}/3`),
         d.t ? h("td", { class: best >= PASS ? "ok" : best < 0 ? "no" : "ng" }, best < 0 ? "未" : `${best}/${TESTN}`) : null,
-        h("td", {}, `${min} 分`))));
+        h("td", {}, min ? `${min} 分` : "−"))));
       view.appendChild(tb);
       const weak = d.r.filter(([, dn, ok, best]) => dn >= 5 && (ok < 2 || (d.t && best >= 0 && best < PASS))).map(([id]) => unitName(id));
       if (weak.length) view.appendChild(h("p", {}, h("b", { style: "color:var(--warm)" }, "つまずいていそう："), weak.join("、")));
