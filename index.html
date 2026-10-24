@@ -349,6 +349,30 @@ body.fz2 .fband, body.fz2 .card-body, body.fz2 .lib { zoom: 1.3; }
 .taskchip span { color: var(--ink); font-weight: 500; }
 .rec.pick tr { cursor: pointer; } .rec.pick tr.sel td { background: var(--accent-soft); font-weight: 700; } .rec.pick tr:hover td { background: var(--chip); }
 .cert { margin: 6px 0 12px; }
+/* ===== 図・公式ヒント・計算スペース ===== */
+.qtools { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 4px; }
+.toolbtn { border: 1.5px solid var(--line); background: var(--panel); border-radius: 16px; padding: 4px 12px; font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.toolbtn.on { border-color: var(--accent); background: var(--accent-soft); }
+.toolbtn:disabled { opacity: .45; }
+.fhint { border-left: 4px solid var(--gold); background: var(--panel); border-radius: 0 6px 6px 0; padding: 8px 12px; margin: 6px 0; font-size: 15px; line-height: 1.7; }
+.fhint b { display: block; color: var(--gold); font-size: 13px; } .fhint ul { margin: 2px 0 0; padding-left: 1.2em; }
+.scratchbox { margin: 6px 0; }
+.scratch { border: 1.5px solid var(--line); border-radius: 6px; background: var(--panel); overflow: hidden; }
+.sbar { display: flex; gap: 4px; padding: 4px 6px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.sbar .mini { font-size: 13px; padding: 3px 9px; }
+.sbar .mini.on { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.scv { display: block; width: 100%; height: 220px; touch-action: none; cursor: crosshair;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 24px 24px; background-position: -1px -1px; opacity: 1; }
+.scratch .calc { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-top: 1px solid var(--line); background: var(--panel); border-left: 0; margin: 0; }
+.scratch .calc .ci { flex: none; }
+.calcin { flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; font-family: var(--font-data); font-size: 15px; background: var(--bg); color: var(--ink); }
+.calcout { font-family: var(--font-data); font-weight: 700; color: var(--muted); white-space: nowrap; max-width: 45%; overflow: hidden; text-overflow: ellipsis; } .calcout.ok { color: var(--accent); }
+.qfig { display: block; width: 100%; height: auto; max-height: 220px; }
+.quiz .fig .qfig { max-width: 340px; margin: 0 auto; }
+.gfig { display: flex; justify-content: center; } .gfig .qfig { max-width: 320px; max-height: 200px; } .gfig .qfig.big { max-width: 360px; }
+.gplay .qtools { margin: 0; }
+.gqtext.hasfig { flex: none; }
+@media (max-width: 900px) { .scv { height: 200px; } .gfig .qfig { max-height: 165px; } .gqtext.hasfig { font-size: 17px; line-height: 1.5; } }
 /* ===== 🎮 ゲーム ===== */
 .tbtn.coin b { font-family: var(--font-data); font-weight: 600; margin-left: 2px; }
 .plus { position: fixed; z-index: 99; transform: translateX(-50%); font-family: var(--font-data); font-weight: 600; color: var(--gold); font-size: 16px; pointer-events: none; animation: plus .9s ease-out forwards; }
@@ -5079,6 +5103,14 @@ function runUnit(c, u) {
         text.appendChild(box); text.appendChild(hb);
         if (LEVEL === 0 && !answered[pi]) show1();
       }
+      /* 公式（テストでは出さない）・計算スペース */
+      const meta2 = UNIT_META[u.unitId || u.id];
+      const fbox = h("div", { class: "fhint", hidden: true, html: meta2 ? `<b>📐 この単元の公式</b><ul>${meta2.summary.map(x => `<li>${termify(x)}</li>`).join("")}</ul>` : "" });
+      const fbtn = meta2 && !u.isTest ? h("button", { type: "button", class: "toolbtn", onclick: () => { fbox.hidden = !fbox.hidden; fbtn.classList.toggle("on", !fbox.hidden); } }, "📐 公式") : null;
+      const sc = scratchToggle();
+      text.appendChild(h("div", { class: "qtools" }, fbtn, sc.btn));
+      if (fbtn) text.appendChild(fbox);
+      text.appendChild(sc.box);
     }
     text.appendChild(varBox);
     text.appendChild(listWrap);
@@ -5449,8 +5481,8 @@ const VARIANTS = {
     const tpl = T_cond2({ rows: [[ab, anb], [nab, nanb]], A, nA, B, nB, intro: `表にまとめる。A = ${A}、B = ${B}` });
     return { problem: `${tot} 人を調べると、「${A}」が ${at} 人で そのうち「${B}」は ${ab} 人、「${nA}」が ${tot - at} 人で そのうち「${B}」は ${nab} 人。<b>「${A}」の人をえらんだとき</b>、「${B}」である確率は？`, tpl, choices: choices4(fs(ab, at), [fs(ab, tot), fs(ab, ab + nab), fs(at, tot)]), hint: [`「${A}」の人をえらんだとき → 「${A}」の行だけを見る`, `「${A}」${at} 人のうち、「${B}」は ${ab} 人`], more: stepsMore(tpl) };
   },
-  "u-circle": () => { const a = ri(3, 15) * 5, tpl = T_diam({ angA: a }); return { problem: tpl.problem, tpl, choices: choices4(90 - a, [a, 180 - a, 2 * a], "°"), hint: ["直径に対する円周角は 90°", "△ABC の内角の和は 180°"], more: stepsMore(tpl) }; },
-  "u-power": () => { let PA, AB, PC, prod; for (let t = 0; t < 50; t++) { PA = ri(2, 5); AB = ri(2, 7); prod = PA * (PA + AB); const ds = []; for (let d = 2; d * d < prod; d++) if (prod % d === 0 && d !== PA) ds.push(d); if (ds.length) { PC = ds[rnd(ds.length)]; break; } } const tpl = T_power({ PA, AB, PC }), PD = prod / PC; return { problem: tpl.problem, tpl, choices: choices4(PD - PC, [PD, prod / PA, AB]), hint: ["まず PB = PA + AB", "PA × PB = PC × PD から PD、CD = PD − PC"], more: stepsMore(tpl) }; },
+  "u-circle": () => { const a = ri(3, 15) * 5, tpl = T_diam({ angA: a }); return { problem: tpl.problem, tpl, fig: figDiam(a), choices: choices4(90 - a, [a, 180 - a, 2 * a], "°"), hint: ["直径に対する円周角は 90°", "△ABC の内角の和は 180°"], more: stepsMore(tpl) }; },
+  "u-power": () => { let PA, AB, PC, prod; for (let t = 0; t < 50; t++) { PA = ri(2, 5); AB = ri(2, 7); prod = PA * (PA + AB); const ds = []; for (let d = 2; d * d < prod; d++) if (prod % d === 0 && d !== PA) ds.push(d); if (ds.length) { PC = ds[rnd(ds.length)]; break; } } const tpl = T_power({ PA, AB, PC }), PD = prod / PC; return { problem: tpl.problem, tpl, fig: figPower(0, 0, 0, [`PA = ${PA}　AB = ${AB}`, `PC = ${PC}　CD = <tspan style="fill:var(--warm);font-weight:700">?</tspan>`]), choices: choices4(PD - PC, [PD, prod / PA, AB]), hint: ["まず PB = PA + AB", "PA × PB = PC × PD から PD、CD = PD − PC"], more: stepsMore(tpl) }; },
   "u-div": () => { const N = [24, 36, 48, 54, 72, 80, 96, 100, 108, 112, 144, 200, 225, 288, 392, 500][rnd(16)], f = factorize(N), cnt = f.reduce((s2, [, e]) => s2 * (e + 1), 1), tpl = T_div({ N }); return { problem: `${N} の正の約数は何個？`, tpl, choices: choices4(cnt, [f.reduce((s2, [, e]) => s2 * e, 1), cnt - 1, cnt * 2], " 個"), hint: [`${N} を素因数分解しよう`, "指数に 1 をたして かける"], more: stepsMore(tpl) }; },
   "u-base": () => { const N = ri(20, 99), ans = N.toString(2), rev = ans.split("").reverse().join(""), flip = ans.slice(0, -2) + (ans[ans.length - 2] === "1" ? "0" : "1") + ans.slice(-1), tpl = T_base({ N, b: 2 }); return { problem: `10 進法の ${N} を 2 進法で表せ。`, tpl, choices: choices4(ans, [rev, flip, (N + 1).toString(2)]), hint: [`${N} を 2 でわって、余りを右に書いていく`, "余りを <b>下から上へ</b> 読む"], more: stepsMore(tpl) }; },
 };
@@ -6807,6 +6839,229 @@ sim({
 </script>
 <script>
 "use strict";
+/* ===================== 問題を解くための道具：図・公式ヒント・計算スペース ===================== */
+
+/* ---------- 図（SVG の文字列。クイズ・タイムアタックで使う） ---------- */
+const F_INK = "var(--ink)", F_HL = "var(--warm)", F_AC = "var(--accent)", F_MU = "var(--muted)";
+const fsvg = (inner, w = 300, h2 = 200) => `<svg class="qfig" viewBox="0 0 ${w} ${h2}" xmlns="http://www.w3.org/2000/svg" role="img">${inner}</svg>`;
+const fline = (a, b, o = {}) => `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${o.c || F_INK}" stroke-width="${o.w || 1.8}"${o.dash ? ' stroke-dasharray="5 4"' : ""}/>`;
+const fdot = (p, o = {}) => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${o.r || 3.2}" fill="${o.c || F_INK}"/>`;
+const ftext = (p, t, o = {}) => `<text x="${p[0].toFixed(1)}" y="${p[1].toFixed(1)}" text-anchor="${o.a || "middle"}" dominant-baseline="middle" font-size="${o.s || 14}" font-weight="${o.b ? 700 : 500}" style="fill:${o.c || F_INK}">${t}</text>`;
+const fpoly = (pts, o = {}) => `<polygon points="${pts.map(p => p.map(v => v.toFixed(1)).join(",")).join(" ")}" fill="${o.f || "none"}" stroke="${o.c || F_INK}" stroke-width="${o.w || 1.8}"/>`;
+const fcirc = (c, r, o = {}) => `<circle cx="${c[0]}" cy="${c[1]}" r="${r}" fill="none" stroke="${o.c || F_INK}" stroke-width="${o.w || 1.8}"/>`;
+const onC = (c, r, deg) => [c[0] + r * Math.cos(deg * Math.PI / 180), c[1] - r * Math.sin(deg * Math.PI / 180)];
+const away = (p, from, d) => { const dx = p[0] - from[0], dy = p[1] - from[1], L = Math.hypot(dx, dy) || 1; return [p[0] + dx / L * d, p[1] + dy / L * d]; };
+const mid = (a, b, t = 0.5) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+/* 角の印（頂点 v、向き a → b の小さな弧） */
+function farc(v, a, b, r, o = {}) {
+  const t1 = Math.atan2(a[1] - v[1], a[0] - v[0]), t2 = Math.atan2(b[1] - v[1], b[0] - v[0]);
+  let d = t2 - t1; while (d <= -Math.PI) d += 2 * Math.PI; while (d > Math.PI) d -= 2 * Math.PI;
+  const p1 = [v[0] + r * Math.cos(t1), v[1] + r * Math.sin(t1)], p2 = [v[0] + r * Math.cos(t2), v[1] + r * Math.sin(t2)];
+  return `<path d="M${p1[0].toFixed(1)},${p1[1].toFixed(1)} A${r},${r} 0 0 ${d > 0 ? 1 : 0} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}" fill="none" stroke="${o.c || F_HL}" stroke-width="${o.w || 2}"/>`;
+}
+const arcLabel = (v, a, b, r) => { const t1 = Math.atan2(a[1] - v[1], a[0] - v[0]), t2 = Math.atan2(b[1] - v[1], b[0] - v[0]); let d = t2 - t1; while (d <= -Math.PI) d += 2 * Math.PI; while (d > Math.PI) d -= 2 * Math.PI; const t = t1 + d / 2; return [v[0] + r * Math.cos(t), v[1] + r * Math.sin(t)]; };
+
+/* 中心角と円周角 */
+function figAngle(x) {
+  const O = [150, 100], R = 82, A = onC(O, R, -90 - x), B = onC(O, R, -90 + x), P = onC(O, R, 90);
+  return fsvg(fcirc(O, R) + fline(O, A, { c: F_AC }) + fline(O, B, { c: F_AC }) + fline(P, A) + fline(P, B) +
+    farc(O, A, B, 18, { c: F_AC }) + farc(P, A, B, 24) +
+    ftext(arcLabel(O, A, B, 34), `${2 * x}°`, { c: F_AC, b: true, s: 13 }) + ftext(arcLabel(P, A, B, 40), "?", { c: F_HL, b: true, s: 18 }) +
+    [[A, "A"], [B, "B"], [P, "P"]].map(([p, t]) => fdot(p) + ftext(away(p, O, 13), t, { b: true })).join("") + fdot(O) + ftext([O[0] + 12, O[1] - 4], "O", { b: true }));
+}
+/* 円に内接する四角形 */
+function figQuad(x) {
+  const O = [150, 100], R = 82, A = onC(O, R, 180), B = onC(O, R, -x), C2 = onC(O, R, 0), D = onC(O, R, x);
+  return fsvg(fcirc(O, R) + fpoly([A, B, C2, D]) + farc(A, B, D, 22, { c: F_AC }) + farc(C2, D, B, 22) +
+    ftext(arcLabel(A, B, D, 40), `${x}°`, { c: F_AC, b: true, s: 13 }) + ftext(arcLabel(C2, D, B, 36), "?", { c: F_HL, b: true, s: 18 }) +
+    [[A, "A"], [B, "B"], [C2, "C"], [D, "D"]].map(([p, t]) => fdot(p) + ftext(away(p, O, 13), t, { b: true })).join(""));
+}
+/* 方べきの定理（円の外の点 P から 2 本） */
+function figPower(a, b, c, legend) {
+  const O = [205, 100], R = 62, P = [28, 150];
+  const hit = dir => { const L = Math.hypot(dir[0], dir[1]), u = [dir[0] / L, dir[1] / L], w = [P[0] - O[0], P[1] - O[1]], bb = u[0] * w[0] + u[1] * w[1], cc = w[0] ** 2 + w[1] ** 2 - R * R, s2 = Math.sqrt(bb * bb - cc); return [[P[0] + u[0] * (-bb - s2), P[1] + u[1] * (-bb - s2)], [P[0] + u[0] * (-bb + s2), P[1] + u[1] * (-bb + s2)]]; };
+  const [A, B] = hit([O[0] - P[0], O[1] - 30 - P[1]]), [C2, D] = hit([O[0] - P[0], O[1] + 42 - P[1]]);
+  return fsvg(fcirc(O, R) + fline(P, B) + fline(P, D) + fline(P, A, { c: F_AC, w: 3.2 }) + fline(P, C2, { c: F_AC, w: 3.2 }) +
+    [[A, "A"], [B, "B"], [C2, "C"], [D, "D"]].map(([p, t]) => fdot(p) + ftext(away(p, O, 13), t, { b: true })).join("") + fdot(P) + ftext([P[0] - 4, P[1] + 15], "P", { b: true }) +
+    ftext([8, 16], legend ? legend[0] : `PA = ${a}　PB = ${b}`, { a: "start", s: 13 }) + ftext([8, 34], legend ? legend[1] : `PC = ${c}　PD = <tspan style="fill:var(--warm);font-weight:700">?</tspan>`, { a: "start", s: 13 }));
+}
+/* 直径に対する円周角（AB が直径、∠CAB = a） */
+function figDiam(a) {
+  const O = [150, 102], R = 84, A = onC(O, R, 180), B = onC(O, R, 0), C2 = onC(O, R, 2 * a);
+  return fsvg(fcirc(O, R) + fline(A, B) + fline(A, C2) + fline(C2, B) + farc(A, B, C2, 26, { c: F_AC }) + farc(B, C2, A, 24) +
+    ftext(arcLabel(A, B, C2, 44), `${a}°`, { c: F_AC, b: true, s: 13 }) + ftext(arcLabel(B, C2, A, 40), "x", { c: F_HL, b: true, s: 17 }) +
+    [[A, "A"], [B, "B"], [C2, "C"]].map(([p, t]) => fdot(p) + ftext(away(p, O, 13), t, { b: true })).join("") + fdot(O) + ftext([O[0], O[1] + 13], "O", { b: true }));
+}
+/* 角の二等分線と辺の比 */
+function figBis(ab, ac, bc) {
+  const A = [120, 24], B = [30, 172], C2 = [272, 172], D = mid(B, C2, ab / (ab + ac));
+  return fsvg(fpoly([A, B, C2]) + fline(A, D, { c: F_AC, dash: true }) + farc(A, B, D, 26) + farc(A, D, C2, 32) +
+    ftext([mid(A, B)[0] - 10, mid(A, B)[1]], `${ab}`, { a: "end", b: true }) +
+    ftext([mid(A, C2)[0] + 10, mid(A, C2)[1] - 6], `${ac}`, { a: "start", b: true }) +
+    ftext([mid(B, C2)[0], 192], `BC = ${bc}`, { s: 13 }) + ftext([mid(B, D)[0], 160], "?", { c: F_HL, b: true, s: 17 }) +
+    `<path d="M${B[0]},${B[1] + 4} L${D[0]},${D[1] + 4}" stroke="var(--warm)" stroke-width="3"/>` +
+    [[A, "A", [0, -11]], [B, "B", [-10, 4]], [C2, "C", [10, 4]], [D, "D", [0, 13]]].map(([p, t, o]) => fdot(p) + ftext([p[0] + o[0], p[1] + o[1]], t, { b: true })).join(""));
+}
+/* 重心 */
+function figCentroid(m) {
+  const A = [150, 20], B = [40, 178], C2 = [262, 178], M = mid(B, C2), G2 = mid(A, M, 2 / 3), N = mid(A, C2), L = mid(A, B);
+  return fsvg(fpoly([A, B, C2]) + fline(B, N, { c: F_MU, w: 1, dash: true }) + fline(C2, L, { c: F_MU, w: 1, dash: true }) +
+    fline(A, M, { c: F_AC, w: 2.4 }) + fline(A, G2, { c: F_HL, w: 4 }) +
+    ftext([A[0] + 30, mid(A, G2)[1]], "AG = ?", { c: F_HL, b: true, a: "start", s: 13 }) + ftext([12, 20], `AM = ${m}`, { a: "start", s: 13, b: true, c: F_AC }) +
+    [[A, "A", [0, -10]], [B, "B", [-10, 4]], [C2, "C", [10, 4]], [M, "M", [0, 14]], [G2, "G", [12, -2]]].map(([p, t, o]) => fdot(p) + ftext([p[0] + o[0], p[1] + o[1]], t, { b: true })).join(""));
+}
+/* 正多面体（見取り図をぐるっと回して見せる） */
+function figPoly(name) {
+  const g = (1 + Math.sqrt(5)) / 2, V = {
+    "正四面体": [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]],
+    "立方体": [-1, 1].flatMap(x => [-1, 1].flatMap(y => [-1, 1].map(z => [x, y, z]))),
+    "正八面体": [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]],
+    "正二十面体": [[0, 1, g], [0, -1, g], [0, 1, -g], [0, -1, -g], [1, g, 0], [-1, g, 0], [1, -g, 0], [-1, -g, 0], [g, 0, 1], [-g, 0, 1], [g, 0, -1], [-g, 0, -1]],
+    "正十二面体": [...[-1, 1].flatMap(x => [-1, 1].flatMap(y => [-1, 1].map(z => [x, y, z]))), ...[-1, 1].flatMap(a => [-1, 1].flatMap(b => [[0, a / g, b * g], [a / g, b * g, 0], [a * g, 0, b / g]]))],
+  }[name];
+  if (!V) return "";
+  let dmin = Infinity; V.forEach((p, i) => V.forEach((q, j) => { if (j > i) dmin = Math.min(dmin, Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2])); }));
+  const ay = 0.55, ax = 0.42, rot = p => { let [x, y, z] = p; [x, z] = [x * Math.cos(ay) + z * Math.sin(ay), -x * Math.sin(ay) + z * Math.cos(ay)]; [y, z] = [y * Math.cos(ax) - z * Math.sin(ax), y * Math.sin(ax) + z * Math.cos(ax)]; return [x, y, z]; };
+  const P3 = V.map(rot), sc = 72 / Math.max(...P3.map(p => Math.hypot(p[0], p[1]))), pt = p => [150 + p[0] * sc, 100 - p[1] * sc];
+  let out = "";
+  P3.forEach((p, i) => P3.forEach((q, j) => { if (j > i && Math.abs(Math.hypot(V[i][0] - V[j][0], V[i][1] - V[j][1], V[i][2] - V[j][2]) - dmin) < 1e-6) { const back = (p[2] + q[2]) / 2 < -0.05; out += fline(pt(p), pt(q), { c: back ? F_MU : F_INK, w: back ? 1 : 2, dash: back }); } }));
+  return fsvg(out + ftext([150, 190], name, { s: 13, b: true }));
+}
+/* 碁盤の目の最短経路 */
+function figRoute(w, hh) {
+  const cs = Math.min(240 / w, 150 / hh), x0 = 150 - w * cs / 2, y0 = 100 + hh * cs / 2 - 8;
+  let out = "";
+  for (let i = 0; i <= w; i++) out += fline([x0 + i * cs, y0], [x0 + i * cs, y0 - hh * cs], { w: 1.4 });
+  for (let j = 0; j <= hh; j++) out += fline([x0, y0 - j * cs], [x0 + w * cs, y0 - j * cs], { w: 1.4 });
+  return fsvg(out + fdot([x0, y0], { r: 6, c: F_AC }) + fdot([x0 + w * cs, y0 - hh * cs], { r: 6, c: F_HL }) +
+    ftext([x0 - 14, y0 + 2], "S", { b: true, c: F_AC }) + ftext([x0 + w * cs + 14, y0 - hh * cs], "G", { b: true, c: F_HL }) +
+    ftext([150, y0 + 14], `→ ${w} 区画`, { s: 12, c: F_MU }) + ftext([x0 + w * cs + 12, y0 - hh * cs / 2], `↑${hh}`, { s: 12, c: F_MU, a: "start" }));
+}
+/* 円周上の点 */
+function figTri(n) {
+  const O = [150, 100], R = 78, P = Array.from({ length: n }, (_, i) => onC(O, R, 90 - 360 * i / n));
+  return fsvg(fcirc(O, R, { c: F_MU, w: 1.2 }) + fpoly([P[0], P[2], P[Math.floor(n / 2) + 1]], { f: "var(--accent-soft)", c: F_AC }) + P.map(p => fdot(p, { r: 4.5 })).join(""));
+}
+/* 授業の類題：図のテンプレートの 最初の図（問題の図）を 小さく出す */
+function tplFig(tpl) {
+  try {
+    const svg = s("svg", { viewBox: "0 0 800 560" }), G = s("g", {}, svg);
+    const T = { c: null, svg, at: j => j <= 0 ? s("g", {}, G) : document.createElementNS(NS, "g"), now: () => false, k: 0, move(el, from, to) { el.style.transform = `translate(${to.x}px, ${to.y}px)`; } };
+    tpl.render(T, 0);
+    if (!G.childNodes.length) return "";
+    svg.setAttribute("class", "qfig big"); svg.setAttribute("xmlns", NS);
+    return svg.outerHTML;
+  } catch (e) { return ""; }
+}
+
+/* ---------- 公式ヒント ---------- */
+const FORMULA = {
+  perm: ["順列（ならべる）", `${P("n", "r")} = n × (n−1) × …（r 個かける）`],
+  comb: ["組合せ（えらぶだけ）", `${C("n", "r")} = ${P("n", "r")} ÷ r!`],
+  circ: ["円順列", "（n − 1）!　← 1 人を固定して のこりをならべる"],
+  route: ["最短経路", `→ と ↑ のならべ方：${C("→+↑", "→")}`],
+  tri: ["三角形の個数", `3 点えらべば 三角形が 1 つ → ${C("n", "3")}`],
+  dice: ["サイコロ 2 つ", "確率 = あてはまるマス ÷ 36（6×6 の表で数える）"],
+  coin: ["反復試行", `${C("n", "k")} × (1/2)<sup>n</sup>`],
+  atleast: ["少なくとも 1 回", "1 − （1 回も起こらない確率）"],
+  divisors: ["約数の個数", "N = p<sup>a</sup> q<sup>b</sup> → (a+1)(b+1) 個"],
+  gcdq: ["最大公約数（互除法）", "gcd(a, b) = gcd(b, a を b でわった余り)"],
+  bin: ["2 進法 → 10 進法", "位の重み 1, 2, 4, 8, 16 … を かけて たす"],
+  angle: ["円周角の定理", "円周角 = 中心角 ÷ 2"],
+  quad: ["円に内接する四角形", "向かい合う角の和 = 180°"],
+  power: ["方べきの定理", "PA × PB = PC × PD"],
+  bis: ["角の二等分線", "BD : DC = AB : AC"],
+  poly: ["正多面体", "頂点 − 辺 + 面 = 2（オイラー）"],
+  centroid: ["重心", "重心は 中線を 2 : 1 に分ける（AG : GM = 2 : 1）"],
+};
+function formulaOf(key) {
+  if (FORMULA[key]) return FORMULA[key];
+  const m = typeof UNIT_META !== "undefined" && UNIT_META[key];
+  if (m) return [unitName(key), m.summary.slice(0, 2).join("<br>")];
+  return null;
+}
+
+/* ---------- 電卓（式を入れると答え。分数のまま出す） ---------- */
+function calcEval(src) {
+  const str = String(src).replace(/[０-９．（）＋－＊／！]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xfee0)).replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-").replace(/\s+/g, "");
+  let i = 0;
+  const gcd2 = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a || 1; };
+  const R = (n, d = 1) => { if (d < 0) { n = -n; d = -d; } const g = gcd2(n, d); return [n / g, d / g]; };
+  const fromNum = x => { if (Number.isInteger(x)) return [x, 1]; let d = 1; while (!Number.isInteger(Math.round(x * d * 1e9) / 1e9) && d < 1e6) d *= 10; return R(Math.round(x * d), d); };
+  const add = (a, b) => R(a[0] * b[1] + b[0] * a[1], a[1] * b[1]), mul = (a, b) => R(a[0] * b[0], a[1] * b[1]);
+  const fact2 = n => { if (n < 0 || n > 20 || !Number.isInteger(n)) throw 0; let r = 1; for (let k = 2; k <= n; k++) r *= k; return r; };
+  const int = a => { if (a[1] !== 1) throw 0; return a[0]; };
+  function num() { const m = str.slice(i).match(/^\d+(\.\d+)?/); if (!m) throw 0; i += m[0].length; return fromNum(+m[0]); }
+  function primary() {
+    if (str[i] === "(") { i++; const v = expr(); if (str[i] !== ")") throw 0; i++; return v; }
+    let v = num();
+    if (str[i] === "C" || str[i] === "P") { const op = str[i++]; const r = int(num()), n = int(v); if (r > n) return [0, 1]; let p = 1; for (let k = 0; k < r; k++) p *= n - k; v = [op === "C" ? p / fact2(r) : p, 1]; }
+    return v;
+  }
+  function post() { let v = primary(); while (str[i] === "!") { i++; v = [fact2(int(v)), 1]; } return v; }
+  function power() { let v = post(); if (str[i] === "^") { i++; const e = int(unary()); let r = [1, 1]; for (let k = 0; k < Math.abs(e); k++) r = mul(r, v); v = e < 0 ? R(r[1], r[0]) : r; } return v; }
+  function unary() { if (str[i] === "-") { i++; const v = unary(); return [-v[0], v[1]]; } if (str[i] === "+") { i++; return unary(); } return power(); }
+  function term() { let v = unary(); while (str[i] === "*" || str[i] === "/" || (str[i] && /[\d(]/.test(str[i]))) { const op = /[\d(]/.test(str[i]) ? "*" : str[i++]; const b = unary(); if (op === "/") { if (!b[0]) throw 0; v = mul(v, [b[1], b[0]]); } else v = mul(v, b); v = R(v[0], v[1]); } return v; }
+  function expr() { let v = term(); while (str[i] === "+" || str[i] === "-") { const op = str[i++]; const b = term(); v = add(v, op === "-" ? [-b[0], b[1]] : b); } return v; }
+  try { if (!str) return null; const v = expr(); if (i !== str.length) return null; if (!Number.isFinite(v[0])) return null; return v[1] === 1 ? String(v[0]) : `${v[0]}/${v[1]}（≒ ${(v[0] / v[1]).toFixed(4).replace(/0+$/, "")}）`; } catch (e) { return null; }
+}
+
+/* ---------- 計算スペース（指・ペンで書ける ＋ 電卓） ---------- */
+function scratchPad(opts = {}) {
+  const wrap = h("div", { class: "scratch" });
+  const cv = h("canvas", { class: "scv", "aria-label": "計算スペース（指やペンで書ける）" });
+  const strokes = []; let cur = null, mode = "pen";
+  const penB = h("button", { type: "button", class: "mini on", onclick: () => setMode("pen") }, "✏️ ペン");
+  const erB = h("button", { type: "button", class: "mini", onclick: () => setMode("erase") }, "🧽 けしゴム");
+  const clrB = h("button", { type: "button", class: "mini", onclick: () => api.clear() }, "🗑 ぜんぶけす");
+  const undoB = h("button", { type: "button", class: "mini", onclick: () => { strokes.pop(); redraw(); } }, "↶");
+  const setMode = m => { mode = m; penB.classList.toggle("on", m === "pen"); erB.classList.toggle("on", m === "erase"); };
+  const ci = h("input", { type: "text", class: "calcin", inputmode: "text", placeholder: "電卓：12*11/2　8C3　5!　3/4+1/6", "aria-label": "電卓" });
+  const co = h("span", { class: "calcout" });
+  ci.addEventListener("input", () => { const r = calcEval(ci.value); co.textContent = ci.value.trim() ? (r == null ? "…" : "= " + r) : ""; co.classList.toggle("ok", r != null); });
+  ci.addEventListener("keydown", e => e.stopPropagation());
+  wrap.appendChild(h("div", { class: "sbar" }, penB, erB, undoB, clrB));
+  wrap.appendChild(cv);
+  wrap.appendChild(h("div", { class: "calc" }, h("span", { class: "ci" }, "🧮"), ci, co));
+  const ctx2 = cv.getContext("2d");
+  function size() {
+    const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (!r.width) return;
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    ctx2.setTransform(dpr, 0, 0, dpr, 0, 0); redraw();
+  }
+  function drawStroke(st) {
+    if (!st.pts.length) return;
+    ctx2.globalCompositeOperation = st.mode === "erase" ? "destination-out" : "source-over";
+    ctx2.strokeStyle = getComputedStyle(document.body).getPropertyValue("--ink") || "#222";
+    ctx2.lineWidth = st.mode === "erase" ? 22 : 2.4; ctx2.lineCap = ctx2.lineJoin = "round";
+    ctx2.beginPath(); ctx2.moveTo(st.pts[0][0], st.pts[0][1]);
+    st.pts.forEach(p => ctx2.lineTo(p[0], p[1])); if (st.pts.length === 1) ctx2.lineTo(st.pts[0][0] + .1, st.pts[0][1]);
+    ctx2.stroke(); ctx2.globalCompositeOperation = "source-over";
+  }
+  function redraw() { const r = cv.getBoundingClientRect(); ctx2.clearRect(0, 0, r.width, r.height); strokes.forEach(drawStroke); }
+  const pos = e => { const r = cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  cv.addEventListener("pointerdown", e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); if (!cv.width) size(); cur = { mode, pts: [pos(e)] }; strokes.push(cur); drawStroke(cur); });
+  cv.addEventListener("pointermove", e => { if (!cur) return; cur.pts.push(pos(e)); redraw(); });
+  const up = () => { cur = null; };
+  cv.addEventListener("pointerup", up); cv.addEventListener("pointercancel", up);
+  const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => size()) : null;
+  if (ro) ro.observe(cv);
+  const api = { el: wrap, clear() { strokes.length = 0; redraw(); ci.value = ""; co.textContent = ""; }, resize: size };
+  setTimeout(size, 30);
+  return api;
+}
+/* 「✏️ 計算スペース」のボタンと たたんだ箱 */
+function scratchToggle(parent, opts = {}) {
+  const key = "scratchOpen", pad = scratchPad();
+  const box = h("div", { class: "scratchbox" }, pad.el);
+  box.hidden = !store.get(key, !!opts.open);
+  const btn = h("button", { type: "button", class: "toolbtn" + (box.hidden ? "" : " on"), onclick: () => { box.hidden = !box.hidden; btn.classList.toggle("on", !box.hidden); store.set(key, !box.hidden); if (!box.hidden) setTimeout(pad.resize, 20); } }, "✏️ 計算スペース");
+  return { btn, box, pad };
+}
+</script>
+<script>
+"use strict";
 /* ===================== 🎮 ゲーム：ごほうび（コイン・段位・バッジ）／⏱ タイムアタック／🏆 クラス対戦 =====================
    クラス対戦は Firebase Realtime Database（無料）の REST API を使う。論理表現ラボと同じデータベースを使える。 */
 const DB_DEFAULT = "https://english-logical-default-rtdb.firebaseio.com";
@@ -6918,13 +7173,13 @@ function makeQs(cfg, seed, n = 90) {
   try {
     if (cfg.m === "units") {
       const ids = Object.keys(VARIANTS);
-      for (let i = 0; i < n; i++) { const id = ids[Math.floor(R() * ids.length)], v = VARIANTS[id](); out.push({ q: v.problem, ch: shuffle(v.choices.slice()), ans: v.choices[0], cat: unitName(id), w: QDIFF[id] || 2 }); }
+      for (let i = 0; i < n; i++) { const id = ids[Math.floor(R() * ids.length)], v = VARIANTS[id](); out.push({ q: v.problem, ch: shuffle(v.choices.slice()), ans: v.choices[0], cat: unitName(id), w: QDIFF[id] || 2, key: id, fig: v.fig || "", hint: v.hint }); }
     } else {
       const gens = GCATS[cfg.m] || Object.keys(QGEN); let bag = [];
       for (let i = 0; i < n; i++) {
         if (!bag.length) bag = shuffle(gens.slice());
         const key = bag.pop(), g = QGEN[key](), ans = String(g.ans);
-        out.push({ q: g.q, ch: shuffle(distinct(g.ans, g.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? fmt(w, 2) : w))), ans, cat: g.cat, w: QDIFF[key] || 1 });
+        out.push({ q: g.q, ch: shuffle(distinct(g.ans, g.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? fmt(w, 2) : w))), ans, cat: g.cat, w: QDIFF[key] || 1, key, fig: g.fig || "" });
       }
     }
   } finally { Math.random = orig; }
@@ -6941,7 +7196,7 @@ function newGame(cfg, seed, mode, startAt) {
   G = { cfg, T, qs: makeQs(cfg, seed), qi: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, miss: 0, gain: 0, mode, startAt, endAt: startAt + T * 1000, q: null, lock: false, over: false, pick: -1 };
   nextQ(); return G;
 }
-function nextQ() { G.q = G.qs[G.qi % G.qs.length]; G.qi++; G.lock = false; G.pick = -1; }
+function nextQ() { G.q = G.qs[G.qi % G.qs.length]; G.qi++; G.lock = false; G.pick = -1; G.hint = false; if (G.pad) G.pad.clear(); }
 function playShell(box, title) {
   clear(box);
   box.appendChild(h("div", { class: "gplay" },
@@ -6950,7 +7205,13 @@ function playShell(box, title) {
       h("div", { class: "tbar" }, h("i", { id: "tfill" }), h("span", { id: "tsec" })),
       h("div", { class: "hc", id: "hcombo" }),
       h("div", { class: "hs" }, h("small", {}, title), h("b", { id: "hscore" }, "0"))),
-    h("div", { class: "gq", id: "gq" })));
+    h("div", { class: "gq", id: "gq" }),
+    h("div", { class: "qtools", id: "gtools" })));
+  const sc = scratchToggle();
+  $("#gtools").appendChild(h("button", { type: "button", class: "toolbtn", id: "fBtn", "data-g": "hint" }, "💡 公式（点・時間 半分）"));
+  $("#gtools").appendChild(sc.btn);
+  box.querySelector(".gplay").appendChild(sc.box);
+  G && (G.pad = sc.pad);
 }
 function drawHud() {
   if (!G) return;
@@ -6971,17 +7232,23 @@ function drawQ() {
   }
   const q = G.q;
   el.innerHTML = `<div class="gcat"><span class="pill">${q.cat}</span><span class="stars" title="むずかしさ">${"★".repeat(q.w)}<i>${"★".repeat(3 - q.w)}</i>　正解で +${bonusSec(q.w, G.ok)} 秒</span><span class="r">✅ ${G.ok}　✕ ${G.miss}</span></div>
-    <div class="gqtext">${q.q}</div>
+    <div class="gqtext${q.fig ? " hasfig" : ""}"><span>${q.q}</span></div>${q.fig ? `<div class="gfig">${q.fig}</div>` : ""}${G.hint ? hintHTML(q) : ""}
     <div class="choices">${q.ch.map((c2, i) => { const cls = G.pick < 0 ? "" : c2 === q.ans ? " right" : i === G.pick ? " wrong" : ""; return `<button type="button" class="choice${cls}" data-gp="${i}"${G.pick >= 0 ? " disabled" : ""}><span class="kb">${i + 1}</span>${c2}</button>`; }).join("")}</div>`;
   drawHud();
+  const fb = $("#fBtn"); if (fb) { fb.disabled = G.hint || G.pick >= 0 || t < G.startAt; fb.classList.toggle("on", G.hint); }
 }
+function hintHTML(q) {
+  const fo = formulaOf(q.key), extra = q.hint ? [].concat(q.hint)[0] : "";
+  return `<div class="fhint">${fo ? `<b>📐 ${fo[0]}</b>${fo[1]}` : ""}${extra ? `<div>💡 ${extra}</div>` : ""}</div>`;
+}
+function useHint() { if (!G || G.over || G.hint || G.pick >= 0 || now() < G.startAt) return; G.hint = true; drawQ(); }
 function pickChoice(i) {
   const q = G.q; if (!G || G.lock || G.over || now() < G.startAt) return;
   G.pick = i; G.lock = true;
   if (q.ch[i] === q.ans) {
     G.combo++; if (G.combo > G.maxCombo) G.maxCombo = G.combo;
-    const bs = bonusSec(q.w, G.ok);
-    G.score += Math.round(30 * q.w * mult()); G.ok++;
+    const half = G.hint ? 0.5 : 1, bs = Math.round(bonusSec(q.w, G.ok) * half * 10) / 10;
+    G.score += Math.round(30 * q.w * mult() * half); G.ok++;
     addTime(bs + (G.combo % 5 === 0 ? COMBO_BONUS : 0), G.combo % 5 === 0 ? `${G.combo} コンボ！` : "");
     drawQ(); pushScore();
     setTimeout(() => { if (G && !G.over) { nextQ(); drawQ(); } }, 260);
@@ -7016,6 +7283,7 @@ function bindPlay(c, box, onQuit) {
     const b = e.target.closest("button"); if (!b || b.disabled) return;
     if (b.dataset.gp != null && G) pickChoice(+b.dataset.gp);
     else if (b.dataset.g === "quit") onQuit();
+    else if (b.dataset.g === "hint") useHint();
   });
   c.on(document, "keydown", e => { if (G && !G.over && /^[1-4]$/.test(e.key) && !e.target.closest("input,textarea")) pickChoice(+e.key - 1); });
 }
@@ -7405,8 +7673,8 @@ const QGEN = {
   perm() { const n = 4 + rnd(5), r = 2 + rnd(2); const a = nPr(n, r); return { cat: "場合の数", q: `${n} 人から ${r} 人をえらんで、1列にならべる方法は何通り？`, ans: a, wrong: [nCr(n, r), n ** r, nPr(n, r - 1), a * 2], ex: `${P(n, r)} = ${Array.from({ length: r }, (_, i) => n - i).join("×")} = ${a} 通り。ならべるので順列。`, link: "perm" }; },
   comb() { const n = 5 + rnd(5), r = 2 + rnd(2); const a = nCr(n, r); return { cat: "場合の数", q: `${n} 人の中から ${r} 人の係をえらぶ方法は何通り？`, ans: a, wrong: [nPr(n, r), nCr(n, r - 1), n * r, a + n], ex: `えらぶだけなので組合せ。${C(n, r)} = ${a} 通り。`, link: "comb" }; },
   circ() { const n = 4 + rnd(4); const a = fact(n - 1); return { cat: "場合の数", q: `${n} 人がまるいテーブルにすわる方法は何通り？（回して同じものは1通り）`, ans: a, wrong: [fact(n), fact(n - 1) / 2, fact(n) / 2, fact(n - 2)], ex: `円順列は (n−1)! = ${n - 1}! = ${a} 通り。`, link: "perm" }; },
-  route() { const w = 3 + rnd(3), h = 2 + rnd(2); const a = nCr(w + h, w); return { cat: "場合の数", q: `横 ${w} 区画・たて ${h} 区画の碁盤の目の道で、左下から右上へ行く最短の道は何通り？`, ans: a, wrong: [w * h, 2 ** (w + h), nPr(w + h, h), a + w], ex: `→ ${w} 個と ↑ ${h} 個のならべ方。${C(w + h, w)} = ${a} 通り。`, link: "route" }; },
-  tri() { const n = 6 + rnd(5); const a = nCr(n, 3); return { cat: "場合の数", q: `円周上の ${n} 個の点から 3 点をえらんでできる三角形は何個？`, ans: a, wrong: [nPr(n, 3), nCr(n, 2), n * 3, a - n], ex: `3 点をえらべば三角形が1つ決まる。${C(n, 3)} = ${a} 個。`, link: "comb" }; },
+  route() { const w = 3 + rnd(3), h = 2 + rnd(2); const a = nCr(w + h, w); return { cat: "場合の数", q: `横 ${w} 区画・たて ${h} 区画の碁盤の目の道で、左下から右上へ行く最短の道は何通り？`, ans: a, wrong: [w * h, 2 ** (w + h), nPr(w + h, h), a + w], ex: `→ ${w} 個と ↑ ${h} 個のならべ方。${C(w + h, w)} = ${a} 通り。`, link: "route", fig: figRoute(w, h) }; },
+  tri() { const n = 6 + rnd(5); const a = nCr(n, 3); return { cat: "場合の数", q: `円周上の ${n} 個の点から 3 点をえらんでできる三角形は何個？`, ans: a, wrong: [nPr(n, 3), nCr(n, 2), n * 3, a - n], ex: `3 点をえらべば三角形が1つ決まる。${C(n, 3)} = ${a} 個。`, link: "comb", fig: figTri(n) }; },
   dice() {
     const L = [["和が 7", (a, b) => a + b === 7], ["和が 10 以上", (a, b) => a + b >= 10], ["同じ目", (a, b) => a === b], ["少なくとも1つが 6", (a, b) => a === 6 || b === 6], ["積が偶数", (a, b) => a * b % 2 === 0], ["差が 2", (a, b) => Math.abs(a - b) === 2]];
     const [t, f] = L[rnd(L.length)]; let k = 0; for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) if (f(a, b)) k++;
@@ -7417,13 +7685,15 @@ const QGEN = {
   divisors() { const L = [12, 18, 24, 36, 48, 60, 72, 90, 96, 100, 120, 144, 180, 200]; const n = L[rnd(L.length)]; const f = factorize(n); const a = f.reduce((t, [, e]) => t * (e + 1), 1); return { cat: "整数", q: `${n} の正の約数は何個？`, ans: a, wrong: [a - 1, a + 2, f.reduce((t, [, e]) => t * e, 1) + 1, a * 2], ex: `${n} = ${f.map(([p, e]) => e > 1 ? `${p}<sup>${e}</sup>` : p).join("×")} → ${f.map(([, e]) => `(${e}+1)`).join("")} = ${a} 個。`, link: "factor" }; },
   gcdq() { const g = 3 + rnd(10), x = 2 + rnd(6); let y = 2 + rnd(6); while (gcd(x, y) !== 1 || y === x) y = 2 + rnd(7); const a = g * x, b = g * y; return { cat: "整数", q: `${a} と ${b} の最大公約数は？`, ans: g, wrong: [lcm(a, b), g * 2, Math.max(1, g - 1), x * y], ex: `互除法：gcd(${a}, ${b}) = ${g}。`, link: "euclid" }; },
   bin() { const v = 5 + rnd(27); const s2 = v.toString(2); return { cat: "整数", q: `2 進法の ${s2}<sub>(2)</sub> を 10 進法で表すと？`, ans: v, wrong: [v + 1, v - 1, parseInt(s2, 10) % 100, v * 2], ex: `${s2.split("").map((d, i) => `${d}×${2 ** (s2.length - 1 - i)}`).join(" + ")} = ${v}。`, link: "base" }; },
-  angle() { const x = 20 + rnd(14) * 5; return { cat: "図形", q: `円の中心角が ${2 * x}° のとき、同じ弧に対する円周角は？`, ans: x + "°", wrong: [2 * x + "°", (180 - x) + "°", (90 - x / 2) + "°", (x + 10) + "°"], ex: `円周角は中心角の半分：${2 * x}° ÷ 2 = ${x}°。`, link: "inscribed" }; },
-  quad() { const x = 60 + rnd(14) * 5; return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", wrong: [x + "°", (360 - x) + "°", (90 - x / 2) + "°", (x / 2) + "°"], ex: `向かい合う角の和は 180°。180° − ${x}° = ${180 - x}°。`, link: "inscribed" }; },
-  power() { const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]]; const [a, b, cc, d] = L[rnd(L.length)]; return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: d, wrong: [a + b - cc, b * cc / a, d + 2, cc + 1], ex: `方べきの定理：PA×PB = PC×PD → ${a}×${b} = ${cc}×PD → PD = ${d}。`, link: "power" }; },
-  bis() { const L = [[6, 4, 5], [8, 4, 6], [9, 6, 10], [6, 3, 6], [10, 6, 8]]; const [ab, ac, bc] = L[rnd(L.length)]; const bd = bc * ab / (ab + ac); const s1 = Number.isInteger(bd) ? String(bd) : fracStr(bc * ab, ab + ac); return { cat: "図形", q: `△ABC で AB = ${ab}、AC = ${ac}、BC = ${bc}。∠A の二等分線と BC の交点を D とするとき BD は？`, ans: s1, wrong: [fracStr(bc * ac, ab + ac), String(bc / 2), fracStr(ab * ac, bc), String(ab - ac)], ex: `BD：DC = AB：AC = ${ab}：${ac}。BD = ${bc} × ${ab}/(${ab}+${ac}) = ${s1}。`, link: "bisector" }; },
-  poly() { const L = [["正四面体", 4, 6, 4], ["立方体", 8, 12, 6], ["正八面体", 6, 12, 8], ["正十二面体", 20, 30, 12], ["正二十面体", 12, 30, 20]]; const [t, v, e, f] = L[rnd(L.length)]; const ask = rnd(3); const nm = ["頂点", "辺", "面"][ask], a = [v, e, f][ask]; return { cat: "図形", q: `${t}の${nm}の数は？`, ans: a, wrong: [[v, e, f][(ask + 1) % 3], [v, e, f][(ask + 2) % 3], a + 2, a * 2], ex: `${t}：頂点 ${v}、辺 ${e}、面 ${f}。${v} − ${e} + ${f} = 2。`, link: "poly" }; },
-  centroid() { const m = 3 * (2 + rnd(6)); return { cat: "図形", q: `△ABC の中線 AM の長さが ${m} のとき、頂点 A から重心 G までの長さ AG は？`, ans: m * 2 / 3, wrong: [m / 3, m / 2, m, m * 3 / 4], ex: `重心は中線を 2：1 に分ける。AG = ${m} × 2/3 = ${m * 2 / 3}。`, link: "centers" }; },
+  angle() { const x = 20 + rnd(14) * 5; return { cat: "図形", q: `円の中心角が ${2 * x}° のとき、同じ弧に対する円周角は？`, ans: x + "°", wrong: [2 * x + "°", (180 - x) + "°", (90 - x / 2) + "°", (x + 10) + "°"], ex: `円周角は中心角の半分：${2 * x}° ÷ 2 = ${x}°。`, link: "inscribed", fig: figAngle(x) }; },
+  quad() { const x = 60 + rnd(14) * 5; return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", wrong: [x + "°", (360 - x) + "°", (90 - x / 2) + "°", (x / 2) + "°"], ex: `向かい合う角の和は 180°。180° − ${x}° = ${180 - x}°。`, link: "inscribed", fig: figQuad(x) }; },
+  power() { const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]]; const [a, b, cc, d] = L[rnd(L.length)]; return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: d, wrong: [a + b - cc, b * cc / a, d + 2, cc + 1], ex: `方べきの定理：PA×PB = PC×PD → ${a}×${b} = ${cc}×PD → PD = ${d}。`, link: "power", fig: figPower(a, b, cc) }; },
+  bis() { const L = [[6, 4, 5], [8, 4, 6], [9, 6, 10], [6, 3, 6], [10, 6, 8]]; const [ab, ac, bc] = L[rnd(L.length)]; const bd = bc * ab / (ab + ac); const s1 = Number.isInteger(bd) ? String(bd) : fracStr(bc * ab, ab + ac); return { cat: "図形", q: `△ABC で AB = ${ab}、AC = ${ac}、BC = ${bc}。∠A の二等分線と BC の交点を D とするとき BD は？`, ans: s1, wrong: [fracStr(bc * ac, ab + ac), String(bc / 2), fracStr(ab * ac, bc), String(ab - ac)], ex: `BD：DC = AB：AC = ${ab}：${ac}。BD = ${bc} × ${ab}/(${ab}+${ac}) = ${s1}。`, link: "bisector", fig: figBis(ab, ac, bc) }; },
+  poly() { const L = [["正四面体", 4, 6, 4], ["立方体", 8, 12, 6], ["正八面体", 6, 12, 8], ["正十二面体", 20, 30, 12], ["正二十面体", 12, 30, 20]]; const [t, v, e, f] = L[rnd(L.length)]; const ask = rnd(3); const nm = ["頂点", "辺", "面"][ask], a = [v, e, f][ask]; return { cat: "図形", q: `${t}の${nm}の数は？`, ans: a, wrong: [[v, e, f][(ask + 1) % 3], [v, e, f][(ask + 2) % 3], a + 2, a * 2], ex: `${t}：頂点 ${v}、辺 ${e}、面 ${f}。${v} − ${e} + ${f} = 2。`, link: "poly", fig: figPoly(t) }; },
+  centroid() { const m = 3 * (2 + rnd(6)); return { cat: "図形", q: `△ABC の中線 AM の長さが ${m} のとき、頂点 A から重心 G までの長さ AG は？`, ans: m * 2 / 3, wrong: [m / 3, m / 2, m, m * 3 / 4], ex: `重心は中線を 2：1 に分ける。AG = ${m} × 2/3 = ${m * 2 / 3}。`, link: "centers", fig: figCentroid(m) }; },
 };
+/* どの公式の問題か（ヒント用）を 結果につける */
+Object.keys(QGEN).forEach(k => { const f = QGEN[k]; QGEN[k] = () => Object.assign({ key: k }, f()); });
 sim({
   id: "quiz", cat: "quiz", name: "10 問クイズ", sub: "全分野からランダムに出題",
   hint: "",
@@ -7452,7 +7722,8 @@ function runQuiz(c, gens, key) {
     const wrap = h("div", { class: "quiz" },
       h("div", { class: "qn" }, `第 ${i + 1} 問 / 10　・　${q.cat}　・　正解 ${score}`),
       h("div", { class: "bar" }, h("i", { style: `width:${i * 10}%` })),
-      h("div", { class: "qtext", html: q.q }));
+      h("div", { class: "qtext", html: q.q }),
+      q.fig ? h("div", { class: "fig", html: q.fig }) : null);
     const grid = h("div", { class: "choices" });
     const btns = choices.map(ch => {
       const b = h("button", { type: "button", class: "choice", html: ch });
@@ -7460,6 +7731,13 @@ function runQuiz(c, gens, key) {
       grid.appendChild(b); return b;
     });
     wrap.appendChild(grid);
+    /* 公式ヒント・計算スペース */
+    const fo = formulaOf(q.key), fbox = h("div", { class: "fhint", hidden: true });
+    if (fo) fbox.innerHTML = `<b>📐 ${fo[0]}</b>${fo[1]}`;
+    const fbtn = fo ? h("button", { type: "button", class: "toolbtn", onclick: () => { fbox.hidden = !fbox.hidden; fbtn.classList.toggle("on", !fbox.hidden); } }, "💡 公式") : null;
+    const sc = scratchToggle();
+    wrap.appendChild(h("div", { class: "qtools" }, fbtn, sc.btn));
+    wrap.appendChild(fbox); wrap.appendChild(sc.box);
     box.appendChild(wrap);
     c.out(`<span class="mt">答えをえらんでね</span><br>正解 <span class="big hl">${score}</span> / ${i}`);
     function answer(ch, b) {
