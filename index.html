@@ -426,6 +426,15 @@ body.gscr .app > .lib, body.gscr .app > .card { display: none !important; }
 .rvitem .btn { align-self: flex-start; text-decoration: none; color: var(--ink); font-size: 13px; }
 .gres { text-align: center; }
 .gplay.done { height: auto; } .gplay.done #gtools, .gplay.done .scratchbox { display: none; } .gplay.done .gq { flex: none; }
+.rules { list-style: none; margin: 6px auto 0; padding: 0; display: flex; flex-direction: column; gap: 4px; text-align: left; font-size: 14px; color: var(--ink); max-width: 30em; line-height: 1.5; }
+.rules li { display: grid; grid-template-columns: 1.6em 1fr; } .rules b { margin-right: 2px; }
+.ghp .rules { font-size: 13px; margin: 0; }
+.gcount .rules b { font-size: inherit; font-family: inherit; color: var(--ink); line-height: inherit; }
+.gcount .rules { font-size: 14.5px; }
+.awards { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; flex: none; }
+.aw { display: inline-flex; align-items: baseline; gap: 6px; border: 1.5px solid var(--gold); border-radius: 18px; padding: 3px 12px; background: var(--panel); font-size: clamp(13px, 2.6cqh, 18px); }
+.aw i { font-style: normal; } .aw b { color: var(--gold); font-size: .85em; } .aw small { color: var(--muted); font-size: .8em; }
+.aw.me { background: var(--accent-soft); border-color: var(--accent); }
 /* ===== 🎮 ゲーム ===== */
 .tbtn.coin b { font-family: var(--font-data); font-weight: 600; margin-left: 2px; }
 .plus { position: fixed; z-index: 99; transform: translateX(-50%); font-family: var(--font-data); font-weight: 600; color: var(--gold); font-size: 16px; pointer-events: none; animation: plus .9s ease-out forwards; }
@@ -1131,6 +1140,18 @@ const TERMS = {
   "内接": "多角形の頂点が すべて円の上にあること（円に内接する）。",
   "接線": "円と 1 点だけで交わる直線。接点を通る半径と垂直。",
   "素数": "1 とその数自身のほかに 約数がない、2 以上の整数。",
+  "約数": "その数を わり切れる整数。例：6 の約数は 1・2・3・6",
+  "進法": "いくつで くり上がるかを決めた 数の表し方。2 進法は 2 で くり上がる（0 と 1 だけで書く）。",
+  "中線": "三角形の頂点と、向かい合う辺の まん中の点を 結んだ線分。",
+  "重心": "三角形の 3 本の中線が 交わる点。中線を 頂点から 2 : 1 に分ける。",
+  "二等分線": "角を ちょうど半分ずつに 分ける直線。",
+  "正多面体": "どの面も 同じ正多角形で、どの頂点にも 同じ数の面が集まる立体。正四面体・立方体・正八面体・正十二面体・正二十面体の 5 種類だけ。",
+  "正四面体": "正三角形 4 枚でできた立体。頂点 4・辺 6・面 4",
+  "立方体": "正方形 6 枚でできた立体（サイコロの形）。頂点 8・辺 12・面 6",
+  "正八面体": "正三角形 8 枚でできた立体。頂点 6・辺 12・面 8",
+  "正十二面体": "正五角形 12 枚でできた立体。頂点 20・辺 30・面 12",
+  "正二十面体": "正三角形 20 枚でできた立体。頂点 12・辺 30・面 20",
+  "最短": "いちばん短い道。碁盤の目では 右（→）と 上（↑）だけで進む。",
 };
 const TERM_KEYS = Object.keys(TERMS).sort((a, b) => b.length - a.length);
 const TERM_RE = new RegExp(TERM_KEYS.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "g");
@@ -7251,16 +7272,25 @@ const GNAME = { all: "全分野", cnt: "場合の数", prob: "確率", geo: "図
 const QDIFF = { perm: 1, comb: 1, circ: 1, route: 2, tri: 1, dice: 2, coin: 2, atleast: 1, divisors: 2, gcdq: 1, bin: 1, angle: 1, quad: 1, power: 2, bis: 3, poly: 1, centroid: 1,
   "u-perm": 2, "u-comb": 2, "u-set": 3, "u-circ": 2, "u-prob": 3, "u-binom": 3, "u-cond": 3, "u-circle": 2, "u-power": 3, "u-div": 3, "u-base": 2 };
 const BONUS = { 1: 6, 2: 12, 3: 22 };    // 正解で もどる秒数（はじめ）
-const PENALTY = 2;                      // まちがえると へる秒数
+const PENALTY = 3;                      // まちがえると へる秒数（続けてまちがえると 2 倍・3 倍）
+const READ_SEC = 2;                     // ★ 1 つにつき これより早く答えると「早おし」で 点・時間が へる（よまずに おすのを ふせぐ）
+const WRONG_WAIT = 2000;                // まちがえたら 正解を見せて 少し待つ（でたらめにおすと 損をするように）
 const COMBO_BONUS = 3;                  // 5 コンボごとの おまけ秒数
 /* 持ち時間「おまかせ」：分野のむずかしさで決める */
 const AUTO_T = { all: 90, cnt: 90, prob: 120, geo: 90, int: 120, units: 150 };
 const startT = cfg => +cfg.t || AUTO_T[cfg.m] || 90;
+/* ルール（スタート前と ゲームのトップに出す） */
+const RULES_HTML = `<ul class="rules">
+  <li><span>✅</span><div><b>正解</b> → 時間がもどる（<span class="stars">★★★</span> むずかしい問題ほど たくさん）</div></li>
+  <li><span>❌</span><div><b>まちがい</b> → −${PENALTY} 秒・少し待つ（続けてまちがえると もっとへる）</div></li>
+  <li><span>🔥</span><div><b>5 問連続 正解</b> → +3 秒。続けるほど 点数も アップ</div></li>
+  <li><span>👀</span><div>問題を よまずに おす「早おし」は 点と時間が へる</div></li>
+  <li><span>⏱</span><div>時間がなくなるまで 何問とけるかな？</div></li></ul>`;
 /* 正解するほど もどる時間が 少しずつ へる（寿司打のように、いつかは 時間切れになる） */
 const bonusSec = (w, ok) => Math.round(BONUS[w] * Math.max(0.2, Math.pow(0.96, ok)) * 10) / 10;
 function makeQs(cfg, seed, n = 90) {
-  const R = rng(seed), orig = Math.random, out = [];
-  Math.random = R;
+  const R = rng(seed), orig = Math.random, out = [], lv = LEVEL;
+  Math.random = R; LEVEL = 1; // クラス対戦で 全員 同じ数字になるように、レベルに関係なく「ふつう」で作る
   try {
     if (cfg.m === "units") {
       const ids = Object.keys(VARIANTS);
@@ -7270,11 +7300,17 @@ function makeQs(cfg, seed, n = 90) {
       for (let i = 0; i < n; i++) {
         if (!bag.length) bag = shuffle(gens.slice());
         const key = bag.pop(), g = QGEN[key](), ans = String(g.ans);
-        out.push({ q: g.q, ch: shuffle(distinct(g.ans, g.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? fmt(w, 2) : w))), ans, cat: g.cat, w: QDIFF[key] || 1, key, fig: g.fig || "", ex: g.ex || "", link: g.link || "" });
+        out.push({ q: g.q, ch: shuffle(distinct(g.ans, g.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? String(+w.toFixed(2)) : w))), ans, cat: g.cat, w: QDIFF[key] || 1, key, fig: g.fig || "", ex: g.ex || "", link: g.link || "" });
       }
     }
-  } finally { Math.random = orig; }
-  return out;
+  } finally { Math.random = orig; LEVEL = lv; }
+  /* はじめは やさしい問題から（いきなり むずかしい問題で つまずかないように） */
+  const ws = out.map(q => q.w), minW = Math.min(...ws), maxW = Math.max(...ws);
+  const first = [], rest = [];
+  out.forEach(q => (q.w === minW && first.length < 4 ? first : rest).push(q));
+  const res = first.concat(rest);
+  for (let i = first.length; i < 8 && maxW > minW; i++) if (res[i] && res[i].w === maxW) { const j = res.findIndex((q, k) => k >= 8 && q.w < maxW); if (j > 0) [res[i], res[j]] = [res[j], res[i]]; }
+  return res;
 }
 const cfgName = cfg => `${GNAME[cfg.m] || cfg.m}・持ち時間 ${startT(cfg)} 秒`;
 
@@ -7284,10 +7320,10 @@ const now = () => Date.now() + OFF;
 const mult = () => 1 + Math.min(4, Math.floor(G.combo / 10)) * 0.5;
 function newGame(cfg, seed, mode, startAt) {
   const T = startT(cfg);
-  G = { cfg, T, log: [], qs: makeQs(cfg, seed), qi: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, miss: 0, gain: 0, mode, startAt, endAt: startAt + T * 1000, q: null, lock: false, over: false, pick: -1 };
+  G = { cfg, T, log: [], missRun: 0, qs: makeQs(cfg, seed), qi: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, miss: 0, gain: 0, mode, startAt, endAt: startAt + T * 1000, q: null, lock: false, over: false, pick: -1 };
   nextQ(); return G;
 }
-function nextQ() { G.q = G.qs[G.qi % G.qs.length]; G.qi++; G.lock = false; G.pick = -1; G.hint = false; if (G.pad) G.pad.clear(); }
+function nextQ() { G.q = G.qs[G.qi % G.qs.length]; G.qi++; G.qStart = now(); G.lock = false; G.pick = -1; G.hint = false; if (G.pad) G.pad.clear(); }
 function playShell(box, title) {
   clear(box);
   box.appendChild(h("div", { class: "gplay" },
@@ -7333,12 +7369,12 @@ function drawQ() {
   const t = now();
   if (t < G.startAt) {
     const n = Math.ceil((G.startAt - t) / 1000);
-    el.innerHTML = `<div class="gcount"><small>${cfgName(G.cfg)}</small><b>${n > 3 ? "…" : n}</b><small>正解すると 時間がもどる（★ の多い むずかしい問題ほど たくさん。でも 正解するほど 少しずつ へっていく）。まちがえると −${PENALTY} 秒・コンボが切れる。時間がなくなるまで 何問とけるかな？</small></div>`;
+    el.innerHTML = `<div class="gcount"><small>${cfgName(G.cfg)}</small><b>${n > 3 ? "…" : n}</b>${RULES_HTML}</div>`;
     drawHud(); return;
   }
   const q = G.q;
   el.innerHTML = `<div class="gcat"><span class="pill">${q.cat}</span><span class="stars" title="むずかしさ">${"★".repeat(q.w)}<i>${"★".repeat(3 - q.w)}</i>　正解で +${bonusSec(q.w, G.ok)} 秒</span><span class="r">✅ ${G.ok}　✕ ${G.miss}</span></div>
-    <div class="gqtext${q.fig ? " hasfig" : ""}"><span>${q.q}</span></div>${q.fig ? `<div class="gfig">${q.fig}</div>` : ""}${G.hint ? hintHTML(q) : ""}
+    <div class="gqtext${q.fig ? " hasfig" : ""}"><span>${termify(q.q)}</span></div>${q.fig ? `<div class="gfig">${q.fig}</div>` : ""}${G.hint ? hintHTML(q) : ""}
     <div class="choices">${q.ch.map((c2, i) => { const cls = G.pick < 0 ? "" : c2 === q.ans ? " right" : i === G.pick ? " wrong" : ""; return `<button type="button" class="choice${cls}" data-gp="${i}"${G.pick >= 0 ? " disabled" : ""}><span class="kb">${i + 1}</span>${c2}</button>`; }).join("")}</div>`;
   drawHud();
   const fb = $("#fBtn"); if (fb) { fb.disabled = G.hint || G.pick >= 0 || t < G.startAt; fb.classList.toggle("on", G.hint); }
@@ -7353,15 +7389,17 @@ function pickChoice(i) {
   G.pick = i; G.lock = true;
   G.log.push({ q, pick: q.ch[i], ok: q.ch[i] === q.ans, hint: G.hint });
   if (q.ch[i] === q.ans) {
-    G.combo++; if (G.combo > G.maxCombo) G.maxCombo = G.combo;
-    const half = G.hint ? 0.5 : 1, bs = Math.round(bonusSec(q.w, G.ok) * half * 10) / 10;
+    G.combo++; G.missRun = 0; if (G.combo > G.maxCombo) G.maxCombo = G.combo;
+    const think = (now() - Math.max(G.qStart || 0, G.startAt)) / 1000, quick = Math.min(1, think / (READ_SEC * q.w));
+    const half = (G.hint ? 0.5 : 1) * quick, bs = Math.round(bonusSec(q.w, G.ok) * half * 10) / 10;
     G.score += Math.round(30 * q.w * mult() * half); G.ok++;
-    addTime(bs + (G.combo % 5 === 0 ? COMBO_BONUS : 0), G.combo % 5 === 0 ? `${G.combo} コンボ！` : "");
+    addTime(bs + (G.combo % 5 === 0 ? COMBO_BONUS : 0), G.combo % 5 === 0 ? `${G.combo} コンボ！` : quick < 1 ? "早おし" : "");
     drawQ(); pushScore();
     setTimeout(() => { if (G && !G.over) { nextQ(); drawQ(); } }, 260);
   } else {
-    G.combo = 0; G.miss++; addTime(-PENALTY); drawQ(); pushScore();
-    setTimeout(() => { if (G && !G.over) { nextQ(); drawQ(); } }, 1000);
+    G.combo = 0; G.miss++; G.missRun++;
+    const k = Math.min(3, G.missRun); addTime(-PENALTY * k, k > 1 ? "連続ミス" : ""); drawQ(); pushScore();
+    setTimeout(() => { if (G && !G.over) { nextQ(); drawQ(); } }, WRONG_WAIT);
   }
 }
 /* 時間をふやす・へらす（バーが満タンより上には ならない） */
@@ -7449,11 +7487,12 @@ sim({
     const box = c.html(), w = h("div", { class: "ghub" }), cfg = taCfg();
     box.appendChild(w);
     const setTa = (k, v) => { const o = taCfg(); o[k] = v; store.set("ta", o); open("game", false); };
-    const p1 = h("section", { class: "ghp" }, h("h3", {}, "⏱ タイムアタック"), h("p", { class: "note" }, "時間がなくなるまで 何問とけるか。正解すると 時間がもどる（むずかしい問題ほど たくさん）。続けて正解すると コンボで点数アップ"));
+    const p1 = h("section", { class: "ghp" }, h("h3", {}, "⏱ タイムアタック"), h("p", { class: "note" }, "時間がなくなるまでに 何問とけるか。正解すると 時間がもどる"), h("details", { class: "flow" }, h("summary", {}, "📜 ルール"), h("div", { html: RULES_HTML })));
     const segM = c.seg(null, [["all", "全分野"], ["cnt", "場合の数"], ["prob", "確率"], ["geo", "図形"], ["int", "整数"], ["units", "授業の類題"]].map(([v, t]) => ({ v, t })), cfg.m, v => setTa("m", v), p1);
     p1.appendChild(h("div", { class: "note" }, "持ち時間（正解すると時間がもどる・まちがえると へる）"));
     const segT = c.seg(null, [[0, `おまかせ（${AUTO_T[cfg.m]} 秒）`], [60, "60 秒"], [90, "90 秒"], [120, "120 秒"], [180, "180 秒"]].map(([v, t]) => ({ v, t })), +cfg.t || 0, v => setTa("t", v), p1);
     p1.appendChild(h("div", { class: "rv", style: "align-items:center;margin-top:6px" }, h("button", { type: "button", class: "btn main big", onclick: () => { location.hash = "ta"; } }, "▶ スタート"), h("span", { class: "bestv" }, "ベスト ", h("b", {}, fmtN(RW.best[cfg.m + "-" + (+cfg.t || 0)] || 0)), " 点")));
+    p1.appendChild(h("p", { class: "note" }, "🐢 時間なしで じっくり練習したいときは ", h("a", { href: "#quiz" }, "10 問クイズ"), "（1 問ずつ 解説つき）"));
     w.appendChild(p1);
     const p2 = h("section", { class: "ghp" }, h("h3", {}, "🏆 クラス対戦"), h("p", { class: "note" }, "先生の合図で 全員いっせいにスタート。ランキングが リアルタイムで動く"));
     const code = h("input", { type: "text", class: "mkin", inputmode: "numeric", maxlength: "4", placeholder: "部屋番号", style: "width:5.5em" });
@@ -7552,8 +7591,18 @@ function pushScore(final) {
   if (!final && t - BT.last < 600) { clearTimeout(BT.push); BT.push = setTimeout(() => pushScore(), 650); return; }
   BT.last = t;
   const me = BT.room && BT.room.players && BT.room.players[pid()] || {};
-  api("PATCH", ROOM(BT.code) + "/players/" + pid(), { s: G.score, k: G.combo, w: G.ok, r: BT.played, b: Math.max(me.b || 0, G.score), d: final ? 1 : 0 }).catch(() => { });
+  api("PATCH", ROOM(BT.code) + "/players/" + pid(), { s: G.score, k: G.combo, w: G.ok, m: G.miss, c: G.maxCombo, r: BT.played, b: Math.max(me.b || 0, G.score), d: final ? 1 : 0 }).catch(() => { });
 }
+/* 結果発表の「賞」：点数だけでなく、正確さ・コンボ・たくさん解いた人も ほめる */
+function awardsOf(lst) {
+  const out = [], acc = p => (p.w || 0) / Math.max(1, (p.w || 0) + (p.m || 0));
+  const best = (f, ok) => { const c2 = lst.filter(ok || (() => true)); if (!c2.length) return null; const v = Math.max(...c2.map(f)); return v > 0 ? { v, who: c2.filter(p => f(p) === v) } : null; };
+  const a1 = best(acc, p => (p.w || 0) + (p.m || 0) >= 5); if (a1) out.push({ ico: "🎯", name: "正確さ No.1", val: `${Math.round(a1.v * 100)}%`, who: a1.who });
+  const a2 = best(p => p.c || 0); if (a2 && a2.v >= 3) out.push({ ico: "⚡", name: "コンボ No.1", val: `${a2.v} 連続`, who: a2.who });
+  const a3 = best(p => p.w || 0); if (a3) out.push({ ico: "📚", name: "正解数 No.1", val: `${a3.v} 問`, who: a3.who });
+  return out;
+}
+const awardsHTML = (aw, me) => aw.length ? `<div class="awards">${aw.map(a => `<span class="aw${me && a.who.some(p => p.id === me) ? " me" : ""}"><i>${a.ico}</i><b>${a.name}</b>${a.who.slice(0, 3).map(p => esc(p.n)).join("・")}${a.who.length > 3 ? " ほか" : ""}<small>${a.val}</small></span>`).join("")}</div>` : "";
 /* ランキング表：広さを測って 列数・行数・文字の大きさを決める（40 人でもスクロールなし） */
 function rankRows(list, mode, W, H) {
   const top = Math.max(1, list.reduce((m, p) => Math.max(m, mode === "best" ? p.b || 0 : p.s || 0), 0));
@@ -7688,7 +7737,7 @@ sim({
         lst = playersOf(r, r.round);
         const end = r.state === "end", alive = lst.filter(p => !p.d).length, el2 = Math.max(0, Math.floor((t - r.startAt) / 1000));
         head = `<div class="bhead"><b>${end ? "🎉 第" + r.round + "回戦 結果発表" : `⏱ ${Math.floor(el2 / 60)}:${String(el2 % 60).padStart(2, "0")}　まだプレイ中 ${alive} / ${lst.length} 人`}</b>${tabs}</div>` + (end ? "" : `<div class="tbar host"><i style="width:${lst.length ? alive / lst.length * 100 : 0}%"></i></div>`);
-        if (end && lst[0] && lst[0].s > 0) head += `<div class="champ">🥇 ${esc(lst[0].n)} さん　${fmtN(lst[0].s)} 点</div>`;
+        if (end && lst[0] && lst[0].s > 0) head += `<div class="champ">🥇 ${esc(lst[0].n)} さん　${fmtN(lst[0].s)} 点</div>` + awardsHTML(awardsOf(lst));
         if (!lst.length) { lst = null; body = `<div class="gcount"><small>まだ だれも 答えていません</small></div>`; }
       }
       el.innerHTML = head + `<div class="bbody">${lst ? "" : body}</div>`;
@@ -7786,6 +7835,7 @@ sim({
         w.appendChild(h("div", { class: "gscore" }, String(my + 1), h("small", {}, ` 位 / ${lst.length} 人`)));
         w.appendChild(h("p", { class: "tstats" }, `${fmtN(meP.s || 0)} 点　✅ ${meP.w || 0} 問${G && G.coins ? `　🪙 +${G.coins}` : ""}`));
         w.appendChild(h("div", { class: "gres", html: rankRows(lst.slice(0, 5), fin ? "end" : "now") }));
+        if (fin) { const aw = awardsOf(lst), mine = aw.filter(a => a.who.some(p => p.id === pid())); if (mine.length) w.appendChild(h("p", { class: "phrase", html: `🎉 ${mine.map(a => `${a.ico} <b>${a.name}</b>`).join("・")} をとった！` })); w.appendChild(h("div", { html: awardsHTML(aw, pid()) })); }
         if (fin) w.appendChild(h("p", { class: "note" }, "先生が 次のスタートをおすと 始まります"));
         /* 解説は 全員が終わってから（まだ解いている人に 答えが伝わらないように） */
         if (BT.log && fin) w.appendChild(BT.rv && BT.rvLog === BT.log ? BT.rv : (BT.rvLog = BT.log, BT.rv = reviewBox(BT.log)));
@@ -7812,10 +7862,20 @@ coinChip();
 "use strict";
 /* ===================== 挑戦（クイズ） ===================== */
 function fracStr(n, d) { const g = gcd(n, d); n /= g; d /= g; return d === 1 ? String(n) : `${n}/${d}`; }
+/* まちがいの選択肢：正解と同じ値・0 以下・へんな形は使わない。足りないときは 正解を少しずらして作る */
+const numOf = t => { t = String(t).replace(/<[^>]+>/g, "").replace(/[°個通り\s]/g, ""); if (/^\d+\/\d+$/.test(t)) { const [a, b] = t.split("/"); return a / b; } return /^-?\d+(\.\d+)?$/.test(t) ? +t : NaN; };
+function nearWrong(ans, d) {
+  const a = String(ans), deg = a.endsWith("°") ? "°" : "", core = deg ? a.slice(0, -1) : a, fr = core.match(/^(\d+)\/(\d+)$/);
+  if (fr) { const x = +fr[1], y = +fr[2]; return d % 2 ? fracStr(x + Math.ceil(d / 2), y + Math.ceil(d / 2)) : fracStr(Math.max(1, x - d / 2), y) === core ? fracStr(x, y + d) : fracStr(Math.max(1, x - d / 2), y); }
+  const v = +core; if (!Number.isFinite(v)) return null;
+  const step = deg ? 5 * Math.ceil(d / 2) : Math.ceil(d / 2), nv = d % 2 ? v + step : v - step;
+  return (nv > 0 ? String(nv) : String(v + step + d)) + deg;
+}
 function distinct(ans, cands) {
-  const out = [String(ans)];
-  for (const v of cands) { const t = String(v); if (!out.includes(t) && t !== "NaN" && t !== "0/1") out.push(t); if (out.length === 4) break; }
-  let k = 2; while (out.length < 4) { const t = typeof ans === "number" ? String(ans + k * (k % 2 ? 1 : -1)) : String(ans) + "×" + k; if (!out.includes(t)) out.push(t); k++; }
+  const out = [String(ans)], va = numOf(ans);
+  const ok = t => t && !out.includes(t) && !/NaN|undefined|Infinity/.test(t) && t !== "0/1" && !(numOf(t) <= 0) && !(Number.isFinite(va) && Math.abs(numOf(t) - va) < 1e-9);
+  for (const v of cands) { const t = String(v); if (ok(t)) out.push(t); if (out.length === 4) break; }
+  for (let d = 1; out.length < 4 && d < 40; d++) { const t = nearWrong(ans, d); if (ok(t)) out.push(t); }
   return out;
 }
 const QGEN = {
@@ -7836,7 +7896,7 @@ const QGEN = {
   bin() { const v = 5 + rnd(27); const s2 = v.toString(2); return { cat: "整数", q: `2 進法の ${s2}<sub>(2)</sub> を 10 進法で表すと？`, ans: v, wrong: [v + 1, v - 1, parseInt(s2, 10) % 100, v * 2], ex: `${s2.split("").map((d, i) => `${d}×${2 ** (s2.length - 1 - i)}`).join(" + ")} = ${v}。`, link: "base" }; },
   angle() { const x = 20 + rnd(14) * 5; return { cat: "図形", q: `円の中心角が ${2 * x}° のとき、同じ弧に対する円周角は？`, ans: x + "°", wrong: [2 * x + "°", (180 - x) + "°", (90 - x / 2) + "°", (x + 10) + "°"], ex: `円周角は中心角の半分：${2 * x}° ÷ 2 = ${x}°。`, link: "inscribed", fig: figAngle(x) }; },
   quad() { const x = 60 + rnd(14) * 5; return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", wrong: [x + "°", (360 - x) + "°", (90 - x / 2) + "°", (x / 2) + "°"], ex: `向かい合う角の和は 180°。180° − ${x}° = ${180 - x}°。`, link: "inscribed", fig: figQuad(x) }; },
-  power() { const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]]; const [a, b, cc, d] = L[rnd(L.length)]; return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: d, wrong: [a + b - cc, b * cc / a, d + 2, cc + 1], ex: `方べきの定理：PA×PB = PC×PD → ${a}×${b} = ${cc}×PD → PD = ${d}。`, link: "power", fig: figPower(a, b, cc) }; },
+  power() { const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]]; const [a, b, cc, d] = L[rnd(L.length)]; return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: d, wrong: [a + b - cc, Math.round(b * cc / a), d + 2, cc + 1], ex: `方べきの定理：PA×PB = PC×PD → ${a}×${b} = ${cc}×PD → PD = ${d}。`, link: "power", fig: figPower(a, b, cc) }; },
   bis() { const L = [[6, 4, 5], [8, 4, 6], [9, 6, 10], [6, 3, 6], [10, 6, 8]]; const [ab, ac, bc] = L[rnd(L.length)]; const bd = bc * ab / (ab + ac); const s1 = Number.isInteger(bd) ? String(bd) : fracStr(bc * ab, ab + ac); return { cat: "図形", q: `△ABC で AB = ${ab}、AC = ${ac}、BC = ${bc}。∠A の二等分線と BC の交点を D とするとき BD は？`, ans: s1, wrong: [fracStr(bc * ac, ab + ac), String(bc / 2), fracStr(ab * ac, bc), String(ab - ac)], ex: `BD：DC = AB：AC = ${ab}：${ac}。BD = ${bc} × ${ab}/(${ab}+${ac}) = ${s1}。`, link: "bisector", fig: figBis(ab, ac, bc) }; },
   poly() { const L = [["正四面体", 4, 6, 4], ["立方体", 8, 12, 6], ["正八面体", 6, 12, 8], ["正十二面体", 20, 30, 12], ["正二十面体", 12, 30, 20]]; const [t, v, e, f] = L[rnd(L.length)]; const ask = rnd(3); const nm = ["頂点", "辺", "面"][ask], a = [v, e, f][ask]; return { cat: "図形", q: `${t}の${nm}の数は？`, ans: a, wrong: [[v, e, f][(ask + 1) % 3], [v, e, f][(ask + 2) % 3], a + 2, a * 2], ex: `${t}：頂点 ${v}、辺 ${e}、面 ${f}。${v} − ${e} + ${f} = 2。`, link: "poly", fig: figPoly(t) }; },
   centroid() { const m = 3 * (2 + rnd(6)); return { cat: "図形", q: `△ABC の中線 AM の長さが ${m} のとき、頂点 A から重心 G までの長さ AG は？`, ans: m * 2 / 3, wrong: [m / 3, m / 2, m, m * 3 / 4], ex: `重心は中線を 2：1 に分ける。AG = ${m} × 2/3 = ${m * 2 / 3}。`, link: "centers", fig: figCentroid(m) }; },
@@ -7867,11 +7927,11 @@ function runQuiz(c, gens, key) {
   function show() {
     clear(box);
     const q = qs[i];
-    const choices = shuffle(distinct(q.ans, q.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? fmt(w, 2) : w)));
+    const choices = shuffle(distinct(q.ans, q.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? String(+w.toFixed(2)) : w)));
     const wrap = h("div", { class: "quiz" },
       h("div", { class: "qn" }, `第 ${i + 1} 問 / 10　・　${q.cat}　・　正解 ${score}`),
       h("div", { class: "bar" }, h("i", { style: `width:${i * 10}%` })),
-      h("div", { class: "qtext", html: q.q }),
+      h("div", { class: "qtext", html: termify(q.q) }),
       q.fig ? h("div", { class: "fig", html: q.fig }) : null);
     const grid = h("div", { class: "choices" });
     const btns = choices.map(ch => {
