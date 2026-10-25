@@ -466,7 +466,13 @@ body.gscr .app > .lib, body.gscr .app > .card { display: none !important; }
 .stamp.rec { width: 86px; height: 86px; font-size: 20px; } .stamp.wait { color: var(--accent); border-color: var(--accent); box-shadow: inset 0 0 0 3px var(--panel), inset 0 0 0 5px var(--accent); width: 86px; height: 86px; font-size: 20px; }
 /* 先生の画面 */
 .host { height: 100%; display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 12px; }
-.hostL { border: 1.5px solid var(--line); border-radius: 6px; background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: hidden; }
+@media (min-width: 901px) {
+  body.host-mode .app { grid-template-columns: minmax(0, 1fr); }
+  body.host-mode .lib, body.host-mode .card { display: none; }
+  body.host-mode .hstage { padding: 12px; }
+}
+.hostL { border: 1.5px solid var(--line); border-radius: 6px; background: var(--panel); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; }
+.hostL > * { flex: none; } .hostL .qr { flex: 1 1 90px; }
 .roomhd small { color: var(--muted); font-size: 13px; } .code { font-family: var(--font-data); font-weight: 600; font-size: 60px; line-height: 1; letter-spacing: .08em; color: var(--warm); }
 .qr { flex: 1 1 auto; min-height: 60px; max-height: 200px; display: flex; justify-content: center; } .qr svg { height: 100%; width: auto; background: #fff; border-radius: 4px; }
 .joinhow { text-align: center; }
@@ -581,9 +587,7 @@ body.gscr .app > .lib, body.gscr .app > .card { display: none !important; }
   .stage-area { flex: none; height: var(--sh, 72vw); }
   .stage-wrap.html-mode .stage-area { height: auto; min-height: 60vh; }
   .stage-wrap.html-mode .hstage { position: static; }
-  /* 中身（問題・公式・計算スペース）が長いときに、下が切れないように 高さを中身に合わせる */
-  .stage-wrap.html-mode .stage { position: relative; inset: auto; }
-  .stage-wrap.html-mode { overflow: visible; }
+  .stage-wrap.html-mode .stage { position: static; }
   .card { flex: none; overflow: visible; }
   .card-body { overflow: visible; }
   body.has-nav { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
@@ -7513,7 +7517,7 @@ function rankRows(list, mode, W, H) {
     const v = mode === "best" ? p.b || 0 : p.s || 0;
     if (v !== last) { rank = i + 1; last = v; }
     const medal = rank <= 3 && v > 0 ? ["🥇", "🥈", "🥉"][rank - 1] : rank;
-    return `<li class="${rank <= 3 && v > 0 ? "top top" + rank : ""}${p.id === pid() ? " me" : ""}"><span class="rn">${medal}</span><span class="nm">${esc(p.n)}${mode !== "best" && p.k >= 10 && !p.d ? ` <i class="fire">🔥${p.k}</i>` : ""}${mode !== "best" && p.d ? ` <i class="fin">おわり</i>` : ""}</span><span class="bar"><i style="width:${(v / top * 100).toFixed(1)}%"></i></span><span class="sc">${fmtN(v)}</span></li>`;
+    return `<li class="${rank <= 3 && v > 0 ? "top top" + rank : ""}${p.id === pid() ? " me" : ""}"><span class="rn">${medal}</span><span class="nm">${esc(p.n)}${mode !== "best" && p.k >= 10 && !p.d ? ` <i class="fire">🔥${p.k}</i>` : ""}${mode === "now" && p.d ? ` <i class="fin">おわり</i>` : ""}</span><span class="bar"><i style="width:${(v / top * 100).toFixed(1)}%"></i></span><span class="sc">${fmtN(v)}</span></li>`;
   }).join("") + (more ? `<li class="more">…ほか ${more} 人</li>` : "") + "</ol>";
 }
 const esc = t => String(t == null ? "" : t).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
@@ -7534,6 +7538,10 @@ sim({
     const code = String(hashQuery.room || "").replace(/\D/g, "");
     if (!code) { lobbyMake(); return; }
     const H = { code, room: null, tab: "now", ending: false };
+    /* 先生の画面はプロジェクターに映すので、左右の一覧・説明をかくして 広く使う */
+    document.body.classList.add("host-mode");
+    c.cleanups.push(() => document.body.classList.remove("host-mode"));
+    c.on(window, "resize", () => { if (H.room) drawBoard(); });
     box.appendChild(h("div", { class: "host" }, h("aside", { class: "hostL", id: "hostL" }), h("section", { class: "board", id: "board" }, h("div", { class: "gcount" }, h("b", {}, "…")))));
     c.out(`部屋番号 <span class="big hl">${code}</span>　生徒は 🎮 ゲーム → 部屋番号を入力、または QR`);
     syncClock(code).then(() => {
@@ -7629,7 +7637,7 @@ sim({
         if (!lst.length) { lst = null; body = `<div class="gcount"><small>まだ だれも 答えていません</small></div>`; }
       }
       el.innerHTML = head + `<div class="bbody">${lst ? "" : body}</div>`;
-      if (lst) { const bb = el.querySelector(".bbody"); bb.innerHTML = rankRows(lst, lmode, bb.clientWidth, bb.clientHeight); }
+      if (lst) { const bb = el.querySelector(".bbody"); bb.innerHTML = rankRows(lst, lmode === "now" && r.state === "end" ? "end" : lmode, bb.clientWidth, bb.clientHeight); }
     }
   },
 });
@@ -7722,7 +7730,7 @@ sim({
         w.appendChild(h("p", { class: "note" }, `第${room.round}回戦 ${fin ? "結果" : "（集計中… みんなが終わるのを待っています）"}`));
         w.appendChild(h("div", { class: "gscore" }, String(my + 1), h("small", {}, ` 位 / ${lst.length} 人`)));
         w.appendChild(h("p", { class: "tstats" }, `${fmtN(meP.s || 0)} 点　✅ ${meP.w || 0} 問${G && G.coins ? `　🪙 +${G.coins}` : ""}`));
-        w.appendChild(h("div", { class: "gres", html: rankRows(lst.slice(0, 5), "now") }));
+        w.appendChild(h("div", { class: "gres", html: rankRows(lst.slice(0, 5), fin ? "end" : "now") }));
         if (fin) w.appendChild(h("p", { class: "note" }, "先生が 次のスタートをおすと 始まります"));
         c.out(`第${room.round}回戦：<span class="big hl">${my + 1}</span> 位 / ${lst.length} 人　${fmtN(meP.s || 0)} 点`);
       } else {
