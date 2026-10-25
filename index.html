@@ -435,6 +435,55 @@ body.gscr .app > .lib, body.gscr .app > .card { display: none !important; }
 .aw { display: inline-flex; align-items: baseline; gap: 6px; border: 1.5px solid var(--gold); border-radius: 18px; padding: 3px 12px; background: var(--panel); font-size: clamp(13px, 2.6cqh, 18px); }
 .aw i { font-style: normal; } .aw b { color: var(--gold); font-size: .85em; } .aw small { color: var(--muted); font-size: .8em; }
 .aw.me { background: var(--accent-soft); border-color: var(--accent); }
+/* ===== 1 問ずつ（じっくりチャレンジ・クイズ大会） ===== */
+.gtop, .ghp.wide { grid-column: 1 / -1; }
+.gtop { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 14px; }
+.glab { font-weight: 800; font-size: 15px; }
+.ghp.rec { border-color: var(--accent); border-width: 2px; position: relative; }
+.gbadge { position: absolute; top: -10px; right: 12px; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 800; padding: 1px 10px; border-radius: 10px; }
+.ghp .rv.go { align-items: center; margin-top: auto; padding-top: 4px; }
+.climb, .qplay { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.clhud { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.clhud .lives { font-size: 20px; letter-spacing: 2px; } .clhud .qn { font-weight: 700; } .clhud .qn b { font-family: var(--font-data); font-size: 20px; }
+.clhud .fire { color: var(--warm); font-weight: 800; } .clhud .sc { margin-left: auto; text-align: right; line-height: 1.1; } .clhud .sc small { display: block; font-size: 11px; color: var(--muted); } .clhud .sc b { font-family: var(--font-data); font-size: 24px; }
+.qtimer { position: relative; height: 24px; border: 1.5px solid var(--ink); border-radius: 12px; overflow: hidden; background: var(--panel); flex: none; }
+.qtimer i { position: absolute; inset: 0 auto 0 0; background: var(--accent-soft); border-right: 3px solid var(--accent); transition: width .2s linear; }
+.qtimer.hurry i { background: var(--warm-soft); border-right-color: var(--warm); }
+.qtimer span { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.qc { display: flex; flex-direction: column; gap: 10px; }
+.qcq { font-size: clamp(18px, 2.4vh + 8px, 24px); font-weight: 700; line-height: 1.6; }
+.qcfig { display: flex; justify-content: center; } .qcfig .qfig { max-width: 340px; max-height: 210px; }
+.qcch { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.qch { position: relative; display: flex; align-items: center; gap: 10px; text-align: left; border: 2px solid var(--sc); border-radius: 8px; background: var(--panel); padding: 12px 12px; font-family: var(--font-data); font-weight: 700; font-size: 19px; color: var(--ink); overflow: hidden; min-height: 54px; }
+button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--sc); }
+.qch .sh { flex: none; width: 34px; height: 34px; border-radius: 6px; display: grid; place-items: center; background: var(--sc); color: #fff; font-size: 18px; position: relative; z-index: 1; }
+.qch .tx { position: relative; z-index: 1; }
+.qch.mine { outline: 3px solid var(--ink); outline-offset: 2px; }
+.qch.right { background: var(--accent-soft); border-color: var(--accent); } .qch.dim { opacity: .45; }
+.qch .ok { margin-left: auto; color: var(--accent); font-size: 24px; position: relative; z-index: 1; }
+.qch .cnt { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--sc) 22%, transparent); }
+.qch em { margin-left: auto; font-style: normal; font-size: .8em; color: var(--muted); position: relative; z-index: 1; } .qch.right em { margin-left: 8px; }
+.clfb { border: 2px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--panel); text-align: center; display: flex; flex-direction: column; gap: 6px; }
+.clfb.ok { border-color: var(--accent); } .clfb.ng { border-color: var(--warm); } .clfb.wait { border-style: dashed; }
+.clfb .big { font-size: 24px; font-weight: 800; } .clfb.ok .big { color: var(--accent); } .clfb.ng .big { color: var(--warm); }
+.clfb .sub { font-size: 15px; } .clfb .rvex, .clfb .rvfo { text-align: left; }
+.qpn { font-weight: 700; color: var(--muted); }
+/* 先生の画面（クイズ大会） */
+.bq { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.bq .qcq { font-size: clamp(22px, 6cqh, 48px); line-height: 1.5; } .bq .qch { font-size: clamp(20px, 5cqh, 40px); min-height: clamp(54px, 11cqh, 100px); }
+.bq .qch .sh { width: clamp(30px, 6cqh, 54px); height: clamp(30px, 6cqh, 54px); font-size: clamp(16px, 3.4cqh, 30px); }
+.bq .qcfig .qfig { max-width: min(460px, 60cqw); max-height: 30cqh; }
+.bq.rev { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; align-items: start; } .bq.rev .qcch { grid-template-columns: 1fr; }
+.bex { font-size: clamp(15px, 3.4cqh, 26px); } .bex .rvex { font-size: inherit; }
+.ansn { margin-left: auto; font-size: clamp(14px, 2.8cqh, 22px); } .ansn b { font-family: var(--font-data); font-size: 1.3em; color: var(--warm); }
+.bhead .stars { font-size: clamp(14px, 3cqh, 24px); }
+.qctl { display: flex; justify-content: flex-end; gap: 8px; flex: none; }
+.rk .up { font-style: normal; font-size: .65em; color: var(--accent); }
+.podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 10px; flex: none; max-width: 760px; width: 100%; margin: 0 auto; }
+.pd { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; } .pd .md { font-size: clamp(28px, 7cqh, 56px); } .pd b { font-size: clamp(16px, 3.6cqh, 30px); } .pd small { color: var(--muted); font-family: var(--font-data); }
+.pd i { display: block; width: 100%; background: var(--chip); border: 1.5px solid var(--line); border-radius: 6px 6px 0 0; } .pd.p1 i { height: clamp(40px, 12cqh, 110px); background: var(--gold); } .pd.p2 i { height: clamp(28px, 8cqh, 75px); } .pd.p3 i { height: clamp(18px, 5cqh, 50px); }
+@media (max-width: 600px) { .qcch { grid-template-columns: 1fr; } .qch { font-size: 17px; padding: 9px 10px; min-height: 46px; } .qch .sh { width: 28px; height: 28px; font-size: 15px; } }
+@media (max-width: 900px) { .bq.rev { grid-template-columns: 1fr; } }
 /* ===== 🎮 ゲーム ===== */
 .tbtn.coin b { font-family: var(--font-data); font-weight: 600; margin-left: 2px; }
 .plus { position: fixed; z-index: 99; transform: translateX(-50%); font-family: var(--font-data); font-weight: 600; color: var(--gold); font-size: 16px; pointer-events: none; animation: plus .9s ease-out forwards; }
@@ -7480,29 +7529,43 @@ function reviewBox(log) {
 
 /* ---------- ゲームのトップ ---------- */
 sim({
-  id: "game", cat: "game", name: "ゲームのトップ", sub: "タイムアタック・クラス対戦",
-  point: "<ul><li><b>⏱ タイムアタック</b>：時間がなくなるまでに 何問正解できる？ 正解すると時間がもどります（★ の多い むずかしい問題ほど たくさん。正解するほど 少しずつへる）。まちがえると −2 秒。続けて正解すると コンボで点数アップ、5 コンボごとに +3 秒。</li><li>持ち時間は「おまかせ」だと 分野のむずかしさで決まります（全分野・場合の数・図形 90 秒、確率・整数 120 秒、授業の類題 150 秒）。</li><li><b>🏆 クラス対戦</b>：先生の合図で 全員いっせいにスタート。先生の画面で ランキングが リアルタイムに動きます。</li><li>やるほど 🪙 コインがたまって 段位が上がります。</li></ul>",
-  detail: "<p>クラス対戦は Google の無料データベース（Firebase Realtime Database）を使います。はじめから 論理表現ラボと同じデータベースにつながるので、ふつうは設定なしで使えます。別のデータベースを使うときは「先生用 → 部屋をつくる」の ⚙ で URL を入れてください。</p><p>部屋の中身は 部屋番号を知っている人なら見られます。本名ではなく ニックネームで参加させてください。</p>",
+  id: "game", cat: "game", name: "ゲームのトップ", sub: "じっくりチャレンジ・タイムアタック・クラス対戦",
+  point: "<ul><li><b>🧗 じっくりチャレンジ</b>（おすすめ）：1 問ずつ 考える時間があり、答えると すぐ解説。❤ 3 つが なくなるまで どこまで進めるか。5 問連続正解で ❤ が もどる。</li><li><b>⏱ タイムアタック</b>：時間がなくなるまでに 何問とけるか。計算の はやさを きたえる。</li><li><b>🏆 クラス対戦</b>：先生の画面に 1 問ずつ出る「クイズ大会」と、全員いっせいの「早とき」。</li><li>やるほど 🪙 コインがたまって 段位が上がります。</li></ul>",
+  detail: "<p>点数は 正しさが いちばん大事です（正解なら 500 点以上、はやいと 最大 1000 点。むずかしい問題・連続正解で ふえる）。</p><p>クラス対戦は Google の無料データベース（Firebase Realtime Database）を使います。部屋の中身は 部屋番号を知っている人なら見られるので、ニックネームで参加させてください。</p>",
   build(c) {
-    const box = c.html(), w = h("div", { class: "ghub" }), cfg = taCfg();
+    const box = c.html(), w = h("div", { class: "ghub" }), ta = taCfg(), cl = clCfg();
     box.appendChild(w);
-    const setTa = (k, v) => { const o = taCfg(); o[k] = v; store.set("ta", o); open("game", false); };
-    const p1 = h("section", { class: "ghp" }, h("h3", {}, "⏱ タイムアタック"), h("p", { class: "note" }, "時間がなくなるまでに 何問とけるか。正解すると 時間がもどる"), h("details", { class: "flow" }, h("summary", {}, "📜 ルール"), h("div", { html: RULES_HTML })));
-    const segM = c.seg(null, [["all", "全分野"], ["cnt", "場合の数"], ["prob", "確率"], ["geo", "図形"], ["int", "整数"], ["units", "授業の類題"]].map(([v, t]) => ({ v, t })), cfg.m, v => setTa("m", v), p1);
-    p1.appendChild(h("div", { class: "note" }, "持ち時間（正解すると時間がもどる・まちがえると へる）"));
-    const segT = c.seg(null, [[0, `おまかせ（${AUTO_T[cfg.m]} 秒）`], [60, "60 秒"], [90, "90 秒"], [120, "120 秒"], [180, "180 秒"]].map(([v, t]) => ({ v, t })), +cfg.t || 0, v => setTa("t", v), p1);
-    p1.appendChild(h("div", { class: "rv", style: "align-items:center;margin-top:6px" }, h("button", { type: "button", class: "btn main big", onclick: () => { location.hash = "ta"; } }, "▶ スタート"), h("span", { class: "bestv" }, "ベスト ", h("b", {}, fmtN(RW.best[cfg.m + "-" + (+cfg.t || 0)] || 0)), " 点")));
-    p1.appendChild(h("p", { class: "note" }, "🐢 時間なしで じっくり練習したいときは ", h("a", { href: "#quiz" }, "10 問クイズ"), "（1 問ずつ 解説つき）"));
+    const setBoth = (k, v) => { const a = taCfg(), b2 = clCfg(); a[k] = v; b2[k] = v; store.set("ta", a); store.set("climb", b2); open("game", false); };
+    const setOne = (key, getter, k, v) => { const o = getter(); o[k] = v; store.set(key, o); open("game", false); };
+    /* どこから出す？（ひとりで遊ぶ 2 つに共通） */
+    const top = h("section", { class: "ghp gtop" }, h("div", { class: "glab" }, "📚 どこから出す？"));
+    const segM = c.seg(null, [["all", "全分野"], ["cnt", "場合の数"], ["prob", "確率"], ["geo", "図形"], ["int", "整数"], ["units", "授業の類題"]].map(([v, t]) => ({ v, t })), ta.m, v => setBoth("m", v), top);
+    w.appendChild(top);
+    /* 🧗 じっくりチャレンジ */
+    const p0 = h("section", { class: "ghp rec" }, h("div", { class: "gbadge" }, "おすすめ"), h("h3", {}, "🧗 じっくりチャレンジ"),
+      h("p", { class: "note" }, "1 問ずつ 考える時間がある。答えると すぐ解説。❤ 3 つが なくなるまで どこまで進める？"));
+    const segS = c.seg(null, [["s", "短め"], ["n", "ふつう"], ["l", "長め"]].map(([v, t]) => ({ v, t: "考える時間 " + t })), cl.sp, v => setOne("climb", clCfg, "sp", v), p0);
+    p0.appendChild(h("div", { class: "rv go" }, h("button", { type: "button", class: "btn main big", onclick: () => { location.hash = "climb"; } }, "▶ スタート"), h("span", { class: "bestv" }, "ベスト ", h("b", {}, fmtN(RW.best["climb-" + cl.m] || 0)), " 点")));
+    w.appendChild(p0);
+    /* ⏱ タイムアタック */
+    const p1 = h("section", { class: "ghp" }, h("h3", {}, "⏱ タイムアタック"), h("p", { class: "note" }, "時間がなくなるまでに 何問とけるか。正解すると 時間がもどる。計算の はやさを きたえる"),
+      h("details", { class: "flow" }, h("summary", {}, "📜 ルール"), h("div", { html: RULES_HTML })));
+    const segT = c.seg(null, [[0, `おまかせ（${AUTO_T[ta.m]} 秒）`], [60, "60 秒"], [90, "90 秒"], [120, "120 秒"], [180, "180 秒"]].map(([v, t]) => ({ v, t })), +ta.t || 0, v => setOne("ta", taCfg, "t", v), p1);
+    p1.appendChild(h("div", { class: "rv go" }, h("button", { type: "button", class: "btn main big", onclick: () => { location.hash = "ta"; } }, "▶ スタート"), h("span", { class: "bestv" }, "ベスト ", h("b", {}, fmtN(RW.best[ta.m + "-" + (+ta.t || 0)] || 0)), " 点")));
     w.appendChild(p1);
-    const p2 = h("section", { class: "ghp" }, h("h3", {}, "🏆 クラス対戦"), h("p", { class: "note" }, "先生の合図で 全員いっせいにスタート。ランキングが リアルタイムで動く"));
+    /* 🏆 クラス対戦 */
+    const p2 = h("section", { class: "ghp wide" }, h("h3", {}, "🏆 クラス対戦"), h("p", { class: "note" }, "先生の画面に 問題が出る。部屋番号と ニックネームを入れて 参加しよう"));
     const code = h("input", { type: "text", class: "mkin", inputmode: "numeric", maxlength: "4", placeholder: "部屋番号", style: "width:5.5em" });
     const nick = h("input", { type: "text", class: "mkin txt", maxlength: "10", placeholder: "ニックネーム", value: store.get("nick", ""), style: "width:9em;text-align:left" });
-    p2.appendChild(h("div", { class: "rv", style: "align-items:center" }, code, nick, h("button", { type: "button", class: "btn main", onclick: () => { const cd = code.value.replace(/\D/g, ""); if (cd.length !== 4) { code.focus(); return; } store.set("nick", nick.value.trim()); location.hash = `battle?room=${cd}`; } }, "参加する ▶")));
+    const go = () => { const cd = code.value.replace(/\D/g, ""); if (cd.length !== 4) { code.focus(); return; } store.set("nick", nick.value.trim()); location.hash = `battle?room=${cd}`; };
+    code.addEventListener("keydown", e => { if (e.key === "Enter") go(); }); nick.addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+    p2.appendChild(h("div", { class: "rv", style: "align-items:center" }, code, nick, h("button", { type: "button", class: "btn main", onclick: go }, "参加する ▶")));
     p2.appendChild(h("div", { class: "rv teacher" }, h("span", { class: "note" }, "先生"), h("a", { class: "btn", href: "#host" }, "🏫 部屋をつくる")));
     w.appendChild(p2);
+    w.appendChild(h("p", { class: "note", style: "grid-column:1/-1;text-align:center" }, "🐢 時間を気にせず 1 問ずつ練習するなら ", h("a", { href: "#quiz" }, "10 問クイズ")));
     w.appendChild(rewardsBox());
     c.out(`🪙 <span class="big hl">${fmtN(RW.coins)}</span>　段位 <span class="mt">${levelOf(RW.coins).name}</span>`);
-    segM.el.classList.add("gseg"); segT.el.classList.add("gseg");
+    [segM, segS, segT].forEach(sg => sg.el.classList.add("gseg"));
   },
 });
 
@@ -7604,7 +7667,7 @@ function awardsOf(lst) {
 }
 const awardsHTML = (aw, me) => aw.length ? `<div class="awards">${aw.map(a => `<span class="aw${me && a.who.some(p => p.id === me) ? " me" : ""}"><i>${a.ico}</i><b>${a.name}</b>${a.who.slice(0, 3).map(p => esc(p.n)).join("・")}${a.who.length > 3 ? " ほか" : ""}<small>${a.val}</small></span>`).join("")}</div>` : "";
 /* ランキング表：広さを測って 列数・行数・文字の大きさを決める（40 人でもスクロールなし） */
-function rankRows(list, mode, W, H) {
+function rankRows(list, mode, W, H, off = 0) {
   const top = Math.max(1, list.reduce((m, p) => Math.max(m, mode === "best" ? p.b || 0 : p.s || 0), 0));
   const n = list.length; let cols = n <= 10 ? 1 : n <= 24 ? 2 : 3, rowsN = n, more = 0, style = "";
   if (W && H) {
@@ -7619,7 +7682,7 @@ function rankRows(list, mode, W, H) {
   let rank = 0, last = -1;
   return `<ol class="rk"${style}>` + list.map((p, i) => {
     const v = mode === "best" ? p.b || 0 : p.s || 0;
-    if (v !== last) { rank = i + 1; last = v; }
+    if (v !== last) { rank = i + 1 + off; last = v; }
     const medal = rank <= 3 && v > 0 ? ["🥇", "🥈", "🥉"][rank - 1] : rank;
     return `<li class="${rank <= 3 && v > 0 ? "top top" + rank : ""}${p.id === pid() ? " me" : ""}"><span class="rn">${medal}</span><span class="nm">${esc(p.n)}${mode !== "best" && p.k >= 10 && !p.d ? ` <i class="fire">🔥${p.k}</i>` : ""}${mode === "now" && p.d ? ` <i class="fin">おわり</i>` : ""}</span><span class="bar"><i style="width:${(v / top * 100).toFixed(1)}%"></i></span><span class="sc">${fmtN(v)}</span></li>`;
   }).join("") + (more ? `<li class="more">…ほか ${more} 人</li>` : "") + "</ol>";
@@ -7642,6 +7705,8 @@ sim({
     const code = String(hashQuery.room || "").replace(/\D/g, "");
     if (!code) { lobbyMake(); return; }
     const H = { code, room: null, tab: "now", ending: false };
+    const QH = quizHost(code, H);
+    const isQuizView = r => H.tab === "now" && r.kind === "quiz" && r.round && (r.state === "quiz" || r.state === "end");
     /* 先生の画面はプロジェクターに映すので、左右の一覧・説明をかくして 広く使う */
     document.body.classList.add("host-mode");
     c.cleanups.push(() => document.body.classList.remove("host-mode"));
@@ -7662,6 +7727,7 @@ sim({
           if (allDone || cap) endRound();
         }
         if (r.state === "play") drawBoard();
+        if (r.state === "quiz") { QH.tick(r); drawBoard(); }
       });
     });
     function lobbyMake() {
@@ -7684,7 +7750,7 @@ sim({
     }
     function makeRoom(note) {
       note.textContent = "部屋をつくっています…";
-      const cfg = { m: taCfg().m || "all", t: 0 };
+      const cfg = { m: taCfg().m || "all", t: 0, mode: "quiz", n: 10, sp: "n" };
       const tryOne = n => {
         const cd = String(1000 + Math.floor(Math.random() * 9000));
         return api("GET", ROOM(cd)).then(v => {
@@ -7697,13 +7763,17 @@ sim({
     function endRound() { H.ending = true; api("PATCH", ROOM(code), { state: "end" }).then(() => { H.ending = false; }, () => { H.ending = false; }); }
     function drawL(soft) {
       const r = H.room, el = $("#hostL"); if (!el) return;
-      const cfg = r.cfg, busy = r.state === "play", n = playersOf(r).length;
+      const cfg = r.cfg, busy = r.state === "play" || r.state === "quiz", n = playersOf(r).length, quiz = cfg.mode !== "race";
       const qrOld = soft && $("#qr") ? $("#qr").innerHTML : "";
       el.innerHTML = `<div class="roomhd"><small>部屋番号</small><div class="code">${code}</div></div><div class="qr" id="qr">${qrOld}</div>
         <p class="note joinhow">数学Aラボ → 🎮 ゲーム → 部屋番号を入力<br>または QR を読みとる</p>
-        <div class="hcfg"><div class="rv"><span class="fl">範囲</span>${seg("m", [["all", "全分野"], ["cnt", "場合の数"], ["prob", "確率"], ["geo", "図形"], ["int", "整数"], ["units", "授業の類題"]], cfg.m, busy)}</div>
-        <div class="rv"><span class="fl">時間</span>${seg("t", [[0, "おまかせ"], [60, "60秒"], [90, "90秒"], [120, "120秒"], [180, "180秒"]], +cfg.t || 0, busy)}</div>
-        <p class="note" style="margin:0">持ち時間 ${startT(cfg)} 秒。正解すると時間がもどるので、終わる時間は 人によってちがいます</p></div>
+        <div class="hcfg"><div class="rv"><span class="fl">形式</span>${seg("mode", [["quiz", "🎯 クイズ大会"], ["race", "⏱ 早とき"]], quiz ? "quiz" : "race", busy)}</div>
+        <p class="note" style="margin:0">${quiz ? "1 問ずつ 全員で考える → 答え合わせと解説 → ランキング。数学の授業 向き" : "全員いっせいに タイムアタック。計算の はやさを きそう"}</p>
+        <div class="rv"><span class="fl">範囲</span>${seg("m", [["all", "全分野"], ["cnt", "場合の数"], ["prob", "確率"], ["geo", "図形"], ["int", "整数"], ["units", "授業の類題"]], cfg.m, busy)}</div>
+        ${quiz ? `<div class="rv"><span class="fl">問題数</span>${seg("n", [[5, "5 問"], [10, "10 問"], [15, "15 問"]], cfg.n || 10, busy)}</div>
+        <div class="rv"><span class="fl">考える</span>${seg("sp", [["s", "短め"], ["n", "ふつう"], ["l", "長め"]], cfg.sp || "n", busy)}</div>
+        <p class="note" style="margin:0">考える時間：★ 40 秒・★★ 75 秒・★★★ 120 秒（ふつう）</p>` : `<div class="rv"><span class="fl">時間</span>${seg("t", [[0, "おまかせ"], [60, "60秒"], [90, "90秒"], [120, "120秒"], [180, "180秒"]], +cfg.t || 0, busy)}</div>
+        <p class="note" style="margin:0">持ち時間 ${startT(cfg)} 秒。正解すると時間がもどるので、終わる時間は 人によってちがいます</p>`}</div>
         <div class="hbtns"><span class="ppl">👥 <b>${n}</b> 人</span><button type="button" class="btn main big" data-h="start"${busy ? " disabled" : ""}>${r.round ? "▶ 第" + (r.round + 1) + "回戦 スタート" : "▶ スタート"}</button></div>
         ${busy ? `<div class="hbtns sm"><button type="button" class="btn" data-h="stop">⏹ ここで結果発表</button></div>` : ""}<div class="hbtns sm"><button type="button" class="btn" data-h="copy">🔗 参加リンクをコピー</button><button type="button" class="btn" data-h="close">部屋を閉じる</button></div><div class="tnote" id="hnote" style="margin:0"></div>`;
       if (!qrOld) drawQR($("#qr"), joinUrl(code));
@@ -7711,15 +7781,18 @@ sim({
     const seg = (key, opts, cur, dis) => `<div class="seg gseg">${opts.map(([v, t]) => `<button type="button" data-hc="${key}:${v}" aria-pressed="${String(cur) === String(v)}"${dis ? " disabled" : ""}>${t}</button>`).join("")}</div>`;
     c.on(box, "click", e => {
       const b = e.target.closest("button"); if (!b || b.disabled) return;
-      if (b.dataset.hc) { const [k, v] = b.dataset.hc.split(":"); api("PATCH", ROOM(code) + "/cfg", { [k]: k === "t" ? +v : v }).catch(() => { }); return; }
-      if (b.dataset.tab) { H.tab = b.dataset.tab; drawBoard(); return; }
-      if (b.dataset.h === "start") { const r = H.room; if (!r || r.state === "play") return; api("PATCH", ROOM(code), { state: "play", round: (r.round || 0) + 1, seed: Math.floor(Math.random() * 1e9), startAt: Math.round(now() + 5000) }).catch(() => { }); }
-      if (b.dataset.h === "stop") { if (H.room && H.room.state === "play") endRound(); return; }
+      if (b.dataset.hc) { const [k, v] = b.dataset.hc.split(":"); api("PATCH", ROOM(code) + "/cfg", { [k]: k === "t" || k === "n" ? +v : v }).catch(() => { }); return; }
+      if (b.dataset.qh) { if (H.room) QH.action(H.room, b.dataset.qh); return; }
+      if (b.dataset.tab) { H.tab = b.dataset.tab; QH.key = ""; drawBoard(); return; }
+      if (b.dataset.h === "start") { const r = H.room; if (!r || r.state === "play" || r.state === "quiz") return; if (r.cfg.mode !== "race") { QH.start(r).catch(() => { }); return; } api("PATCH", ROOM(code), { kind: "race", state: "play", round: (r.round || 0) + 1, seed: Math.floor(Math.random() * 1e9), startAt: Math.round(now() + 5000) }).catch(() => { }); }
+      if (b.dataset.h === "stop") { if (H.room && (H.room.state === "play" || H.room.state === "quiz")) endRound(); return; }
       if (b.dataset.h === "copy") copyText(joinUrl(code), $("#hnote"), "✓ 参加リンクをコピーしました");
       if (b.dataset.h === "close") { if (confirm("部屋を閉じますか？（ランキングも消えます）")) api("DELETE", ROOM(code)).then(() => open("game"), () => { }); }
     });
     function drawBoard() {
       const el = $("#board"), r = H.room; if (!el || !r) return;
+      if (isQuizView(r)) { QH.draw(el, r); return; }
+      QH.key = "";
       const t = now(); let head, body = "", lst = null, lmode = "now";
       const tabs = `<div class="btabs"><button type="button" data-tab="now" aria-selected="${H.tab === "now"}">今回</button><button type="button" data-tab="best" aria-selected="${H.tab === "best"}">🏆 ハイスコア</button></div>`;
       if (H.tab === "best") {
@@ -7758,6 +7831,12 @@ sim({
     BT = null; G = null;
     bindPlay(c, box, () => { G = null; drawWait(); });
     c.cleanups.push(() => { if (BT && BT.stop) BT.stop(); BT = null; G = null; });
+    c.on(box, "click", e => {
+      const b = e.target.closest("button"); if (!b || b.disabled || !BT || !BT.qp) return;
+      if (b.dataset.qp === "leave") { BT.stop && BT.stop(); BT = null; open("game"); return; }
+      if (b.dataset.qa != null || b.dataset.qp) BT.qp.click(b);
+    });
+    c.every(250, () => { if (BT && BT.qp && BT.room && BT.room.kind === "quiz") BT.qp.tick(); });
     const joinForm = msg => {
       clear(box);
       const w = h("div", { class: "quiz task", style: "text-align:center" });
@@ -7798,6 +7877,11 @@ sim({
       BT.room = room;
       const me = room.players && room.players[pid()];
       if (!me) { BT.stop && BT.stop(); BT = null; joinForm(""); return; }
+      /* クイズ大会（1 問ずつ） */
+      if (room.kind === "quiz" && room.round && (room.state === "quiz" || room.state === "end") && (room.state === "quiz" || (BT.qp && BT.qp.round === room.round))) {
+        if (!BT.qp) BT.qp = quizPlayer(c, box, code);
+        BT.qp.update(room); return;
+      }
       if (room.state === "play" && room.round !== BT.played && now() < room.startAt + startT(room.cfg) * 1000 - 3000) {
         BT.played = room.round;
         newGame(room.cfg, room.seed, "battle", room.startAt);
@@ -7843,7 +7927,7 @@ sim({
       } else {
         w.appendChild(h("div", { class: "stamp wait" }, "参加中"));
         w.appendChild(h("p", { class: "qtext" }, `${nick} さん、ようこそ！`));
-        w.appendChild(h("p", {}, "先生が スタートをおすと 3・2・1 で 全員いっせいに始まります"));
+        w.appendChild(h("p", {}, room.cfg && room.cfg.mode !== "race" ? "先生が スタートをおすと、1 問ずつ 問題が出ます。じっくり考えて 答えよう" : "先生が スタートをおすと 3・2・1 で 全員いっせいに始まります"));
         w.appendChild(h("div", { class: "chips small" }, ...playersOf(room).slice(0, 40).map(p => h("span", { class: "chipn" + (p.id === pid() ? " me" : "") }, p.n))));
         c.out(`🏆 部屋 ${code} に参加中　<span class="mt">先生のスタートを待とう</span>`);
       }
@@ -7857,6 +7941,291 @@ sim({
   },
 });
 coinChip();
+</script>
+<script>
+"use strict";
+/* ===================== 1 問ずつ じっくり考えるゲーム =====================
+   数学は 1 問に時間がかかるので「全員が同じ 1 問を 考える → 答え合わせと解説 → 順位」をくり返す。
+   ・🧗 じっくりチャレンジ（ひとり）：❤ 3 つ。1 問ずつ 考える時間があり、答えたら すぐ解説。
+   ・🏆 クラス対戦「クイズ大会」：先生の画面に 1 問ずつ出して、全員が スマホで答える。 */
+const QLIM = { 1: 40, 2: 75, 3: 120 };              // 考える時間（秒）：★ の数で きまる
+const QSPEED = { s: 0.6, n: 1, l: 1.5 };             // 短め・ふつう・長め
+const QSPEED_NAME = { s: "短め", n: "ふつう", l: "長め" };
+const qLimit = (w, sp) => Math.round(QLIM[w] * (QSPEED[sp] || 1));
+/* 点数：正解なら 500〜1000 点（はやいほど 多い。でも 正しさの方が ずっと大事）× むずかしさ × 連続正解 */
+function qPoints(remainFrac, w, streakBefore, hint) {
+  const base = 500 + 500 * Math.max(0, Math.min(1, remainFrac));
+  return Math.round(base * (0.75 + 0.25 * w) * (1 + 0.1 * Math.min(5, streakBefore)) * (hint ? 0.5 : 1));
+}
+const SHAPES = [["▲", "var(--warm)"], ["◆", "var(--blue)"], ["●", "var(--gold)"], ["■", "var(--accent)"]];
+const quizName = cfg => `${GNAME[cfg.m] || cfg.m}・${cfg.n || 10} 問・考える時間 ${QSPEED_NAME[cfg.sp || "n"]}`;
+
+/* 問題カード（スマホでも プロジェクターでも 使う） */
+function qCardHTML(q, opt = {}) {
+  const counts = opt.counts, total = counts ? Math.max(1, counts.reduce((a, b) => a + b, 0)) : 1;
+  return `<div class="qc${opt.big ? " big" : ""}">
+    <div class="qcq">${opt.term === false ? q.q : termify(q.q)}</div>
+    ${q.fig ? `<div class="qcfig">${q.fig}</div>` : ""}
+    <div class="qcch">${q.ch.map((c2, i) => {
+      const right = opt.reveal && c2 === q.ans, mine = opt.mine === i;
+      const cls = (opt.reveal ? (right ? " right" : " dim") : "") + (mine ? " mine" : "") + (opt.btn ? "" : " show");
+      const bar = counts ? `<i class="cnt" style="width:${(counts[i] / total * 100).toFixed(1)}%"></i><em>${counts[i]} 人</em>` : "";
+      return `<${opt.btn ? `button type="button" data-qa="${i}"${opt.disabled ? " disabled" : ""}` : "div"} class="qch${cls}" style="--sc:${SHAPES[i][1]}"><span class="sh">${SHAPES[i][0]}</span><span class="tx">${c2}</span>${bar}${right ? '<span class="ok">✓</span>' : ""}</${opt.btn ? "button" : "div"}>`;
+    }).join("")}</div></div>`;
+}
+const qTimerHTML = (left, lim) => `<div class="qtimer${left < 10 ? " hurry" : ""}"><i style="width:${Math.max(0, left / lim * 100).toFixed(1)}%"></i><span>⏱ のこり ${Math.max(0, Math.ceil(left))} 秒</span></div>`;
+const explainHTML = q => `${q.ex ? `<div class="rvex"><b>解説</b>${q.ex}</div>` : ""}${(() => { const fo = formulaOf(q.key); return fo ? `<div class="rvfo">📐 ${fo[0]}：${fo[1]}</div>` : ""; })()}`;
+
+/* ---------- 🧗 じっくりチャレンジ（ひとり） ---------- */
+const clCfg = () => Object.assign({ m: "all", sp: "n" }, store.get("climb", {}));
+sim({
+  id: "climb", cat: "game", name: "じっくりチャレンジ", sub: "1 問ずつ考える・❤ 3 つ", lesson: true, keepHash: true, hidden: true,
+  build(c) {
+    clear($("#text"));
+    const box = c.html(), cfg = clCfg();
+    const qs = makeQs(cfg, Math.floor(Math.random() * 1e9), 80);
+    const S = c.state = { i: -1, lives: 3, score: 0, streak: 0, best: 0, ok: 0, log: [], q: null, start: 0, lim: 0, answered: false, hint: false, pad: null };
+    const wrap = h("div", { class: "climb" });
+    box.appendChild(wrap);
+    c.on(box, "click", e => {
+      const b = e.target.closest("button"); if (!b || b.disabled) return;
+      if (b.dataset.qa != null) answer(+b.dataset.qa);
+      else if (b.dataset.cl === "next") next();
+      else if (b.dataset.cl === "hint") { if (!S.answered && !S.hint) { S.hint = true; draw(); } }
+      else if (b.dataset.cl === "quit") open("game");
+    });
+    c.on(document, "keydown", e => { if (!S.answered && /^[1-4]$/.test(e.key) && !e.target.closest("input,textarea")) answer(+e.key - 1); if (S.answered && e.key === "Enter") next(); });
+    c.every(200, () => { if (!S.answered && S.q) { const left = S.lim - (Date.now() - S.start) / 1000; if (left <= 0) answer(null); else { const t = wrap.querySelector(".qtimer"); if (t) t.outerHTML = qTimerHTML(left, S.lim); } } });
+    function hud() { return `<div class="clhud"><button type="button" class="btn" data-cl="quit" title="やめる">✕</button><span class="lives">${"❤️".repeat(S.lives)}${"🤍".repeat(Math.max(0, 3 - S.lives))}</span><span class="qn">第 <b>${S.i + 1}</b> 問 <span class="stars">${"★".repeat(S.q.w)}</span></span>${S.streak >= 2 ? `<span class="fire">🔥 ${S.streak} 連続</span>` : ""}<span class="sc"><small>スコア</small><b>${fmtN(S.score)}</b></span></div>`; }
+    function next() {
+      if (S.lives <= 0) return finish();
+      S.i++; S.q = qs[S.i % qs.length]; S.lim = qLimit(S.q.w, cfg.sp); S.start = Date.now(); S.answered = false; S.hint = false; S.last = null;
+      if (S.pad) S.pad.clear();
+      draw();
+    }
+    function draw() {
+      const q = S.q;
+      let fb = "";
+      if (S.answered) {
+        const r = S.last;
+        fb = `<div class="clfb ${r.ok ? "ok" : "ng"}"><div class="big">${r.ok ? `✅ 正解！ <b>+${fmtN(r.pts)}</b>` : r.pick == null ? "⏱ 時間切れ… ❤ −1" : "❌ ざんねん… ❤ −1"}</div>
+          ${r.ok ? `<div class="sub">${r.heal ? "❤ 5 問連続正解で ハートが 1 つ もどった！　" : ""}${S.streak >= 2 ? `🔥 ${S.streak} 問連続（次は 点数 ×${(1 + 0.1 * Math.min(5, S.streak)).toFixed(1)}）` : ""}</div>` : `<div class="sub">正解は <b>${q.ans}</b></div>`}
+          ${explainHTML(q)}
+          <div class="rv" style="justify-content:center;margin-top:8px"><button type="button" class="btn main big" data-cl="next">${S.lives > 0 ? "次の問題 ▶" : "結果を見る ▶"}</button></div></div>`;
+      }
+      wrap.innerHTML = hud() + (S.answered ? "" : qTimerHTML(S.lim - (Date.now() - S.start) / 1000, S.lim)) +
+        qCardHTML(q, { btn: !S.answered, reveal: S.answered, mine: S.answered && S.last.pick != null ? q.ch.indexOf(S.last.pick) : -1 }) +
+        (S.hint && !S.answered ? hintHTML(q) : "") + fb +
+        `<div class="qtools" id="cltools"></div>`;
+      const tools = wrap.querySelector("#cltools");
+      if (!S.answered) tools.appendChild(h("button", { type: "button", class: "toolbtn" + (S.hint ? " on" : ""), "data-cl": "hint", disabled: S.hint || null }, "💡 公式（点 半分）"));
+      if (!S.sc) { S.sc = scratchToggle(); S.pad = S.sc.pad; }
+      if (!S.answered) { tools.appendChild(S.sc.btn); wrap.appendChild(S.sc.box); }
+      c.out(`🧗 第 ${S.i + 1} 問　${"❤️".repeat(S.lives)}　<span class="big hl">${fmtN(S.score)}</span> 点`);
+      if (S.answered) { const f = wrap.querySelector(".clfb"); if (f && f.scrollIntoView) f.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+    }
+    function answer(i) {
+      if (S.answered) return;
+      const q = S.q, t = (Date.now() - S.start) / 1000, pick = i == null ? null : q.ch[i], ok = pick === q.ans;
+      S.answered = true;
+      let pts = 0, heal = false;
+      if (ok) {
+        pts = qPoints(1 - t / S.lim, q.w, S.streak, S.hint); S.score += pts; S.streak++; S.ok++; S.best = Math.max(S.best, S.streak);
+        if (S.streak % 5 === 0 && S.lives < 3) { S.lives++; heal = true; }
+      } else { S.streak = 0; S.lives--; }
+      S.last = { ok, pick, pts, heal };
+      S.log.push({ q, pick, ok, hint: S.hint });
+      draw();
+    }
+    function finish() {
+      const key = "climb-" + cfg.m, prev = RW.best[key] || 0, rec = S.score > prev;
+      if (rec) RW.best[key] = S.score;
+      if (S.best > RW.maxCombo) RW.maxCombo = S.best;
+      rwSave(); earn(Math.floor(S.score / 100));
+      const note = h("div", { style: "font-size:14px;min-height:1.4em" });
+      const text = `数学Aラボ 🧗じっくりチャレンジ（${GNAME[cfg.m]}）\n${fmtN(S.score)}点！ 第${S.i + 1}問まで・${S.ok}問正解・最大${S.best}連続\n${baseURL()}`;
+      clear(wrap);
+      wrap.appendChild(h("div", { class: "gres" },
+        rec && S.score > 0 ? h("div", { class: "stamp rec" }, "新記録") : null,
+        h("div", { class: "gscore" }, fmtN(S.score), h("small", {}, " 点")),
+        h("p", { class: "phrase", html: `🧗 <b>第 ${S.i + 1} 問</b> まで進んだ・✅ <b>${S.ok}</b> 問正解` }),
+        h("p", { class: "tstats" }, `🔥 最大 ${S.best} 問連続　🪙 +${Math.floor(S.score / 100)}　${GNAME[cfg.m]} のベスト：${fmtN(Math.max(prev, S.score))} 点`),
+        h("div", { class: "rv", style: "justify-content:center" },
+          h("button", { type: "button", class: "btn main", onclick: () => open("climb", false) }, "↺ もう一度"),
+          h("button", { type: "button", class: "btn", onclick: () => brag(text, note) }, "📣 自慢する"),
+          h("button", { type: "button", class: "btn", onclick: () => open("game") }, "◀ ゲームのトップ")),
+        note, reviewBox(S.log)));
+      c.out(`結果 <span class="big hl">${fmtN(S.score)}</span> 点　第 ${S.i + 1} 問まで${rec && S.score > 0 ? "　🎉 新記録！" : ""}`);
+    }
+    next();
+  },
+});
+
+/* ---------- 🏆 クラス対戦「クイズ大会」：先生の画面 ----------
+   room: { kind: "quiz", state: "quiz"|"end", round, seed, qi, phase: "ask"|"reveal"|"rank", qStart, qEnd, cfg: { m, n, sp } }
+   players/{pid}: { n, s, k(連続), c(最大連続), w(正解), m(まちがい), r(回), a: { r, i, c(えらんだ番号), t(秒) } } */
+function quizHost(code, H) {
+  const QH = { qs: null, seedKey: "", prevRank: {}, rankAt: -1 };
+  const qsOf = r => { const k = r.seed + ":" + r.cfg.m + ":" + r.cfg.n; if (QH.seedKey !== k) { QH.seedKey = k; QH.qs = makeQs(r.cfg, r.seed, r.cfg.n || 10); } return QH.qs; };
+  const answeredOf = r => playersOf(r).filter(p => p.a && p.a.r === r.round && p.a.i === r.qi);
+  QH.start = r => {
+    const cfg = r.cfg, seed = Math.floor(Math.random() * 1e9), qs = makeQs(cfg, seed, cfg.n || 10), t0 = Math.round(now() + 4000);
+    QH.prevRank = {};
+    return api("PATCH", ROOM(code), { kind: "quiz", state: "quiz", round: (r.round || 0) + 1, seed, qi: 0, phase: "ask", qStart: t0, qEnd: t0 + qLimit(qs[0].w, cfg.sp) * 1000 });
+  };
+  QH.reveal = r => { if (r.phase !== "ask") return; const ranks = {}; playersOf(r, r.round).forEach((p, i) => { ranks[p.id] = i + 1; }); QH.prevRank = ranks; api("PATCH", ROOM(code), { phase: "reveal" }).catch(() => { }); };
+  QH.next = r => {
+    const qs = qsOf(r);
+    if (r.qi + 1 >= qs.length) return api("PATCH", ROOM(code), { state: "end" }).catch(() => { });
+    const t0 = Math.round(now() + 3500);
+    api("PATCH", ROOM(code), { qi: r.qi + 1, phase: "ask", qStart: t0, qEnd: t0 + qLimit(qs[r.qi + 1].w, r.cfg.sp) * 1000 }).catch(() => { });
+  };
+  QH.tick = r => {
+    if (r.state !== "quiz" || r.phase !== "ask" || H.ending) return;
+    const all = playersOf(r).length, ans = answeredOf(r).length;
+    if (now() > r.qEnd + 600 || (all > 0 && ans >= all && now() > r.qStart + 1500)) { H.ending = true; QH.reveal(r); setTimeout(() => { H.ending = false; }, 800); }
+  };
+  QH.action = (r, a) => { if (a === "close-q") QH.reveal(r); if (a === "rank") api("PATCH", ROOM(code), { phase: "rank" }).catch(() => { }); if (a === "next") QH.next(r); if (a === "final") api("PATCH", ROOM(code), { state: "end" }).catch(() => { }); };
+  QH.draw = (el, r) => {
+    const qs = qsOf(r), q = qs[r.qi] || qs[0], n = qs.length, t = now();
+    /* 同じ場面なら 時計だけ動かす（問題や図を 毎回 書きなおさない） */
+    const ps = playersOf(r), key = [r.round, r.state, r.qi, r.phase, t < r.qStart ? Math.ceil((r.qStart - t) / 1000) : "go", answeredOf(r).length, ps.length, ps.reduce((a, p) => a + (p.s || 0), 0), el.clientWidth, el.clientHeight].join("|");
+    if (key === QH.key) { if (r.phase === "ask" && r.state === "quiz" && t >= r.qStart) { const tm = el.querySelector(".qtimer"); if (tm) tm.outerHTML = qTimerHTML((r.qEnd - t) / 1000, (r.qEnd - r.qStart) / 1000); } return; }
+    QH.key = key;
+    const head = (title, extra = "") => `<div class="bhead"><b>${title}</b>${extra}</div>`;
+    const ctl = (...b) => `<div class="qctl">${b.join("")}</div>`;
+    const btn = (a, t2, main) => `<button type="button" class="btn${main ? " main big" : ""}" data-qh="${a}">${t2}</button>`;
+    if (r.state === "end") {
+      const lst = playersOf(r, r.round), pod = lst.slice(0, 3);
+      el.innerHTML = head(`🎉 第${r.round}回戦 結果発表`) +
+        `<div class="podium">${[1, 0, 2].map(i => pod[i] ? `<div class="pd p${i + 1}"><span class="md">${["🥇", "🥈", "🥉"][i]}</span><b>${esc(pod[i].n)}</b><small>${fmtN(pod[i].s || 0)} 点</small><i></i></div>` : "<div></div>").join("")}</div>` +
+        awardsHTML(awardsOf(lst)) + `<div class="bbody"></div>`;
+      const bb = el.querySelector(".bbody"); if (lst.length > 3) bb.innerHTML = rankRows(lst.slice(3), "end", bb.clientWidth, bb.clientHeight, 3);
+      return;
+    }
+    if (r.phase === "ask") {
+      if (t < r.qStart) { el.innerHTML = head(`第 ${r.qi + 1} / ${n} 問`, `<span class="stars">${"★".repeat(q.w)}</span>`) + `<div class="gcount"><b>${Math.max(1, Math.ceil((r.qStart - t) / 1000))}</b><small>考える時間 ${qLimit(q.w, r.cfg.sp)} 秒</small></div>`; return; }
+      const lim = (r.qEnd - r.qStart) / 1000, left = (r.qEnd - t) / 1000, ans = answeredOf(r).length, all = playersOf(r).length;
+      el.innerHTML = head(`第 ${r.qi + 1} / ${n} 問`, `<span class="stars">${"★".repeat(q.w)}</span><span class="ansn">✋ 回答 <b>${ans}</b> / ${all} 人</span>`) + qTimerHTML(left, lim) +
+        `<div class="bq">${qCardHTML(q, { big: true })}</div>` + ctl(btn("close-q", "⏩ しめきって 答え合わせ", false));
+      return;
+    }
+    if (r.phase === "reveal") {
+      const counts = [0, 0, 0, 0]; answeredOf(r).forEach(p => { if (p.a.c >= 0 && p.a.c < 4) counts[p.a.c]++; });
+      const okN = counts[q.ch.indexOf(q.ans)] || 0, all = playersOf(r).length;
+      el.innerHTML = head(`第 ${r.qi + 1} / ${n} 問　答え合わせ`, `<span class="ansn">⭕ 正解 <b>${okN}</b> / ${all} 人</span>`) +
+        `<div class="bq rev">${qCardHTML(q, { big: true, reveal: true, counts })}<div class="bex">${explainHTML(q)}</div></div>` + ctl(btn("rank", "📊 ランキングへ ▶", true));
+      return;
+    }
+    /* rank */
+    const lst = playersOf(r, r.round), last = r.qi + 1 >= n;
+    const moves = lst.map((p, i) => { const pr = QH.prevRank[p.id]; return pr ? pr - (i + 1) : 0; });
+    el.innerHTML = head(`第 ${r.qi + 1} / ${n} 問のあと　ランキング`) + `<div class="bbody"></div>` + ctl(last ? btn("final", "🏁 結果発表 ▶", true) : btn("next", `▶ 次の問題（${r.qi + 2} / ${n}）`, true));
+    const bb = el.querySelector(".bbody");
+    bb.innerHTML = rankRows(lst, "end", bb.clientWidth, bb.clientHeight);
+    bb.querySelectorAll(".rk li .nm").forEach((nm, i) => { const mv = moves[i]; if (mv > 0) nm.insertAdjacentHTML("beforeend", ` <i class="up">▲${mv}</i>`); if (lst[i] && lst[i].k >= 2) nm.insertAdjacentHTML("beforeend", ` <i class="fire">🔥${lst[i].k}</i>`); });
+  };
+  return QH;
+}
+
+/* ---------- 🏆 クラス対戦「クイズ大会」：生徒の画面 ---------- */
+function quizPlayer(c, box, code) {
+  const QP = { qs: null, seedKey: "", round: 0, mine: {}, scored: {}, log: [], hint: false, sc: null, lastKey: "" };
+  const qsOf = r => { const k = r.seed + ":" + r.cfg.m + ":" + r.cfg.n; if (QP.seedKey !== k) { QP.seedKey = k; QP.qs = makeQs(r.cfg, r.seed, r.cfg.n || 10); } return QP.qs; };
+  const me = () => ROOM(code) + "/players/" + pid();
+  QP.update = r => {
+    QP.room = r;
+    const qs = qsOf(r), q = qs[r.qi] || qs[0];
+    if (r.qi !== QP.curQi || r.round !== QP.round) { QP.curQi = r.qi; QP.hint = false; if (QP.sc) QP.sc.pad.clear(); }
+    if (r.round !== QP.round) { /* 新しい回 */
+      QP.round = r.round; QP.mine = {}; QP.scored = {}; QP.log = []; QP.rv = null; QP.awarded = false;
+      QP.stat = { s: 0, k: 0, c: 0, w: 0, m: 0 };
+      api("PATCH", me(), { s: 0, k: 0, c: 0, w: 0, m: 0, r: r.round, a: null }).catch(() => { });
+    }
+    /* 答え合わせ：自分の点数を 計算して 送る */
+    if (r.state === "quiz" && r.phase !== "ask" && !QP.scored[r.qi]) {
+      QP.scored[r.qi] = 1;
+      const a = QP.mine[r.qi], ok = !!a && q.ch[a.c] === q.ans, st = QP.stat;
+      let pts = 0;
+      if (ok) { pts = qPoints(1 - a.t / ((r.qEnd - r.qStart) / 1000), q.w, st.k, a.h); st.s += pts; st.k++; st.c = Math.max(st.c, st.k); st.w++; }
+      else { st.k = 0; if (a) st.m++; }
+      QP.last = { ok, pts, answered: !!a };
+      QP.log.push({ q, pick: a ? q.ch[a.c] : null, ok, hint: a && a.h });
+      api("PATCH", me(), { s: st.s, k: st.k, c: st.c, w: st.w, m: st.m, r: r.round, p: pts }).catch(() => { });
+    }
+    if (r.state === "end" && !QP.awarded) {
+      QP.awarded = true;
+      const lst = playersOf(r, r.round), my = lst.map(p => p.id).indexOf(pid());
+      const coins = 20 + Math.floor(QP.stat.s / 100) + (my >= 0 && my < 3 && QP.stat.s > 0 ? 50 : 0);
+      if (my >= 0 && my < 3 && QP.stat.s > 0) RW.top3++;
+      if (QP.stat.c > RW.maxCombo) RW.maxCombo = QP.stat.c;
+      rwSave(); earn(coins); QP.coins = coins;
+    }
+    draw();
+  };
+  function rankOf() { const lst = playersOf(QP.room, QP.room.round); return [lst.map(p => p.id).indexOf(pid()) + 1, lst.length, lst]; }
+  function draw() {
+    const r = QP.room, qs = qsOf(r), q = qs[r.qi] || qs[0], n = qs.length, t = now();
+    const key = [r.round, r.state, r.qi, r.phase, QP.mine[r.qi] ? 1 : 0, QP.hint ? 1 : 0].join("|");
+    const top = `<div class="rv" style="align-items:center;justify-content:space-between"><button type="button" class="btn" data-qp="leave">◀ ぬける</button><b>🏆 部屋 ${code}</b><span class="ppl">💯 ${fmtN(QP.stat ? QP.stat.s : 0)} 点</span></div>`;
+    if (key === QP.lastKey && r.phase === "ask" && t >= r.qStart) { const tm = box.querySelector(".qtimer"); if (tm) tm.outerHTML = qTimerHTML((r.qEnd - t) / 1000, (r.qEnd - r.qStart) / 1000); return; }
+    if (key === QP.lastKey && !(r.phase === "ask" && t < r.qStart)) return;
+    QP.lastKey = key;
+    clear(box);
+    const w = h("div", { class: "qplay" });
+    box.appendChild(w);
+    if (r.state === "end") {
+      const [my, all, lst] = rankOf(), aw = awardsOf(lst), mine = aw.filter(a => a.who.some(p => p.id === pid()));
+      w.innerHTML = top + `<div class="gres"><p class="note">第${r.round}回戦 結果</p><div class="gscore">${my}<small> 位 / ${all} 人</small></div><p class="tstats">${fmtN(QP.stat.s)} 点　✅ ${QP.stat.w} / ${n} 問　🔥 最大 ${QP.stat.c} 連続${QP.coins ? `　🪙 +${QP.coins}` : ""}</p>${mine.length ? `<p class="phrase">🎉 ${mine.map(a => `${a.ico} <b>${a.name}</b>`).join("・")} をとった！</p>` : ""}${rankRows(lst.slice(0, 5), "end")}${awardsHTML(aw.filter(a => !mine.includes(a)))}<p class="note">先生が 次のスタートをおすと 始まります</p></div>`;
+      if (!QP.rv) QP.rv = reviewBox(QP.log);
+      w.querySelector(".gres").appendChild(QP.rv);
+      c.out(`結果：<span class="big hl">${my}</span> 位 / ${all} 人　${fmtN(QP.stat.s)} 点`);
+      return;
+    }
+    if (r.phase === "ask" && t < r.qStart) {
+      w.innerHTML = top + `<div class="gcount"><small>第 ${r.qi + 1} / ${n} 問　<span class="stars">${"★".repeat(q.w)}</span></small><b>${Math.max(1, Math.ceil((r.qStart - t) / 1000))}</b><small>考える時間 ${qLimit(q.w, r.cfg.sp)} 秒。正しさが いちばん大事。はやく答えると 少しだけ 点が多い</small></div>`;
+      QP.lastKey = ""; return;
+    }
+    if (r.phase === "ask") {
+      const a = QP.mine[r.qi], lim = (r.qEnd - r.qStart) / 1000;
+      w.innerHTML = top + `<div class="qpn">第 ${r.qi + 1} / ${n} 問 <span class="stars">${"★".repeat(q.w)}</span></div>` + qTimerHTML((r.qEnd - t) / 1000, lim) +
+        qCardHTML(q, { btn: !a, mine: a ? a.c : -1, disabled: !!a }) +
+        (a ? `<div class="clfb wait"><div class="big">✋ こたえた！</div><div class="sub">みんなが答えるのを 待っています。答え合わせは 先生の画面で</div></div>` : (QP.hint ? hintHTML(q) : "")) +
+        `<div class="qtools" id="qptools"></div>`;
+      const tools = w.querySelector("#qptools");
+      if (!a) {
+        tools.appendChild(h("button", { type: "button", class: "toolbtn" + (QP.hint ? " on" : ""), "data-qp": "hint", disabled: QP.hint || null }, "💡 公式（点 半分）"));
+        if (!QP.sc) QP.sc = scratchToggle();
+        tools.appendChild(QP.sc.btn); w.appendChild(QP.sc.box);
+      }
+      c.out(`第 ${r.qi + 1} / ${n} 問　${a ? "✋ こたえた！" : "考えて 答えをえらぼう"}`);
+      return;
+    }
+    const L = QP.last || { ok: false, pts: 0, answered: false }, [my, all] = rankOf();
+    if (r.phase === "reveal") {
+      w.innerHTML = top + `<div class="qpn">第 ${r.qi + 1} / ${n} 問　答え合わせ</div>` +
+        `<div class="clfb ${L.ok ? "ok" : "ng"}"><div class="big">${L.ok ? `✅ 正解！ <b>+${fmtN(L.pts)}</b>` : L.answered ? "❌ ざんねん" : "⏱ 時間切れ"}</div><div class="sub">${L.ok && QP.stat.k >= 2 ? `🔥 ${QP.stat.k} 問連続！ 次は 点数 ×${(1 + 0.1 * Math.min(5, QP.stat.k)).toFixed(1)}` : L.ok ? "" : `正解は <b>${q.ans}</b>`}</div></div>` +
+        qCardHTML(q, { reveal: true, mine: QP.mine[r.qi] ? QP.mine[r.qi].c : -1 }) + explainHTML(q);
+      c.out(`第 ${r.qi + 1} 問：${L.ok ? "✅ 正解" : "❌"}　いま <span class="big hl">${my}</span> 位`);
+      return;
+    }
+    w.innerHTML = top + `<div class="gres"><p class="note">第 ${r.qi + 1} / ${n} 問のあと</p><div class="gscore">${my}<small> 位 / ${all} 人</small></div><p class="tstats">${fmtN(QP.stat.s)} 点　✅ ${QP.stat.w} 問${QP.stat.k >= 2 ? `　🔥 ${QP.stat.k} 連続中` : ""}</p><p class="note">${r.qi + 1 >= n ? "まもなく 結果発表！" : "次の問題を 待っています"}</p></div>`;
+    c.out(`いま <span class="big hl">${my}</span> 位 / ${all} 人`);
+  }
+  QP.click = b => {
+    const r = QP.room; if (!r) return;
+    if (b.dataset.qa != null && r.state === "quiz" && r.phase === "ask" && !QP.mine[r.qi] && now() >= r.qStart && now() <= r.qEnd + 300) {
+      const ci = +b.dataset.qa, tt = Math.max(0, (now() - r.qStart) / 1000);
+      QP.mine[r.qi] = { c: ci, t: tt, h: QP.hint }; QP.hint = false;
+      if (QP.sc) QP.sc.pad.clear();
+      api("PATCH", me(), { a: { r: r.round, i: r.qi, c: ci, t: Math.round(tt * 10) / 10 } }).catch(() => { });
+      draw();
+    }
+    if (b.dataset.qp === "hint") { QP.hint = true; draw(); }
+  };
+  QP.tick = () => { if (QP.room && QP.room.state === "quiz" && QP.room.phase === "ask") draw(); };
+  return QP;
+}
 </script>
 <script>
 "use strict";
