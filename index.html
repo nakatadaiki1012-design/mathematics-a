@@ -373,6 +373,7 @@ body.fz2 .fband, body.fz2 .card-body, body.fz2 .lib { zoom: 1.3; }
 .gplay .qtools { margin: 0; }
 .gqtext.hasfig { flex: none; }
 @media (max-width: 900px) { .scv { height: 200px; } .gfig .qfig { max-height: 165px; } .gqtext.hasfig { font-size: 17px; line-height: 1.5; } }
+.movebar { position: relative; z-index: 70; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 8px 14px; background: var(--warm-soft); border-bottom: 2px solid var(--warm); font-weight: 700; font-size: 15px; }
 /* ===== 🎮 ゲーム ===== */
 .tbtn.coin b { font-family: var(--font-data); font-weight: 600; margin-left: 2px; }
 .plus { position: fixed; z-index: 99; transform: translateX(-50%); font-family: var(--font-data); font-weight: 600; color: var(--gold); font-size: 16px; pointer-events: none; animation: plus .9s ease-out forwards; }
@@ -693,6 +694,11 @@ const CATS = [
   { id: "game", name: "ゲーム", ico: "🎮" },
 ];
 const SIMS = [];
+/* 公開しているアドレス。課題・報告・クラス対戦・例題のリンクは いつもここを指す
+   （自分のパソコンで ファイルを開いて試すときだけは そのファイルのまま） */
+const SITE_URL = "https://mathematics-a.axw-nkt-fno.workers.dev/";
+const isLocal = () => location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+const siteBase = () => isLocal() ? location.href.split("#")[0] : SITE_URL;
 function sim(def) { SIMS.push(def); }
 
 const store = {
@@ -6058,7 +6064,7 @@ function runMaker(c, def) {
     savedBox.appendChild(ul);
   }
   function copyLink() {
-    const url = location.href;
+    const url = siteBase() + location.hash;
     const ok = () => { share.textContent = "✓ リンクをコピーしました。プリントや連絡に はりつけられます"; };
     if (navigator.clipboard) navigator.clipboard.writeText(url).then(ok, () => { share.textContent = url; });
     else share.textContent = url;
@@ -6436,7 +6442,7 @@ function unpack(str) {
     return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, ch => ch.charCodeAt(0))));
   } catch (e) { return null; }
 }
-const baseURL = () => location.href.split("#")[0];
+const baseURL = () => siteBase();
 const minText = st => st.sec > 0 && st.min < 1 ? "1 分未満" : `${st.min} 分`;
 
 /* 記録の引っこし：この端末の記録を 1 つの文字列にして、別の端末で読みこむ */
@@ -6445,7 +6451,7 @@ function exportAll() {
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith("mathA:")) o[k.slice(6)] = JSON.parse(localStorage.getItem(k)); } } catch (e) { }
   return "MATHA1." + pack(o);
 }
-function importAll(str) {
+function importAll(str, all) {
   const m = String(str).match(/MATHA1\.([A-Za-z0-9_-]+)/);
   const o = m && unpack(m[1]);
   if (!o || typeof o !== "object") return 0;
@@ -6456,9 +6462,32 @@ function importAll(str) {
       else if (k.startsWith("test:")) { const c2 = store.get(k, null); store.set(k, !c2 || (v && v.best > c2.best) ? v : c2); }
       else { const c2 = store.get(k, {}); const dn = (c2.done || []).filter(Boolean).length, dv = ((v && v.done) || []).filter(Boolean).length; if (dv > dn) store.set(k, v); }
       n++;
-    } else if (/^(task|name|certs|best:)/.test(k) && store.get(k, null) == null) { store.set(k, v); n++; }
+    } else if (k === "rw") { /* コイン・段位：多い方 */ const c2 = store.get("rw", null); if (!c2 || (v && v.coins > (c2.coins || 0))) { store.set("rw", v); n++; } }
+    else if ((all || /^(task|name|certs|best:|nick)/.test(k)) && !/^(last|lastIn:|tab)/.test(k) && store.get(k, null) == null) { store.set(k, v); n++; }
   });
   return n;
+}
+/* 前のアドレス（GitHub Pages）で開いたとき：記録ごと 新しいアドレスへ */
+function oldSiteBanner() {
+  if (isLocal() || location.href.startsWith(SITE_URL)) return;
+  const go = () => { location.href = SITE_URL + "#move?d=" + exportAll().slice(7) + "&to=" + encodeURIComponent(location.hash.slice(1).split("?")[0] || ""); };
+  const bar = h("div", { class: "movebar" }, h("span", {}, "📦 数学Aラボは 新しいアドレスに引っこしました。"), h("button", { type: "button", class: "btn main", onclick: go }, "記録ごと 新しいアドレスへ ▶"));
+  document.body.insertBefore(bar, document.body.firstChild);
+}
+function moveIn() {
+  const m = location.hash.match(/^#move\?d=([A-Za-z0-9_-]*)(?:&to=([^&]*))?/);
+  if (!m) return false;
+  const n = m[1] ? importAll("MATHA1." + m[1], true) : 0, to = decodeURIComponent(m[2] || "");
+  /* 読みこんだ記録を いま動いている画面にも反映 */
+  if (typeof RW !== "undefined") { Object.assign(RW, store.get("rw", {})); coinChip(); }
+  LEVEL = clamp(store.get("level", 1), 0, 2); renderLevelBtn();
+  history.replaceState(null, "", "#" + (to || "u-perm"));
+  setTimeout(() => celebrateMove(n), 300);
+  return true;
+}
+function celebrateMove(n) {
+  const d = h("div", { class: "movebar" }, h("span", {}, n ? `✓ 引っこし完了！ ${n} 件の記録を 新しいアドレスに移しました。このページを ブックマークしてね` : "✓ 新しいアドレスです。このページを ブックマークしてね"), h("button", { type: "button", class: "btn", onclick: () => d.remove() }, "とじる"));
+  document.body.insertBefore(d, document.body.firstChild);
 }
 function moveBox(c) {
   const det = h("details", { class: "flow", style: "margin-top:22px" }, h("summary", {}, "📦 別の端末に記録を引っこす"));
@@ -7783,6 +7812,7 @@ $("#maxBtn").addEventListener("click", () => {
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#stageWrap").classList.contains("is-max")) $("#maxBtn").click(); });
 window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (id) open(id, false); });
+moveIn(); oldSiteBanner();
 open(location.hash.slice(1) || (taskLeft() ? "task" : store.get("last", "u-perm")));
 </script>
 </body>
