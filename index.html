@@ -410,6 +410,22 @@ body.gscr .app > .lib, body.gscr .app > .card { display: none !important; }
 .gplay.scr:not(.wide) > .scratchbox > .scratch { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .gplay.scr:not(.wide) .scv { flex: 1; height: auto; min-height: 110px; }
 .movebar { position: relative; z-index: 70; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; padding: 8px 14px; background: var(--warm-soft); border-bottom: 2px solid var(--warm); font-weight: 700; font-size: 15px; }
+.review { width: 100%; max-width: 680px; margin: 6px auto 0; text-align: left; display: flex; flex-direction: column; gap: 8px; }
+.review > .seg { justify-content: center; }
+.rvlist { display: flex; flex-direction: column; gap: 10px; }
+.rvitem { border: 1.5px solid var(--line); border-left: 5px solid var(--accent); border-radius: 6px; background: var(--panel); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.rvitem.ng { border-left-color: var(--warm); }
+.rvhead { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.rvhead .pill { border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; }
+.rvn { font-family: var(--font-data); font-weight: 700; color: var(--ink); font-size: 14px; }
+.rvq { font-size: 16px; font-weight: 700; line-height: 1.6; }
+.rvans { font-size: 15px; } .okc { color: var(--accent); } .ngc { color: var(--warm); }
+.rvex { font-size: 14.5px; line-height: 1.7; background: var(--bg); border-radius: 4px; padding: 6px 10px; } .rvex > b { display: block; font-size: 12px; color: var(--muted); }
+.rvex .calc { border: 0; padding: 0; margin: 0; background: none; }
+.rvfo { font-size: 13px; color: var(--gold); }
+.rvitem .btn { align-self: flex-start; text-decoration: none; color: var(--ink); font-size: 13px; }
+.gres { text-align: center; }
+.gplay.done { height: auto; } .gplay.done #gtools, .gplay.done .scratchbox { display: none; } .gplay.done .gq { flex: none; }
 /* ===== 🎮 ゲーム ===== */
 .tbtn.coin b { font-family: var(--font-data); font-weight: 600; margin-left: 2px; }
 .plus { position: fixed; z-index: 99; transform: translateX(-50%); font-family: var(--font-data); font-weight: 600; color: var(--gold); font-size: 16px; pointer-events: none; animation: plus .9s ease-out forwards; }
@@ -7248,13 +7264,13 @@ function makeQs(cfg, seed, n = 90) {
   try {
     if (cfg.m === "units") {
       const ids = Object.keys(VARIANTS);
-      for (let i = 0; i < n; i++) { const id = ids[Math.floor(R() * ids.length)], v = VARIANTS[id](); out.push({ q: v.problem, ch: shuffle(v.choices.slice()), ans: v.choices[0], cat: unitName(id), w: QDIFF[id] || 2, key: id, fig: v.fig || "", hint: v.hint }); }
+      for (let i = 0; i < n; i++) { const id = ids[Math.floor(R() * ids.length)], v = VARIANTS[id](); out.push({ q: v.problem, ch: shuffle(v.choices.slice()), ans: v.choices[0], cat: unitName(id), w: QDIFF[id] || 2, key: id, fig: v.fig || "", hint: v.hint, ex: v.more || "", link: id }); }
     } else {
       const gens = GCATS[cfg.m] || Object.keys(QGEN); let bag = [];
       for (let i = 0; i < n; i++) {
         if (!bag.length) bag = shuffle(gens.slice());
         const key = bag.pop(), g = QGEN[key](), ans = String(g.ans);
-        out.push({ q: g.q, ch: shuffle(distinct(g.ans, g.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? fmt(w, 2) : w))), ans, cat: g.cat, w: QDIFF[key] || 1, key, fig: g.fig || "" });
+        out.push({ q: g.q, ch: shuffle(distinct(g.ans, g.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? fmt(w, 2) : w))), ans, cat: g.cat, w: QDIFF[key] || 1, key, fig: g.fig || "", ex: g.ex || "", link: g.link || "" });
       }
     }
   } finally { Math.random = orig; }
@@ -7268,7 +7284,7 @@ const now = () => Date.now() + OFF;
 const mult = () => 1 + Math.min(4, Math.floor(G.combo / 10)) * 0.5;
 function newGame(cfg, seed, mode, startAt) {
   const T = startT(cfg);
-  G = { cfg, T, qs: makeQs(cfg, seed), qi: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, miss: 0, gain: 0, mode, startAt, endAt: startAt + T * 1000, q: null, lock: false, over: false, pick: -1 };
+  G = { cfg, T, log: [], qs: makeQs(cfg, seed), qi: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, miss: 0, gain: 0, mode, startAt, endAt: startAt + T * 1000, q: null, lock: false, over: false, pick: -1 };
   nextQ(); return G;
 }
 function nextQ() { G.q = G.qs[G.qi % G.qs.length]; G.qi++; G.lock = false; G.pick = -1; G.hint = false; if (G.pad) G.pad.clear(); }
@@ -7291,6 +7307,7 @@ function playShell(box, title) {
   /* （画面の幅ではなく、ゲームの画面そのものの幅で決める：右に説明パネルがあると せまくなるため） */
   const lay = () => {
     if (!gp.isConnected) return;
+    if (gp.classList.contains("done")) { gp.classList.remove("scr", "wide"); document.body.classList.remove("gscr"); return; } // 終わったら 解説を ふつうに読めるように
     const on = !sc.box.hidden;
     document.body.classList.toggle("gscr", on); // 計算スペースを使うあいだは、左右のパネルをしまってゲームを広くする
     const wide = (gp.parentElement ? gp.parentElement.clientWidth : innerWidth) >= 760;
@@ -7299,6 +7316,7 @@ function playShell(box, title) {
   };
   sc.btn.addEventListener("click", lay); lay();
   if (typeof ResizeObserver !== "undefined" && gp.parentElement) new ResizeObserver(() => lay()).observe(gp.parentElement);
+  gp.relayout = lay;
   G && (G.pad = sc.pad);
 }
 function drawHud() {
@@ -7333,6 +7351,7 @@ function useHint() { if (!G || G.over || G.hint || G.pick >= 0 || now() < G.star
 function pickChoice(i) {
   const q = G.q; if (!G || G.lock || G.over || now() < G.startAt) return;
   G.pick = i; G.lock = true;
+  G.log.push({ q, pick: q.ch[i], ok: q.ch[i] === q.ans, hint: G.hint });
   if (q.ch[i] === q.ans) {
     G.combo++; if (G.combo > G.maxCombo) G.maxCombo = G.combo;
     const half = G.hint ? 0.5 : 1, bs = Math.round(bonusSec(q.w, G.ok) * half * 10) / 10;
@@ -7361,7 +7380,7 @@ function runClock(c, onEnd) {
     const t = now();
     if (t < G.startAt) { drawQ(); return; }
     if (wasCount) { wasCount = false; drawQ(); }
-    if (t >= G.endAt && !G.over) { G.over = true; G.played = Math.round((t - G.startAt) / 1000); clearInterval(stop); onEnd(); return; }
+    if (t >= G.endAt && !G.over) { if (G.pick < 0 && G.q) G.log.push({ q: G.q, pick: null, ok: false }); G.over = true; G.played = Math.round((t - G.startAt) / 1000); clearInterval(stop); onEnd(); return; }
     drawHud();
   });
   drawQ();
@@ -7384,6 +7403,41 @@ function afterGame() {
 function brag(text, note) {
   if (navigator.share && /Mobi|Android|iPhone|iPad/.test(navigator.userAgent)) { navigator.share({ text }).catch(() => { }); return; }
   copyText(text, note, "✓ 結果の文章をコピーしました。LINE などに はりつけて自慢しよう");
+}
+
+/* ---------- 終わったあとの 解説 ---------- */
+function reviewBox(log) {
+  const wrap = h("div", { class: "review" });
+  if (!log || !log.length) return wrap;
+  const bad = log.filter(x => !x.ok).length;
+  let filter = bad ? "ng" : "all", opened = false;
+  const list = h("div", { class: "rvlist" });
+  const btn = h("button", { type: "button", class: "btn" + (bad ? " main" : ""), onclick: () => { opened = !opened; list.hidden = !opened; tabs.hidden = !opened; btn.textContent = opened ? "▲ 解説をとじる" : label; if (opened) { draw(); setTimeout(() => wrap.scrollIntoView({ behavior: "smooth", block: "start" }), 50); } } });
+  const label = bad ? `📖 まちがえた ${bad} 問の解説を見る` : `📖 解説を見る（全問正解！）`;
+  btn.textContent = label;
+  const tab = (v, t) => { const b2 = h("button", { type: "button", "aria-pressed": String(filter === v), onclick: () => { filter = v; [...tabs.children].forEach(x => x.setAttribute("aria-pressed", String(x === b2))); draw(); } }, t); return b2; };
+  const tabs = h("div", { class: "seg gseg", hidden: true }, tab("ng", `まちがい・時間切れ（${bad}）`), tab("all", `全部（${log.length}）`));
+  list.hidden = true;
+  function draw() {
+    clear(list);
+    log.forEach((x, n) => {
+      if (filter === "ng" && x.ok) return;
+      const q = x.q, target = q.link && SIMS.find(d => d.id === q.link);
+      const res = x.ok ? `<b class="okc">○ 正解</b>` : x.pick == null ? `<b class="ngc">− 時間切れ</b>` : `<b class="ngc">× あなた：${x.pick}</b>`;
+      list.appendChild(h("div", { class: "rvitem" + (x.ok ? " ok" : " ng") },
+        h("div", { class: "rvhead", html: `<span class="rvn">${n + 1}</span><span class="pill">${q.cat}</span><span class="stars">${"★".repeat(q.w)}</span>${x.hint ? `<span class="pill">💡 公式を使った</span>` : ""}` }),
+        h("div", { class: "rvq", html: q.q }),
+        q.fig ? h("div", { class: "gfig", html: q.fig }) : null,
+        h("div", { class: "rvans", html: `${res}　正解：<b>${q.ans}</b>` }),
+        q.ex ? h("div", { class: "rvex", html: `<b>解説</b>${q.ex}` }) : null,
+        (() => { const fo = formulaOf(q.key); return fo ? h("div", { class: "rvfo", html: `📐 ${fo[0]}：${fo[1]}` }) : null; })(),
+        target ? h("a", { class: "btn", href: "#" + target.id, target: "_blank", rel: "noopener" }, target.cat === "unit" ? `📖 授業「${target.name}」で復習 ↗` : `🔍「${target.name}」で確かめる ↗`) : null));
+    });
+    if (!list.children.length) list.appendChild(h("p", { class: "note" }, "まちがえた問題はありません！ 「全部」で ふり返れます"));
+  }
+  wrap.appendChild(h("div", { class: "rv", style: "justify-content:center" }, btn));
+  wrap.appendChild(tabs); wrap.appendChild(list);
+  return wrap;
 }
 
 /* ---------- ゲームのトップ ---------- */
@@ -7432,6 +7486,7 @@ sim({
       const text = `数学Aラボ ⏱タイムアタック（${cfgName(G.cfg)}）\n${fmtN(G.score)}点！ ${G.ok} 問正解（≒ ${ruler(G.ok)}）\n${G.played} 秒 生きのこり・最大 ${G.maxCombo} コンボ・段位「${levelOf(RW.coins).name}」\n${baseURL()}`;
       const note = h("div", { style: "font-size:14px;min-height:1.4em" });
       const el = $("#gq"); clear(el);
+      const gp = el.closest(".gplay"); if (gp) { gp.classList.add("done"); if (gp.relayout) gp.relayout(); }
       el.appendChild(h("div", { class: "gres" },
         rec && G.score > 0 ? h("div", { class: "stamp rec" }, "新記録") : null,
         h("div", { class: "gscore" }, fmtN(G.score), h("small", {}, " 点")),
@@ -7442,7 +7497,7 @@ sim({
           h("button", { type: "button", class: "btn main", onclick: () => open("ta", false) }, "↺ もう一度"),
           h("button", { type: "button", class: "btn", onclick: () => brag(text, note) }, "📣 自慢する"),
           h("button", { type: "button", class: "btn", onclick: () => open("game") }, "◀ ゲームのトップ")),
-        note));
+        note, reviewBox(G.log)));
       $("#hcombo").innerHTML = "";
       c.out(`結果 <span class="big hl">${fmtN(G.score)}</span> 点　${G.ok} 問正解${rec && G.score > 0 ? "　🎉 新記録！" : ""}`);
     }
@@ -7714,7 +7769,7 @@ sim({
     function endBattle() {
       clearTimeout(BT && BT.push); pushScore(true);
       const coins = afterGame() + 20; rwSave(); earn(coins);
-      G.coins = coins;
+      G.coins = coins; BT.log = G.log;
       setTimeout(drawWait, 300);
     }
     function drawWait() {
@@ -7732,6 +7787,8 @@ sim({
         w.appendChild(h("p", { class: "tstats" }, `${fmtN(meP.s || 0)} 点　✅ ${meP.w || 0} 問${G && G.coins ? `　🪙 +${G.coins}` : ""}`));
         w.appendChild(h("div", { class: "gres", html: rankRows(lst.slice(0, 5), fin ? "end" : "now") }));
         if (fin) w.appendChild(h("p", { class: "note" }, "先生が 次のスタートをおすと 始まります"));
+        /* 解説は 全員が終わってから（まだ解いている人に 答えが伝わらないように） */
+        if (BT.log && fin) w.appendChild(BT.rv && BT.rvLog === BT.log ? BT.rv : (BT.rvLog = BT.log, BT.rv = reviewBox(BT.log)));
         c.out(`第${room.round}回戦：<span class="big hl">${my + 1}</span> 位 / ${lst.length} 人　${fmtN(meP.s || 0)} 点`);
       } else {
         w.appendChild(h("div", { class: "stamp wait" }, "参加中"));
