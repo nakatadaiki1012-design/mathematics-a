@@ -178,6 +178,12 @@ sub, sup { font-size: .68em; line-height: 0; }
 .fband { flex: none; display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px 10px 16px; background: var(--panel); border-bottom: 1.5px solid var(--ink); position: relative; z-index: 2; }
 .fbody { flex: 1; min-width: 0; }
 .fgen { font-size: 22px; line-height: 1.55; font-weight: 700; font-family: var(--font-data); }
+.fgen .tok { white-space: nowrap; } /* 式の とちゅうで 行がかわらないように */
+.lsay .stepn { font-family: var(--font-data); color: var(--muted); font-size: 12px; margin-right: 8px; border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; vertical-align: 2px; }
+.score .qmark { display: inline-block; margin: 0 6px 6px 0; font-size: 14px; } .score .qmark.ok { color: var(--accent); font-weight: 700; }
+.score button.qmark.ng { border: 1.5px solid var(--warm); color: var(--warm); background: var(--panel); border-radius: 14px; padding: 2px 10px; font-weight: 700; }
+/* 全画面（プロジェクター）：問題と式を大きく */
+.stage-wrap.is-max .fprob { font-size: clamp(20px, 2.5vw, 40px); } .stage-wrap.is-max .fgen { font-size: clamp(24px, 3vw, 48px); } .stage-wrap.is-max .lsay, .stage-wrap.is-max .readout { font-size: clamp(18px, 2vw, 32px); }
 .fgen:empty { display: none; }
 .fgen .k { font-family: var(--font-body); font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 1px 6px; margin-right: 10px; vertical-align: 3px; font-weight: 500; }
 .fband .readout { border: 0; background: transparent; padding: 0; margin: 2px 0 0; min-height: 0; font-size: 16px; max-height: 28vh; overflow: auto; }
@@ -459,6 +465,9 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 .qch .sh { flex: none; width: 34px; height: 34px; border-radius: 6px; display: grid; place-items: center; background: var(--sc); color: #fff; font-size: 18px; position: relative; z-index: 1; }
 .qch .tx { position: relative; z-index: 1; }
 .qch.mine { outline: 3px solid var(--ink); outline-offset: 2px; }
+.qch.mine.dim { opacity: 1; outline-color: var(--warm); border-color: var(--warm); } .qch.mine.dim .tx { text-decoration: line-through; color: var(--warm); }
+.qch.mine.dim::after { content: "✗ あなた"; margin-left: auto; color: var(--warm); font-family: var(--font-body); font-size: 13px; font-weight: 800; position: relative; z-index: 1; }
+.qcch.short { grid-template-columns: 1fr 1fr !important; }
 .qch.right { background: var(--accent-soft); border-color: var(--accent); } .qch.dim { opacity: .45; }
 .qch .ok { margin-left: auto; color: var(--accent); font-size: 24px; position: relative; z-index: 1; }
 .qch .cnt { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--sc) 22%, transparent); }
@@ -498,6 +507,8 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 @media (max-width: 600px) { .gq .choices.steps { grid-template-columns: 1fr; } .gq .choices.steps .choice { font-size: 16px; padding: 10px 8px 10px 28px; } }
 .stephow { border: 2px solid var(--warm); border-radius: 8px; background: var(--warm-soft); padding: 8px 12px; font-size: 14.5px; line-height: 1.6; text-align: left; max-width: 30em; color: var(--ink); }
 .gcount .stephow b { display: block; font-size: 15px; font-family: inherit; color: var(--warm); line-height: 1.4; }
+.tqr { width: 170px; height: 170px; max-height: none; margin: 8px 0; justify-content: flex-start; }
+.movebar.welcome { background: var(--accent-soft); border-bottom-color: var(--accent); font-weight: 600; font-size: 14px; }
 /* ===== 🎮 ゲーム ===== */
 .tbtn.coin b { font-family: var(--font-data); font-weight: 600; margin-left: 2px; }
 .plus { position: fixed; z-index: 99; transform: translateX(-50%); font-family: var(--font-data); font-weight: 600; color: var(--gold); font-size: 16px; pointer-events: none; animation: plus .9s ease-out forwards; }
@@ -528,7 +539,7 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 .tbar { flex: 1; position: relative; height: 26px; border: 1.5px solid var(--ink); border-radius: 13px; overflow: hidden; background: var(--panel); }
 .tbar i { position: absolute; inset: 0 auto 0 0; background: var(--accent); transition: width .1s linear; }
 .tbar i.hurry { background: var(--warm); }
-.tbar span { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 700; font-size: 13px; mix-blend-mode: difference; color: #fff; }
+.tbar span { position: absolute; inset: 0; display: grid; place-items: center; font-weight: 800; font-size: 14px; color: var(--ink); text-shadow: 0 0 3px var(--panel), 0 0 3px var(--panel); }
 .tbar.host { flex: none; height: 12px; }
 .hs { text-align: right; line-height: 1.1; min-width: 5em; } .hs small { display: block; font-size: 11px; color: var(--muted); white-space: nowrap; } .hs b { font-family: var(--font-data); font-size: 28px; }
 .hc { min-width: 6em; text-align: center; font-weight: 700; color: var(--warm); font-size: 13px; } .hc b { font-family: var(--font-data); font-size: 24px; }
@@ -660,13 +671,16 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
   .top { position: sticky; top: 0; z-index: 20; }
   .top { padding: 4px 10px; gap: 6px; }
   .brand { font-size: 16px; }
-  .secnav button { padding: 6px 8px; font-size: 13.5px; }
+  .secnav button { padding: 9px 9px; font-size: 14px; }
   .secnav .ico { display: none; }
+  /* 横にスクロールできることが わかるように 右はしを うすくする */
+  .secnav { -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent); mask-image: linear-gradient(90deg, #000 78%, transparent); padding-right: 18px; }
+  .card.empty { display: none; }
   .app { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 8px; }
   .lib { flex: none; flex-direction: row; overflow-x: auto; padding: 5px 6px; gap: 4px; scrollbar-width: none; }
   .lib::-webkit-scrollbar { display: none; }
   .lib h2 { display: block; flex: none; font-size: 11px; margin: 0 2px 0 6px; align-self: center; writing-mode: horizontal-tb; white-space: nowrap; color: var(--warm); }
-  .tbtn { padding: 2px 6px; font-size: 12px; }
+  .tbtn { padding: 4px 7px; font-size: 13px; min-width: 34px; min-height: 34px; }
   .btools { display: flex; }
   .fband .ibtn#maxBtn { display: none; }
   .item { flex: 0 0 auto; width: auto; padding: 4px 10px; white-space: nowrap; }
@@ -823,7 +837,6 @@ const CATS = [
   { id: "prob", name: "確率", ico: "🎲" },
   { id: "geo", name: "図形の性質", ico: "📐" },
   { id: "int", name: "整数の性質", ico: "🧮" },
-  { id: "quiz", name: "挑戦", ico: "🏁" },
   { id: "game", name: "ゲーム", ico: "🎮" },
 ];
 const SIMS = [];
@@ -964,7 +977,7 @@ function open(id, push = true) {
   $("#fgen").innerHTML = def.formula ? `<span class="k">公式</span>${def.formula}` : "";
   document.querySelector(".tabs").hidden = !!def.lesson;
   $("#stageWrap").classList.remove("html-mode");
-  document.body.classList.remove("has-nav", "unit-mode", "gscr");
+  document.body.classList.remove("has-nav", "unit-mode", "gscr", "asking");
   $("#fprob").innerHTML = "";
   const ctx = makeCtx(def);
   $("#hint").classList.remove("part");
@@ -979,6 +992,8 @@ function open(id, push = true) {
   setTab(store.get("tab", "point"));
   try { def.build(ctx); } catch (e) { console.error(e); ctx.out("表示できませんでした：" + e.message); }
   if (!ctx.fixedFit) setTimeout(fitStage, 30);
+  $("#penBtn").hidden = $("#stageWrap").classList.contains("html-mode"); // 書きこみは 図の画面だけ
+  setTimeout(() => $("#card").classList.toggle("empty", !$("#text").textContent.trim()), 60);
   $(".fsnav").classList.toggle("has", !!ctx.nav);
   if (push && !def.maker && !def.keepHash && location.hash !== "#" + def.id) history.replaceState(null, "", "#" + def.id);
   if (!def.hidden && !def.keepHash) store.set("last", def.id);
@@ -992,12 +1007,15 @@ function setTab(t) {
 }
 function renderNav(def) {
   const nav = clear($("#secnav"));
-  const listOf = cid => { const all = SIMS.filter(d => d.cat === cid && !d.hidden); return all.filter(d => d.maker).concat(all.filter(d => !d.maker && !d.teacher), all.filter(d => d.teacher)); };
+  const listOf = cid => { const all = SIMS.filter(d => d.cat === cid && !d.hidden).sort((a, b) => (a.order || 0) - (b.order || 0)); return all.filter(d => d.maker).concat(all.filter(d => !d.maker && !d.teacher), all.filter(d => d.teacher)); };
   CATS.forEach(c => {
     const first = listOf(c.id)[0];
     nav.appendChild(h("button", { type: "button", "aria-current": String(c.id === def.cat), onclick: () => open(store.get("lastIn:" + c.id, first.id)) }, h("span", { class: "ico", "aria-hidden": "true" }, c.ico), c.name));
   });
   if (!def.hidden && !def.keepHash) store.set("lastIn:" + def.cat, def.id);
+  /* スマホ：上のメニューは 横にスクロールする。いまの分野が 見えるように */
+  const curTab = nav.querySelector('[aria-current="true"]');
+  if (curTab && window.innerWidth <= 900) setTimeout(() => { const nr = nav.getBoundingClientRect(), tr = curTab.getBoundingClientRect(); if (tr.left < nr.left || tr.right > nr.right - 30) nav.scrollLeft += tr.left - nr.left - 24; }, 0);
   const lib = clear($("#lib"));
   const cat = CATS.find(c => c.id === def.cat);
   let lastKind = null, num = 0;
@@ -1068,7 +1086,9 @@ function fitStageHeight() {
   if (!narrowMQ.matches || !document.body.classList.contains("has-nav")) return;
   const area = $(".stage-area"); if (!area) return;
   const sh0 = +area.dataset.sh0; if (!sh0) return; // fitStage で決めた もとの高さ
-  area.style.setProperty("--sh", `${Math.max(Math.min(sh0, maxStageH(area)), Math.min(sh0, 300))}px`);
+  let nh = Math.max(Math.min(sh0, maxStageH(area)), Math.min(sh0, 300));
+  if (document.body.classList.contains("asking")) nh = Math.min(nh, 240); // 自分で解く問題では 図を少し小さくして 答えの選択肢が見えるように
+  area.style.setProperty("--sh", `${nh}px`);
 }
 function fitStage(growOnly) {
   const svg = $("#stage svg.sv"), area = $(".stage-area");
@@ -5131,6 +5151,7 @@ function runUnit(c, u) {
   const result = parts.map((p, i) => (saved.ans && saved.ans[i]) || null);
   const done = parts.map((p, i) => !!(saved.done && saved.done[i]));
   let pi = 0, k = 0, resumed = false, lastT = 0;
+  const picked = [];
   const meta = UNIT_META[u.unitId || u.id] || {};
   /* 勉強した時間（5 分以上 何もしなかったときは数えない） */
   const tick = () => {
@@ -5176,7 +5197,7 @@ function runUnit(c, u) {
     goPart(pi, 0);
   }
   function summaryCard() {
-    if (u.summary) return u.summary(result);
+    if (u.summary) return u.summary(result, i => goPart(i, 1));
     const asks = parts.map((p, i) => [p, i]).filter(([p]) => ASK.has(p.kind));
     const okN = asks.filter(([, i]) => result[i] === "ok" || result[i] === "ok2").length;
     const box = h("div", { class: "summary" });
@@ -5184,7 +5205,7 @@ function runUnit(c, u) {
     box.appendChild(h("h3", {}, `まとめ：${u.name}`));
     box.appendChild(h("ul", { html: (meta.summary || []).map(x => `<li>${termify(x)}</li>`).join("") }));
     const lab = { ok: "○", ok2: "○（2回目）", ng: "×", skip: "−" };
-    box.appendChild(h("div", { class: "score", html: asks.map(([p, i]) => `${KIND[p.kind][0]} ${lab[result[i]] || "−"}`).join("　") + `<br>${okN === asks.length ? "全部できた！" : "× や − の問題は「挑戦 → 学習のきろく」から もう一度できるよ"}` }));
+    box.appendChild(h("div", { class: "score", html: asks.map(([p, i]) => `${KIND[p.kind][0]} ${lab[result[i]] || "−"}`).join("　") + `<br>${okN === asks.length ? "全部できた！" : "× や − の問題は「課題 → 学習のきろく」から もう一度できるよ"}` }));
     if (SIMS.some(d => d.id === "unittest") && VARIANTS[u.id]) box.appendChild(h("div", { class: "rv", style: "margin-top:10px" },
       h("a", { class: "btn main", href: `#unittest?u=${u.id}` }, "📝 確認テストへ ▶"),
       store.get("task", null) ? h("a", { class: "btn", href: "#task" }, "📮 課題の画面へ") : null));
@@ -5221,7 +5242,7 @@ function runUnit(c, u) {
           moreHint();
           return;
         }
-        answered[pi] = true; result[pi] = o.ok ? (tries ? "ok2" : "ok") : "ng"; save();
+        answered[pi] = true; result[pi] = o.ok ? (tries ? "ok2" : "ok") : "ng"; picked[pi] = o.t; save();
         if (o.ok && !u.isTest && typeof earn === "function") earn(tries ? 5 : 10);
         if (u.isTest && allAnswered()) u.summary(result);
         const hbtn = text.querySelector(".hintbtn"); if (hbtn) hbtn.hidden = true;
@@ -5229,7 +5250,7 @@ function runUnit(c, u) {
         if (k === 0) go(1);
       };
       const showResult = () => {
-        btns.forEach((x, j) => { x.disabled = true; if (opts[j].ok) x.classList.add("right"); });
+        btns.forEach((x, j) => { x.disabled = true; if (opts[j].ok) x.classList.add("right"); else if (opts[j].t === picked[pi]) x.classList.add("wrong"); });
         if (result[pi] === "ng") fb.innerHTML = `<span style="color:var(--warm)">ざんねん。正解は ${p.choices[0]}</span>　図で解説を見よう ▶`;
         else if (result[pi] === "ok") fb.innerHTML = `<span style="color:var(--accent)">正解！</span>　図でたしかめよう ▶`;
         else if (result[pi] === "ok2") fb.innerHTML = `<span style="color:var(--accent)">正解！ よくがんばった</span>　図でたしかめよう ▶`;
@@ -5237,7 +5258,7 @@ function runUnit(c, u) {
         if (u.isTest) { fb.innerHTML = fb.innerHTML.replace(/　(図で解説を見よう|図でたしかめよう) ▶/, ""); fb.appendChild(h("button", { type: "button", class: "mini", style: "margin-left:8px", onclick: () => go(Math.min(k + 1, p.steps.length - 1)) }, "図の解説をすすめる ▷")); }
         renderList();
       };
-      if (answered[pi]) showResult(); else fb.textContent = p.hint ? "" : "わからなければ「解説を見る ▶」";
+      if (answered[pi]) showResult(); else fb.textContent = u.isTest ? "わからないときは「とばす ▶」（× になります）" : p.hint ? "" : "わからなければ「解説を見る ▶」";
       /* 挑戦レベルの確認テスト：4 択ではなく 自分で数字を入力 */
       const typedAns = u.isTest && LEVEL === 2 && !answered[pi] ? numericAns(p.choices[0]) : null;
       if (typedAns) {
@@ -5315,7 +5336,9 @@ function runUnit(c, u) {
     try { p.render(T, k); } catch (e) { console.error(e); }
     const [kname, kcol] = KIND[p.kind];
     const toks = (p.eq || []).filter(t => (t[3] == null || k <= t[3]) && t[1] <= k);
-    $("#fgen").innerHTML = toks.map(([html, st, col]) =>
+    const askingNow = ASK.has(p.kind) && !answered[pi];
+    document.body.classList.toggle("asking", askingNow);
+    $("#fgen").innerHTML = askingNow ? `<span class="tok ghost">？</span>` : toks.map(([html, st, col]) =>
       `<span class="tok${col ? " c" + col : ""}${st > k ? " ghost" : st === k ? " now" : ""}">${html}</span>`).join("");
     let say = p.steps[k];
     if (!answered[pi]) say += `<br><b style="color:var(--warm)">→ まず自分で解いてみよう！</b>`;
@@ -5327,20 +5350,22 @@ function runUnit(c, u) {
     else if (pi === 0 && k === 0 && meta.goal) say = `<span style="color:var(--accent);font-weight:700">🎯 めあて：${meta.goal}</span><br>` + say;
     if (lastAll) say += `<br><b style="color:var(--accent)">🎉 この単元はおわり！ 下の「まとめ」を見よう</b>`;
     setTimeout(fitStageHeight, 0);
-    c.out(`<div class="lsay"><span style="font-family:var(--font-data);color:var(--muted);font-size:13px">${k + 1}/${N}　</span>${termify(say)}</div>`);
+    c.out(`<div class="lsay"><span class="stepn">ステップ ${k + 1}/${N}</span>${termify(say)}</div>`);
     /* 段階の最後：数字をかえてもう1問 */
     if (varBox) { clear(varBox); if (k === N - 1 && p.variant && answered[pi]) varBox.appendChild(h("button", { type: "button", class: "varbtn", onclick: () => newVariant() }, "🔁 数字をかえて もう1問")); }
     /* 単元の最後：まとめ */
     const testEnd = u.isTest && pi === parts.length - 1 && allAnswered();
-    if (sumBox) { clear(sumBox); if (lastAll || testEnd) sumBox.appendChild(summaryCard()); }
+    if (sumBox) { clear(sumBox); if (lastAll || testEnd) { sumBox.appendChild(summaryCard()); if (lastAll && !u.isTest && narrowMQ.matches) setTimeout(() => sumBox.scrollIntoView({ behavior: "smooth", block: "start" }), 700); } }
     mark();
     prev.disabled = pi === 0 && k === 0;
     next.disabled = false; nextAct = null;
+    next.classList.toggle("main", answered[pi] || !ASK.has(p.kind)); // まだ答えていないときは「解説を見る／とばす」を目立たせない
     const toTest = !u.isTest && VARIANTS[u.id] && SIMS.some(d => d.id === "unittest");
     if (u.isTest) {
       /* テスト：答えたら すぐ次の問題へ（解説は「図の解説をすすめる」で） */
-      if (!answered[pi]) next.textContent = "わからない（とばす）▶";
+      if (!answered[pi]) next.textContent = "とばす ▶";
       else if (pi < parts.length - 1) { next.textContent = "次の問題 ▶"; nextAct = () => goPart(pi + 1, 0); }
+      else if (u.afterTest) { const a = u.afterTest(result); next.textContent = a[0]; nextAct = a[1]; if (testEnd && !u.shownSum) { u.shownSum = true; setTimeout(() => { const sb = sumBox && sumBox.firstChild; if (sb) sb.scrollIntoView({ behavior: "smooth", block: "center" }); }, 400); } }
       else { next.textContent = "結果を見る ▼"; nextAct = () => { if (!allAnswered()) return; go(k); const sb = sumBox && sumBox.firstChild; if (sb) sb.scrollIntoView({ behavior: "smooth", block: "center" }); }; }
     }
     else if (!answered[pi]) next.textContent = "解説を見る ▶";
@@ -5654,9 +5679,19 @@ const VARIANTS = {
 };
 Object.entries(VARIANTS).forEach(([uid, fn]) => { if (HELP[uid] && HELP[uid][2]) HELP[uid][2].variant = fn; });
 
+/* ---- クイズ・ゲームで まちがえやすい分野（まちがい 2 回以上・正解率 7 割未満） ---- */
+function weakBox() {
+  const m = store.get("missKeys", {}), name = k => (FORMULA[k] || [])[0] || k;
+  const list = Object.entries(m).filter(([, e]) => e.n >= 2 && e.ok / (e.ok + e.n) < 0.7).sort((a, b) => b[1].n - a[1].n).slice(0, 5);
+  const w = h("div", {});
+  w.appendChild(h("div", { class: "qtext", style: "font-size:18px;margin-top:16px" }, "クイズ・ゲームで まちがえやすいところ"));
+  if (!list.length) { w.appendChild(h("p", {}, "いまのところ ありません。")); return w; }
+  w.appendChild(h("div", { class: "rv" }, ...list.map(([k, e]) => { const u = (typeof KEY_UNIT !== "undefined" && KEY_UNIT[k]) || (SIMS.some(d => d.id === k) ? k : null); return u ? h("a", { class: "btn", href: "#" + u }, `📖 ${name(k)}（× ${e.n} 回）`) : h("span", { class: "btn" }, `${name(k)}（× ${e.n} 回）`); })));
+  return w;
+}
 /* ---- 学習のきろく・復習 ---- */
 sim({
-  id: "review", cat: "quiz", name: "学習のきろく・復習", sub: "どこまでできた？ まちがえた問題をもう一度",
+  id: "review", cat: "task", order: 5, name: "学習のきろく・復習", sub: "どこまでできた？ まちがえた問題をもう一度",
   point: "<ul><li>授業の進み具合と、類題・応用・発展の結果を 一覧で見られます。</li><li>× や − の問題は、ボタンから その問題だけ もう一度解けます。</li></ul>",
   detail: "<p>記録は このブラウザの中にだけ保存されます。ほかの端末とは共有されません。</p>",
   build(c) {
@@ -5677,7 +5712,8 @@ sim({
       h("p", {}, `終わった単元：${doneU} / ${units.length}`),
       tb,
       h("div", { class: "qtext", style: "font-size:18px" }, "もう一度やってみよう"),
-      todo.length ? h("div", { class: "rv" }, ...todo.map(([d, i]) => h("a", { class: "btn", href: `#${d.id}?part=${i}&retry=1` }, `${d.name}：${["", "", "類題", "応用", "発展"][i]}`))) : h("p", {}, "まちがえた問題はありません。授業を進めよう！")));
+      todo.length ? h("div", { class: "rv" }, ...todo.map(([d, i]) => h("a", { class: "btn", href: `#${d.id}?part=${i}&retry=1` }, `${d.name}：${["", "", "類題", "応用", "発展"][i]}`))) : h("p", {}, "授業でまちがえた問題はありません。"),
+      weakBox()));
     if (typeof moveBox === "function") box.querySelector(".quiz").appendChild(moveBox(c));
     c.out(`終わった単元 <span class="big hl">${doneU}</span> / ${units.length}　もう一度：${todo.length} 問`);
   },
@@ -6119,7 +6155,7 @@ function runMaker(c, def) {
   const again = h("button", { type: "button", class: "mini", title: "このステップの図をもう一度", onclick: () => go(k) }, "↻");
   c.row(prev, again, next).classList.add("navrow");
   c.nav = d => go(k + d);
-  let hideAns = store.get("mkHide", false);
+  let hideAns = store.get("mkHide", true); // 先生が 映すとき 答えが先に見えないように（はじめは かくす）
   document.body.classList.add("has-nav");
   c.on(document, "keydown", e => {
     if (e.target.closest && e.target.closest("input,textarea,select")) return;
@@ -6757,7 +6793,7 @@ sim({
       w.appendChild(h("div", { class: "qtext" }, "いまは 課題がありません"));
       w.appendChild(h("p", {}, "先生から課題のリンクが届いたら、それを開くと ここに出ます。"));
       if (nxt) w.appendChild(h("div", { class: "tcard" }, h("div", { class: "tt" }, "おすすめ：次はこれ"), h("div", { class: "tn" }, unitName(nxt)), h("div", { class: "rv" }, h("a", { class: "btn main", href: "#" + nxt }, "📖 授業をはじめる"))));
-      w.appendChild(h("p", { style: "font-size:13px;color:var(--muted);margin-top:18px" }, "先生の方へ：左の一覧の「先生用 → 課題をつくる」からリンクを作れます。"));
+      w.appendChild(h("p", { style: "font-size:13px;color:var(--muted);margin-top:18px" }, "先生の方へ：「課題」の「先生用 → 課題をつくる」からリンクを作れます。"));
       c.out(`<span class="mt">課題はまだありません</span>`);
       return;
     }
@@ -6876,7 +6912,14 @@ sim({
     let saved = false;
     runUnit(c, {
       id: tid, unitId: id, name: unitName(id) + " 確認テスト", isTest: true, pass: PASS, parts,
-      summary(result) {
+      /* テストのあと：合格なら 次の単元（課題があれば 課題の画面）、不合格なら もう一度 */
+      afterTest(result) {
+        const pass = result.filter(r => r === "ok").length >= PASS, ids = UNIT_IDS(), nx = ids[ids.indexOf(id) + 1], tk = store.get("task", null);
+        if (!pass) return ["🔁 新しい問題で もう一度", () => open(`unittest?u=${id}`, false)];
+        if (tk && tk.units && tk.units.includes(id)) return [tk.fin ? "🏅 修了証を見る ▶" : "📮 課題の画面へ ▶", () => { location.hash = "task"; }];
+        return nx ? [`次の単元「${unitName(nx)}」へ ▶`, () => { location.hash = nx; }] : ["◀ ゲーム・復習へ", () => { location.hash = "review"; }];
+      },
+      summary(result, goTo) {
         const score = result.filter(r => r === "ok").length, pass = score >= PASS;
         const old = store.get("test:" + id, null);
         if (!saved) { store.set("test:" + id, { score, best: Math.max(score, old ? old.best : 0), date: today() }); saved = true; syncTask(); if (pass && typeof earn === "function") earn(!old || old.best < PASS ? 150 : 50); }
@@ -6884,7 +6927,10 @@ sim({
         const box = h("div", { class: "summary" });
         if (pass) box.appendChild(h("div", { class: "stamp" }, "合格"));
         box.appendChild(h("h3", {}, `${unitName(id)} 確認テスト：${score} / ${parts.length} 問`));
-        box.appendChild(h("div", { class: "score", html: result.map((r, i) => `${i + 1}問目 ${r === "ok" ? "○" : "×"}`).join("　") + `<br>${pass ? "合格！ よくできました。" : `あと ${PASS - score} 問で合格。まちがえた問題は 上の番号（${result.map((r, i) => r === "ok" ? "" : i + 1).filter(Boolean).join("・")}問目）を ◀ もどって解説を見てから、もう一度やってみよう。`}<br>これまでの最高：${best} / ${parts.length}` }));
+        const sc2 = h("div", { class: "score" });
+        result.forEach((r, i) => sc2.appendChild(r === "ok" ? h("span", { class: "qmark ok" }, `${i + 1}問目 ○`) : h("button", { type: "button", class: "qmark ng", title: "この問題の解説を見る", onclick: () => goTo && goTo(i) }, `${i + 1}問目 × 解説 ▸`)));
+        sc2.appendChild(h("div", { html: `${pass ? "合格！ よくできました。" : `あと ${PASS - score} 問で合格。× の問題を おして 解説を見てから、もう一度やってみよう。`}<br>これまでの最高：${best} / ${parts.length}` }));
+        box.appendChild(sc2);
         const tk = store.get("task", null);
         if (pass && tk && tk.fin) box.appendChild(h("p", { style: "font-weight:700;color:var(--accent)" }, "🏅 課題を全部クリア！ 修了証ができました"));
         box.appendChild(h("div", { class: "rv", style: "margin-top:10px" },
@@ -6900,7 +6946,7 @@ sim({
 /* ---------- 先生：課題をつくる ---------- */
 sim({
   id: "task-make", cat: "task", teacher: true, name: "課題をつくる", sub: "リンクを生徒に送るだけ",
-  point: "<ul><li>やってほしい単元にチェック → できたリンクを 生徒に送ります（LINE・メール・プリントの QR など）。</li><li>生徒はリンクを開くだけで「今日の課題」が出ます。</li><li>「確認テストまで」にすると、5 問中 4 問以上で合格するまで クリアになりません。</li></ul>",
+  point: "<ul><li>やってほしい単元にチェック → できたリンクを 生徒に送ります（LINE・メール・プリントの QR など）。</li><li>生徒はリンクを開くだけで「今日の課題」が出ます。</li><li>「授業 ＋ 確認テスト」にすると、5 問中 4 問以上で合格するまで クリアになりません。</li></ul>",
   detail: "<p>生徒の記録は 生徒の端末に保存されます。生徒が「📤 先生に結果を送る」をおすと、結果のリンクが届きます。それを開くと「結果を見る」に表になります。</p>",
   build(c) {
     const box = c.html(), w = h("div", { class: "quiz task" });
@@ -6930,6 +6976,8 @@ sim({
     const prevB = c.btn("👀 生徒の画面を見る", () => { if (url) open(url.split("#")[1], false); });
     const codeEl = h("div", { class: "tnote", style: "margin-top:4px" });
     w.appendChild(linkBox);
+    const qrBox = h("div", { class: "qr tqr", title: "プリントにはったり、画面に映して 読みとってもらう" });
+    w.appendChild(qrBox);
     w.appendChild(h("div", { class: "rv" }, copyB, prevB));
     w.appendChild(codeEl);
     w.appendChild(note);
@@ -6952,13 +7000,14 @@ sim({
       const units = [...list.querySelectorAll("input:checked")].map(x => x.value);
       cur = { units, test: testSeg.get(), msg: msgIn.value.trim(), due: dueIn.value };
       store.set("mkTask", cur);
-      if (!units.length) { url = ""; codeEl.textContent = ""; linkBox.value = "（単元を 1 つ以上えらんでください）"; copyB.disabled = prevB.disabled = true; c.out(`<span class="mt">単元をえらんでね</span>`); return; }
+      if (!units.length) { url = ""; codeEl.textContent = ""; clear(qrBox); linkBox.value = "（単元を 1 つ以上えらんでください）"; copyB.disabled = prevB.disabled = true; c.out(`<span class="mt">単元をえらんでね</span>`); return; }
       const q = new URLSearchParams({ u: units.join(".") });
       if (!cur.test) q.set("t", "0");
       if (cur.msg) q.set("m", cur.msg);
       if (cur.due) q.set("d", cur.due);
       url = baseURL() + "#task?" + q.toString();
       linkBox.value = url; copyB.disabled = prevB.disabled = false;
+      clear(qrBox); drawQR(qrBox, url);
       code = taskCode(taskKey(units, cur.test, cur.msg, cur.due));
       codeEl.textContent = `課題コード：${code}（生徒の修了証にも このコードが出ます）`;
       c.out(`課題：<span class="big hl">${units.length}</span> 単元${cur.test ? "（確認テストまで）" : "（授業だけ）"}`);
@@ -6982,12 +7031,14 @@ sim({
     const view = h("div", {});
     w.appendChild(view);
     w.appendChild(h("div", { class: "qtext", style: "font-size:17px;margin-top:22px" }, "報告を はりつけて読む"));
-    const ta = h("textarea", { class: "mkta", rows: 3, placeholder: "生徒から届いた文章 または リンクを ここに はりつけ" });
+    const ta = h("textarea", { class: "mkta", rows: 3, placeholder: "生徒から届いた文章 または リンクを ここに はりつけ（何人分でも まとめてOK）" });
     const err = h("div", { class: "mkerr" });
     w.appendChild(ta);
     w.appendChild(h("div", { class: "rv", style: "margin-top:6px" }, c.btn("読みとる", () => {
-      const m = ta.value.match(/task-report\?d=([A-Za-z0-9_-]+)/);
-      if (m && add(unpack(m[1]))) { ta.value = ""; err.textContent = ""; render(0); } else err.textContent = "読みとれませんでした。「#task-report?d=…」のリンクが入っているか確かめてください。";
+      /* 何人分でも まとめて はりつけられる */
+      const ms = [...ta.value.matchAll(/task-report\?d=([A-Za-z0-9_-]+)/g)];
+      const n = ms.filter(m => add(unpack(m[1]))).length;
+      if (n) { ta.value = ""; err.textContent = n > 1 ? `✓ ${n} 人分を 読みとりました` : ""; render(0); } else err.textContent = "読みとれませんでした。「#task-report?d=…」のリンクが入っているか確かめてください。";
     }, { main: true }), reps.length ? c.btn("記録をけす", () => { if (confirm("この端末にたまった報告をすべてけしますか？")) { reps.length = 0; store.set("reports", []); render(0); } }) : null));
     w.appendChild(err);
     function render(sel) {
@@ -7011,7 +7062,7 @@ sim({
       view.appendChild(h("div", { class: "qtext" }, `${d.n} さん　${clearN} / ${d.r.length} クリア`));
       if (d.k) view.appendChild(h("p", { style: "font-size:14px" }, `課題コード ${d.k}`, iss ? h("span", { style: "color:var(--accent);font-weight:700" }, `　✓ ${jdate(iss.date)} にあなたが出した課題`) : h("span", { style: "color:var(--muted)" }, "　（この端末で作った課題には 見つかりません）")));
       view.appendChild(h("p", { style: "font-size:14px;color:var(--muted)" }, `報告日 ${jdate(d.at)}${d.due ? `　しめきり ${jdate(d.due)}` : ""}`));
-      const tb = h("table", { class: "rec" }, h("tr", {}, h("th", {}, "単元"), h("th", {}, "授業"), h("th", {}, "類題〜発展"), d.t ? h("th", {}, "テスト") : null, h("th", {}, "時間")));
+      const tb = h("table", { class: "rec" }, h("tr", {}, h("th", {}, "単元"), h("th", {}, "授業"), h("th", { title: "授業の 類題・応用・発展 の 3 問のうち 正解した数" }, "練習 3 問の正解"), d.t ? h("th", {}, "テスト") : null, h("th", {}, "時間")));
       d.r.forEach(([id, dn, ok, best, min]) => tb.appendChild(h("tr", {},
         h("td", {}, unitName(id)),
         h("td", { class: dn >= 5 ? "ok" : "ng" }, dn >= 5 ? "✓" : `${dn}/5`),
@@ -7020,7 +7071,7 @@ sim({
         h("td", {}, min ? `${min} 分` : "−"))));
       view.appendChild(tb);
       const weak = d.r.filter(([, dn, ok, best]) => dn >= 5 && (ok < 2 || (d.t && best >= 0 && best < PASS))).map(([id]) => unitName(id));
-      if (weak.length) view.appendChild(h("p", {}, h("b", { style: "color:var(--warm)" }, "つまずいていそう："), weak.join("、")));
+      if (weak.length) view.appendChild(h("p", {}, h("b", { style: "color:var(--warm)" }, "つまずいていそう："), weak.join("、"), h("small", { style: "color:var(--muted)" }, "（練習 3 問の正解が 2 問未満 か テスト不合格）")));
       c.out(`${d.n} さん：<span class="big hl">${clearN}</span> / ${d.r.length} クリア`);
     }
     render(0);
@@ -7571,11 +7622,20 @@ function brag(text, note) {
   copyText(text, note, "✓ 結果の文章をコピーしました。LINE などに はりつけて自慢しよう");
 }
 
+/* ---------- 苦手の記録：クイズ・ゲームで まちがえた 問題の種類を 数える（学習のきろくで 復習をすすめる） ---------- */
+const KEY_UNIT = { perm: "u-perm", circ: "u-circ", comb: "u-comb", tri: "u-comb", route: "u-comb", dice: "u-prob", atleast: "u-prob", coin: "u-binom", divisors: "u-div", gcdq: "u-div", bin: "u-base", angle: "u-circle", quad: "u-circle", power: "u-power" };
+function noteMiss(key, ok) {
+  if (!key) return;
+  const m = store.get("missKeys", {}), e = m[key] || { n: 0, ok: 0 };
+  if (ok) e.ok++; else e.n++;
+  m[key] = e; store.set("missKeys", m);
+}
 /* ---------- 終わったあとの 解説 ---------- */
 function reviewBox(log) {
   const wrap = h("div", { class: "review" });
   if (!log || !log.length) return wrap;
   const bad = log.filter(x => !x.ok).length;
+  if (!wrap.dataset.noted) { wrap.dataset.noted = 1; if (!log.fromQuiz) log.forEach(x => noteMiss(x.q.key, x.ok)); }
   let filter = bad ? "ng" : "all", opened = false;
   const list = h("div", { class: "rvlist" });
   const btn = h("button", { type: "button", class: "btn" + (bad ? " main" : ""), onclick: () => { opened = !opened; list.hidden = !opened; tabs.hidden = !opened; btn.textContent = opened ? "▲ 解説をとじる" : label; if (opened) { draw(); setTimeout(() => wrap.scrollIntoView({ behavior: "smooth", block: "start" }), 50); } } });
@@ -8050,7 +8110,7 @@ function qCardHTML(q, opt = {}) {
   return `<div class="qc${opt.big ? " big" : ""}">
     <div class="qcq">${opt.term === false ? q.q : termify(q.q)}</div>
     ${q.fig ? `<div class="qcfig">${q.fig}</div>` : ""}
-    <div class="qcch">${q.ch.map((c2, i) => {
+    <div class="qcch${q.ch.every(c2 => String(c2).replace(/<[^>]+>/g, "").length <= 8) && !opt.counts ? " short" : ""}">${q.ch.map((c2, i) => {
       const right = opt.reveal && c2 === q.ans, mine = opt.mine === i;
       const cls = (opt.reveal ? (right ? " right" : " dim") : "") + (mine ? " mine" : "") + (opt.btn ? "" : " show");
       const bar = counts ? `<i class="cnt" style="width:${(counts[i] / total * 100).toFixed(1)}%"></i><em>${counts[i]} 人</em>` : "";
@@ -8508,7 +8568,7 @@ const QGEN = {
 /* どの公式の問題か（ヒント用）を 結果につける */
 Object.keys(QGEN).forEach(k => { const f = QGEN[k]; QGEN[k] = () => Object.assign({ key: k }, f()); });
 sim({
-  id: "quiz", cat: "quiz", name: "10 問クイズ", sub: "全分野からランダムに出題",
+  id: "quiz", cat: "game", name: "10 問クイズ", sub: "全分野からランダムに出題",
   hint: "",
   point: `<ul><li>場合の数・確率・図形・整数から 10 問。数字は毎回かわります。</li>
 <li>答えると解説と「この画面で確かめる」ボタンが出ます。</li>
@@ -8517,16 +8577,16 @@ sim({
   build(c) { runQuiz(c, Object.keys(QGEN), "all"); },
 });
 [["cnt", "場合の数だけ", ["perm", "comb", "circ", "route", "tri"]], ["prob", "確率だけ", ["dice", "coin", "atleast"]], ["geo", "図形だけ", ["angle", "quad", "power", "bis", "poly", "centroid"]], ["int", "整数だけ", ["divisors", "gcdq", "bin"]]].forEach(([k, t, gens]) => {
-  sim({ id: "quiz-" + k, cat: "quiz", name: t, sub: "10 問", point: `<ul><li>${t.replace("だけ", "")}の問題を 10 問。</li><li>8 問以上で合格。</li></ul>`, detail: `<p>数字は毎回かわります。くり返しチャレンジしよう。</p>`, build(c) { runQuiz(c, gens, k); } });
+  sim({ id: "quiz-" + k, cat: "game", name: t, sub: "10 問", point: `<ul><li>${t.replace("だけ", "")}の問題を 10 問。</li><li>8 問以上で合格。</li></ul>`, detail: `<p>数字は毎回かわります。くり返しチャレンジしよう。</p>`, build(c) { runQuiz(c, gens, k); } });
 });
 function runQuiz(c, gens, key) {
   const box = c.html();
   const best = store.get("best:" + key, null);
-  let qs = [], i = 0, score = 0;
+  let qs = [], i = 0, score = 0, log = [];
   function start() {
     qs = []; const bag = [];
     for (let k = 0; k < 10; k++) { if (!bag.length) bag.push(...shuffle(gens.slice())); qs.push(QGEN[bag.pop()]()); }
-    i = 0; score = 0; show();
+    i = 0; score = 0; log = []; show();
   }
   function show() {
     clear(box);
@@ -8555,6 +8615,8 @@ function runQuiz(c, gens, key) {
     c.out(`<span class="mt">答えをえらんでね</span><br>正解 <span class="big hl">${score}</span> / ${i}`);
     function answer(ch, b) {
       const ok = ch === String(q.ans);
+      log.push({ q: Object.assign({ w: 1, ans: String(q.ans) }, q), pick: ch, ok });
+      noteMiss(q.key, ok);
       if (ok) score++;
       btns.forEach(x => { x.disabled = true; if (x.innerHTML === String(q.ans) || x.textContent === String(q.ans)) x.classList.add("right"); });
       if (!ok) b.classList.add("wrong");
@@ -8574,9 +8636,10 @@ function runQuiz(c, gens, key) {
     const pass = score >= 8;
     box.appendChild(h("div", { class: "quiz center" },
       h("div", { class: "qtext" }, `10 問中 ${score} 問 正解`),
-      pass ? h("div", { class: "stamp" }, "合格") : h("p", {}, "あと少し！ 8 問で合格です"),
+      pass ? h("div", { class: "stamp" }, "合格") : h("p", {}, score >= 5 ? `あと ${8 - score} 問！ 8 問で合格です` : "まちがえた問題の解説を見て、授業で確かめてから もう一度やってみよう"),
       h("p", { class: "qn" }, `これまでの最高：${Math.max(prev, score)} 問`),
-      h("button", { type: "button", class: "btn main", onclick: start }, "もう一度")));
+      h("button", { type: "button", class: "btn main", onclick: start }, "もう一度"),
+      typeof reviewBox === "function" ? reviewBox(Object.assign(log, { fromQuiz: true })) : null));
     c.out(`結果：<span class="big hl">${score}</span> / 10${pass ? "　合格！" : ""}`);
   }
   box.appendChild(h("div", { class: "quiz center" },
@@ -8597,6 +8660,13 @@ $("#maxBtn").addEventListener("click", () => {
 document.addEventListener("keydown", e => { if (e.key === "Escape" && $("#stageWrap").classList.contains("is-max")) $("#maxBtn").click(); });
 window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (id) open(id, false); });
 moveIn(); oldSiteBanner();
+/* はじめて開いた人へ（1 回だけ） */
+if (!store.get("welcomed", false) && !location.hash) {
+  const bar = h("div", { class: "movebar welcome" },
+    h("span", {}, "👋 はじめての人へ：📖 授業は「次へ ▶」で 1 つずつ進みます。先生からの 📮 課題 や 🎮 ゲーム は 上のメニューから。"),
+    h("button", { type: "button", class: "btn", onclick: () => { store.set("welcomed", true); bar.remove(); } }, "わかった"));
+  document.body.insertBefore(bar, document.body.firstChild);
+}
 open(location.hash.slice(1) || (taskLeft() ? "task" : store.get("last", "u-perm")));
 </script>
 </body>
