@@ -465,7 +465,7 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 .qch em { margin-left: auto; font-style: normal; font-size: .8em; color: var(--muted); position: relative; z-index: 1; } .qch.right em { margin-left: 8px; }
 .clfb { border: 2px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--panel); text-align: center; display: flex; flex-direction: column; gap: 6px; }
 .clfb.ok { border-color: var(--accent); } .clfb.ng { border-color: var(--warm); } .clfb.wait { border-style: dashed; }
-.clfb .big { font-size: 24px; font-weight: 800; } .clfb.ok .big { color: var(--accent); } .clfb.ng .big { color: var(--warm); }
+.clfb > .big { font-size: 24px; font-weight: 800; } .clfb.ok > .big { color: var(--accent); } .clfb.ng > .big { color: var(--warm); }
 .clfb .sub { font-size: 15px; } .clfb .rvex, .clfb .rvfo { text-align: left; }
 .qpn { font-weight: 700; color: var(--muted); }
 /* 先生の画面（クイズ大会） */
@@ -608,6 +608,8 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 .cert-code { font-family: var(--font-data); font-size: 12px; color: var(--muted); }
 .cert-ver { font-size: 14px; font-weight: 700; margin: 4px 8px 0; } .cert-ver.ok { color: var(--accent); } .cert-ver.ng { color: var(--warm); }
 @media print {
+  /* 暗い画面にしていても、紙には いつも明るい色で印刷する */
+  body { --bg: #fff; --panel: #fff; --ink: #24282b; --muted: #6d6b63; --line: #d6d0c2; --chip: #ebe6da; --accent: #2c6352; --accent-ink: #fbf9f4; --accent-soft: rgba(44, 99, 82, .16); --warm: #b8502c; --warm-soft: rgba(184, 80, 44, .16); --gold: #b88a12; --blue: #2f5f9e; color: #24282b; }
   body.print-cert * { visibility: hidden !important; }
   body.print-cert .cert.printing, body.print-cert .cert.printing * { visibility: visible !important; }
   body.print-cert .cert.printing { position: fixed; left: 0; right: 0; top: 0; max-width: 720px; margin: 0 auto; background: #fff; }
@@ -1055,9 +1057,22 @@ function boostText(root) {
     el.style.fontSize = textBoost > 1.01 ? `${base * textBoost}px` : "";
   });
 }
+/* スマホ：図の高さの上限。下の「もどる・次へ」のバーに 図がかくれないように、上の文の分を引いた のこりの高さまで（小さくなりすぎないよう 300px は残す） */
+function maxStageH(area) {
+  const vh = window.innerHeight, top = area.getBoundingClientRect().top + window.scrollY;
+  const bar = document.body.classList.contains("has-nav") ? ($(".navrow") ? $(".navrow").offsetHeight : 64) + 6 : 0;
+  return Math.min(vh * 0.68, Math.max(300, vh - top - bar));
+}
+/* 段階ごとに 上の文の長さが かわるので、図が バーにかくれないよう 高さだけ もう一度あわせる（図そのものは そのまま） */
+function fitStageHeight() {
+  if (!narrowMQ.matches || !document.body.classList.contains("has-nav")) return;
+  const area = $(".stage-area"); if (!area) return;
+  const sh0 = +area.dataset.sh0; if (!sh0) return; // fitStage で決めた もとの高さ
+  area.style.setProperty("--sh", `${Math.max(Math.min(sh0, maxStageH(area)), Math.min(sh0, 300))}px`);
+}
 function fitStage(growOnly) {
   const svg = $("#stage svg.sv"), area = $(".stage-area");
-  if (!svg) { area.style.removeProperty("--sh"); return; }
+  if (!svg) { area.style.removeProperty("--sh"); delete area.dataset.sh0; return; }
   if (!svg.dataset.vb0) svg.dataset.vb0 = svg.getAttribute("viewBox");
   const [, , W, H] = svg.dataset.vb0.split(" ").map(Number);
   if (!narrowMQ.matches) { svg.setAttribute("viewBox", svg.dataset.vb0); area.style.removeProperty("--sh"); textBoost = 1; boostText(svg); return; }
@@ -1071,8 +1086,8 @@ function fitStage(growOnly) {
   }
   svg.setAttribute("viewBox", `${x} ${y} ${w} ${h}`);
   const pw = area.clientWidth || window.innerWidth;
-  const sh = clamp(pw * h / w, 200, window.innerHeight * 0.68);
-  area.style.setProperty("--sh", `${sh}px`);
+  const sh = clamp(pw * h / w, 200, maxStageH(area));
+  area.style.setProperty("--sh", `${sh}px`); area.dataset.sh0 = sh;
   const scale = Math.min(pw / w, sh / h);
   textBoost = clamp(0.72 / scale, 1, 1.4);
   boostText(svg);
@@ -1081,7 +1096,7 @@ function fitStage(growOnly) {
     svg.setAttribute("viewBox", svg.dataset.vb0);
     const [x2, y2, w2, h2] = contentBox(svg, W, H);
     svg.setAttribute("viewBox", `${x2} ${y2} ${w2} ${h2}`);
-    area.style.setProperty("--sh", `${clamp(pw * h2 / w2, 200, window.innerHeight * 0.68)}px`);
+    const sh2 = clamp(pw * h2 / w2, 200, maxStageH(area)); area.style.setProperty("--sh", `${sh2}px`); area.dataset.sh0 = sh2;
   }
 }
 /* あとから描かれた文字も大きくする */
@@ -1182,7 +1197,7 @@ const TERMS = {
   "最大公約数": "2 つ以上の数に共通する約数のうち、いちばん大きい数。",
   "最小公倍数": "2 つ以上の数に共通する倍数のうち、いちばん小さい数（0 はのぞく）。",
   "反復試行": "同じ試行を 何回もくり返すこと。1 回ごとの結果は おたがいに影響しない。",
-  "じゅず順列": "輪にならべて、うら返しても同じとみなす ならべ方。円順列 ÷ 2。",
+  "じゅず順列": "輪にならべて、うら返しても同じとみなす ならべ方。円順列 ÷ 2（3 個以上のとき）。",
   "互いに素": "最大公約数が 1 であること。例：8 と 15",
   "積の法則": "A の起こり方が a 通りあり、そのそれぞれに B の起こり方が b 通りあるとき、両方は a × b 通り。",
   "和の法則": "同時に起こらない A と B について、A または B の起こり方は a + b 通り。",
@@ -1194,16 +1209,17 @@ const TERMS = {
   "余事象": "「A が起こらない」ということがら。P(A でない) = 1 − P(A)",
   "円周角": "円周上の 1 点から、弧の両はしを見こむ角。",
   "中心角": "円の中心から、弧の両はしを見こむ角。",
-  "方べき": "点 P と円で決まる値 PA × PB。P を通るどの直線で測っても同じになる。",
+  "方べき": "点 P と円で決まる値 PA × PB。P を通り 円と 2 点 A・B で交わる直線なら、どれで測っても同じ（接線なら PT²）。",
   "階乗": "n! = n × (n−1) × … × 2 × 1。例：4! = 24",
   "順列": "ちがうものから いくつかとって、1 列にならべたもの。ₙPᵣ",
   "組合せ": "ちがうものから いくつか、順番を考えずに えらんだ組。ₙCᵣ",
   "排反": "2 つのことがらが 同時には起こらないこと。",
   "独立": "2 つの試行が、おたがいの結果に影響しないこと。",
   "内接": "多角形の頂点が すべて円の上にあること（円に内接する）。",
-  "接線": "円と 1 点だけで交わる直線。接点を通る半径と垂直。",
+  "接線": "円と ただ 1 つの共有点（接点）をもつ直線。接点を通る半径と垂直。",
   "素数": "1 とその数自身のほかに 約数がない、2 以上の整数。",
-  "約数": "その数を わり切れる整数。例：6 の約数は 1・2・3・6",
+  "約数": "その数を わり切る整数（ふつうは 正の約数を考える）。例：6 の約数は 1・2・3・6",
+  "gcd": "gcd(a, b) は a と b の 最大公約数 のこと（greatest common divisor の頭文字）。",
   "進法": "いくつで くり上がるかを決めた 数の表し方。2 進法は 2 で くり上がる（0 と 1 だけで書く）。",
   "中線": "三角形の頂点と、向かい合う辺の まん中の点を 結んだ線分。",
   "重心": "三角形の 3 本の中線が 交わる点。中線を 頂点から 2 : 1 に分ける。",
@@ -4091,7 +4107,7 @@ lesson({
 
 lesson({
   id: "w-angle", cat: "word", name: "円周角で角を求める", sub: "同じ弧をさがす",
-  problem: "円周上に 4 点 A・B・C・D。AC と BD の交点を P とする。∠BAC = 35°、∠ACD = 40° のとき、<b>x = ∠APB</b> を求めよ。",
+  problem: "円周上に この順に 4 点 A・B・C・D。AC と BD の交点を P とする。∠BAC = 35°、∠ACD = 40° のとき、<b>x = ∠APB</b> を求めよ。",
   eq: [["x", 0], [" = 180° − ", 2], ["35°", 2, "a"], [" − ", 2], ["40°", 1, "w"], [" = 105°", 2]],
   steps: [
     "わかっているのは ∠BAC = 35° と ∠ACD = 40°",
@@ -4570,7 +4586,7 @@ const circAt = (O, R, d) => ({ x: O.x + R * Math.cos(d * Math.PI / 180), y: O.y 
 function lbl4(g, O, pts) { pts.forEach(([p, n]) => { const d = V.norm(V.sub(p, O)); s("text", { x: p.x + d.x * 24, y: p.y + d.y * 24 + 7, class: "pointlbl", "text-anchor": "middle", text: n }, g); }); }
 function T_inscX({ central }) {
   return {
-    problem: `円 O で ∠AOB = ${central}° のとき、<b>x = ∠APB</b> を求めよ。`,
+    problem: `円 O で ∠AOB = ${central}° のとき、<b>x = ∠APB</b> を求めよ。（点 P は 弧 AB をふくまない側の 円周上の点）`,
     eq: [["x", 0], [" = ", 2], [`${central}°`, 1, "w"], [" ÷ 2", 2], [` = ${central / 2}°`, 2]],
     steps: [`中心角 ∠AOB = ${central}°。円周上の点 P で x = ∠APB`, `x と ∠AOB は、<b class=cw>同じ弧 AB</b> に対する 円周角と中心角`, `円周角 = 中心角 ÷ 2 → x = ${central} ÷ 2 = <b>${central / 2}°</b>`],
     render(T, k) {
@@ -4588,7 +4604,7 @@ function T_inscX({ central }) {
 }
 function T_diam({ angA }) {
   return {
-    problem: `AB は円の直径。∠CAB = ${angA}° のとき、<b>x = ∠ABC</b> を求めよ。`,
+    problem: `AB は円 O の直径、C は円周上の点。∠CAB = ${angA}° のとき、<b>x = ∠ABC</b> を求めよ。`,
     eq: [["x = 180° − ", 2], ["90°", 1, "b"], [" − ", 2], [`${angA}°`, 0, "a"], [` = ${90 - angA}°`, 2]],
     steps: [`AB は直径、∠CAB = ${angA}°`, `<b class=cb>直径に対する円周角は 90°</b> → ∠ACB = 90°`, `△ABC の内角の和 180°：x = 180° − 90° − ${angA}° = <b>${90 - angA}°</b>`],
     render(T, k) {
@@ -5310,6 +5326,7 @@ function runUnit(c, u) {
     if (pi === 0 && k === 0 && u.isTest) say = `<span style="color:var(--accent);font-weight:700">📝 確認テスト：${parts.length} 問中 ${u.pass || 4} 問以上で合格。ヒントなし・1 回勝負！</span><br>` + say;
     else if (pi === 0 && k === 0 && meta.goal) say = `<span style="color:var(--accent);font-weight:700">🎯 めあて：${meta.goal}</span><br>` + say;
     if (lastAll) say += `<br><b style="color:var(--accent)">🎉 この単元はおわり！ 下の「まとめ」を見よう</b>`;
+    setTimeout(fitStageHeight, 0);
     c.out(`<div class="lsay"><span style="font-family:var(--font-data);color:var(--muted);font-size:13px">${k + 1}/${N}　</span>${termify(say)}</div>`);
     /* 段階の最後：数字をかえてもう1問 */
     if (varBox) { clear(varBox); if (k === N - 1 && p.variant && answered[pi]) varBox.appendChild(h("button", { type: "button", class: "varbtn", onclick: () => newVariant() }, "🔁 数字をかえて もう1問")); }
@@ -5469,7 +5486,7 @@ const HELP = {
     { hint: ["条件がある席（両はし）から 先に決めよう", "両はしに女子 2 人をならべる方法 × まん中に男子 3 人をならべる方法"],
       more: pp("「両はしが女子」のように <b>場所に条件がある問題は、条件のある場所から先に</b> 決めます。") + calc("両はし：女1・女2 の ならべ方 ₂P₂ = 2通り<br>まん中 3 席：男子 3 人の ならべ方 3! = 6通り<br>2 × 6 = <b>12 通り</b>") + miss("5! = 120：条件を使わずに 5 人全員のならべ方を数えている。<br>2 + 6 = 8：「それぞれに」なので たし算ではなく かけ算。") },
     { hint: ["となり合う 2 人を「ひとかたまり（ひもでしばる）」と考える", "かたまり 1 つ + 女子 3 人 = 4 つのならべ方。さらに かたまりの中の入れかえも かける"],
-      more: pp("となり合う 2 人を 1 つのかたまりにすると、はなれることがありません。ならべるものは「かたまり・女1・女2・女3」の <b>4 つ</b>。") + calc("4 つのならべ方：4! = 24<br>かたまりの中：男1男2 / 男2男1 の 2! = 2<br>24 × 2 = <b>48 通り</b>") + miss("24 で終わる：かたまりの中の入れかえ（× 2）をわすれている。<br>5! − … のように全体からひく方法もあるが、かたまりで考える方が速い。") },
+      more: pp("となり合う 2 人を 1 つのかたまりにすると、はなれることがありません。ならべるものは「かたまり・女1・女2・女3」の <b>4 つ</b>。") + calc("4 つのならべ方：4! = 24<br>かたまりの中：男1男2 / 男2男1 の 2! = 2<br>24 × 2 = <b>48 通り</b>") + miss("24 で終わる：かたまりの中の入れかえ（× 2）をわすれている。<br>（男子がとなり合わない ならべ方を 全体 5! からひく方法もあるが、かたまりで考える方が速い。）") },
   ],
   "u-comb": [
     { more: pp("組合せは「<b>えらぶだけ</b>」。まず順番をつけて ならべた数 ₅P₃ = 60 を数えます。") + pp("でも A・B・C の 3 人をえらんだとき、ABC・ACB・BAC・BCA・CAB・CBA の 3! = 6 通りは <b>全部同じ 1 組</b>。60 通りの中で、どの組も 6 回ずつ数えられています。") + calc("₅C₃ = ₅P₃ ÷ 3! = 60 ÷ 6 = 10") + miss("順列 ₅P₃ = 60 のまま答える。「係」「班」「えらぶ」には順番がないので ÷ r! が必要。") },
@@ -5532,7 +5549,7 @@ const HELP = {
       more: calc("病気：1000 × 2% = 20 人 → 陽性 20 × 90% = 18 人<br>病気でない：980 人 → まちがって陽性 980 × 10% = 98 人<br>陽性は 18 + 98 = 116 人<br>18/116 = 9/58 ≒ <b>15.5%</b>") + pp("病気の人がもともと少ない（2%）ので、病気でない人の 10% のまちがいの方が 人数が多くなります。") + miss("90%：「病気の人が陽性になる確率」と「陽性の人が病気である確率」は別のもの。") },
   ],
   "u-circle": [
-    { more: pp("P から 中心 O を通る直径 PQ をひくと、OP = OA（半径）なので △OPA は二等辺三角形。底角が等しいので ∠OPA = ∠OAP = ●。") + pp("三角形の外角は となりでない 2 つの内角の和なので ∠AOQ = ● + ● = 2●。右側も同じで ∠QOB = 2×。") + calc("∠AOB = 2● + 2× = 2(● + ×) = 2∠APB") },
+    { more: pp("P から 中心 O を通る直径 PQ をひくと、OP = OA（半径）なので △OPA は二等辺三角形。底角が等しいので ∠OPA = ∠OAP = ●。") + pp("三角形の外角は となりでない 2 つの内角の和なので ∠AOQ = ● + ● = 2●。右側も同じで ∠QOB = 2×。") + calc("∠AOB = 2● + 2× = 2(● + ×) = 2∠APB") + pp("※ ここでは 中心 O が ∠APB の内側にある場合を示しました。O が角の外側や 辺の上にあるときも、同じように（差をとる・片方だけ使う）示せます。") },
     { more: calc("∠APB と ∠AOB は 同じ弧 AB に対する 円周角と中心角<br>x = 100° ÷ 2 = <b>50°</b>") + miss("200°：円周角を 2 倍してしまった。円周角は中心角の <b>半分</b>。") },
     { hint: ["直径に対する円周角は 何度？", "∠ACB = 90°。△ABC の内角の和は 180°"],
       more: calc("AB は直径 → 中心角 180° → 円周角 ∠ACB = 90°<br>x = 180° − 90° − 28° = <b>62°</b>") + miss("28°：∠CAB と同じだと思ってしまった。<br>56°：28° を 2 倍した（中心角と円周角の関係ではない）。") },
@@ -5557,7 +5574,7 @@ const HELP = {
     { hint: ["200 を 素因数分解しよう", "200 = 2³ × 5²。指数に 1 をたして かける"],
       more: calc("200 = 2 × 2 × 2 × 5 × 5 = 2³ × 5²<br>個数：(3+1)(2+1) = 4 × 3 = <b>12 個</b>") + pp("1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 200 の 12 個。") + miss("6 = 3 × 2：指数をそのままかけている。「0 個」の場合（1 をふくむ）を入れて、指数 + 1。") },
     { hint: ["91 を 35 でわった 余りは？", "余りで わることを くり返す。余りが 0 になったときの「わる数」"],
-      more: calc("91 = 35 × 2 + 21<br>35 = 21 × 1 + 14<br>21 = 14 × 1 + 7<br>14 = 7 × 2 + 0 → 最大公約数 <b>7</b>") + pp("a と b の公約数は、a ÷ b の余りもわり切ります。だから数を小さくしても 最大公約数は変わりません。") + miss("1：91 も 35 も「素数っぽい」と思ってしまう。91 = 7 × 13 です。") },
+      more: calc("91 = 35 × 2 + 21<br>35 = 21 × 1 + 14<br>21 = 14 × 1 + 7<br>14 = 7 × 2 + 0 → 最大公約数 <b>7</b>") + pp("a と b の公約数は、a ÷ b の余りもわり切ります。だから数を小さくしても 最大公約数は変わりません。") + miss("1：91 を素数だと思い、35 と共通の約数がないと考えてしまう。91 = 7 × 13 で、35 = 5 × 7 と 7 が共通。") },
     { hint: ["1001 ÷ 221 = 4 余り 117", "221 ÷ 117、117 ÷ 104、… とくり返す"],
       more: calc("1001 = 221 × 4 + 117<br>221 = 117 × 1 + 104<br>117 = 104 × 1 + 13<br>104 = 13 × 8 + 0 → 最大公約数 <b>13</b>") + pp("たしかめ：1001 = 7 × 11 × 13、221 = 13 × 17。") },
   ],
@@ -6274,6 +6291,7 @@ function runMaker(c, def) {
     $("#fgen").innerHTML = (tpl.eq || []).filter(t => (t[3] == null || k <= t[3]) && (!hideAns || t[1] <= k)).map(([html, st, col]) =>
       `<span class="tok${col ? " c" + col : ""}${st > k ? " ghost" : st === k ? " now" : ""}">${html}</span>`).join("");
     c.out(`<div class="lsay"><span style="font-family:var(--font-data);color:var(--muted);font-size:13px">${k + 1}/${N}　</span>${termify(tpl.steps[k])}</div>`);
+    setTimeout(fitStageHeight, 0);
     if (listWrap.ol) [...listWrap.ol.children].forEach((li, j) => li.className = j < k ? "done" : j === k ? "cur" : "");
     prev.disabled = k === 0;
     next.disabled = k === N - 1;
@@ -8372,7 +8390,7 @@ const STEPGEN = {
   },
   atleast() {
     const n = 2 + rnd(3), d = 2 ** n;
-    return { cat: "確率", q: `コインを ${n} 回投げて、少なくとも1回は表が出る確率は？`, ans: fracStr(d - 1, d), link: "dice2",
+    return { cat: "確率", q: `コインを ${n} 回投げて、少なくとも1回は表が出る確率は？`, ans: fracStr(d - 1, d), link: "binom",
       ex: `「少なくとも 1 回」は 余事象（全部うら）を使う。全部うら = (1/2)<sup>${n}</sup> = 1/${d}。1 − 1/${d} = ${fracStr(d - 1, d)}。`,
       steps: [stp("どう考える？", "1 −（全部うらの確率）", ["表 1 回の確率 × " + n, "表の確率を 全部たす", "1/2 のまま"]), stp(`${n} 回とも うらの確率は？`, `1/${d}`, ["1/2", `1/${n}`, `1/${2 * n + 2}`, `1/${d * 2}`]), stp("答えは？", fracStr(d - 1, d), [fracStr(1, d), "1/2", fracStr(d - 1, 2 * d), fracStr(d - 3 > 0 ? d - 3 : 1, d)])] };
   },
@@ -8389,8 +8407,8 @@ const STEPGEN = {
     const g = 3 + rnd(10), x = 3 + rnd(6); let y = 2 + rnd(x - 2); while (gcd(x, y) !== 1) y = 2 + rnd(x - 2);
     const a = g * x, b = g * y, q1 = Math.floor(a / b), r1 = a % b;
     return { cat: "整数", q: `${a} と ${b} の最大公約数は？（互除法）`, ans: String(g), link: "euclid",
-      ex: `${a} = ${b} × ${q1} + ${r1} → gcd(${a}, ${b}) = gcd(${b}, ${r1})。これを くり返すと ${g}。`,
-      steps: [stp(`${a} ÷ ${b} の 余りは？`, r1, [q1, r1 + g, b - r1]), stp(`gcd(${a}, ${b}) = gcd(${b}, □)。□ は？`, r1, [q1, a - b * 2 > 0 ? a - b * 2 : r1 + 1, a]), stp("最大公約数は？", g, [lcm(a, b), g * 2, r1])] };
+      ex: `${a} = ${b} × ${q1} + ${r1}。${a} と ${b} の最大公約数は、${b} と ${r1}（わる数と余り）の最大公約数と同じ。これを くり返すと ${g}。`,
+      steps: [stp(`${a} ÷ ${b} の 余りは？`, r1, [q1, r1 + g, b - r1]), stp(`次は どの 2 つの数で 同じように わり算する？`, `${b} ÷ ${r1}`, [`${a} ÷ ${r1}`, `${b} ÷ ${q1}`, `${a} ÷ ${q1}`, `${r1} ÷ ${b}`, `${a} ÷ ${a - b}`]), stp("最大公約数は？", g, [lcm(a, b), g * 2, r1])] };
   },
   bin() {
     const v = 5 + rnd(27), s2 = v.toString(2), L2 = s2.length, terms = s2.split("").map((d, i) => d === "1" ? 2 ** (L2 - 1 - i) : 0).filter(Boolean);
@@ -8411,7 +8429,7 @@ const STEPGEN = {
       steps: [stp("使う きまりは？", "向かい合う角の和 = 180°", ["向かい合う角は 等しい", "向かい合う角の和 = 360°", "となりの角の和 = 180°"]), stp("∠C は？", (180 - x) + "°", [x + "°", (360 - x) + "°", (90 - x / 2) + "°"])] };
   },
   power() {
-    const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]], [a, b, cc, d] = L[rnd(L.length)];
+    const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 3, 12]], [a, b, cc, d] = L[rnd(L.length)];
     return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: String(d), link: "power", fig: figPower(a, b, cc),
       ex: `方べきの定理：PA × PB = PC × PD → ${a} × ${b} = ${cc} × PD → PD = ${a * b} ÷ ${cc} = ${d}。`,
       steps: [stp("使う式は？", "PA × PB = PC × PD", ["PA + PB = PC + PD", "PA × PC = PB × PD", "PA : PB = PD : PC"]), stp("PA × PB は？", a * b, [a + b, a * b + cc, b * cc]), stp("PD は？", d, [a + b - cc, d + 2, cc + 1])] };
@@ -8458,7 +8476,8 @@ function nearWrong(ans, d) {
 }
 function distinct(ans, cands) {
   const out = [String(ans)], va = numOf(ans);
-  const ok = t => t && !out.includes(t) && !/NaN|undefined|Infinity/.test(t) && t !== "0/1" && !(numOf(t) <= 0) && !(Number.isFinite(va) && Math.abs(numOf(t) - va) < 1e-9);
+  const isProb = /^\d+\/\d+$/.test(String(ans)) && va <= 1;
+  const ok = t => t && !out.includes(t) && !/NaN|undefined|Infinity/.test(t) && t !== "0/1" && !(numOf(t) <= 0) && !(Number.isFinite(va) && Math.abs(numOf(t) - va) < 1e-9) && !(isProb && numOf(t) > 1);
   for (const v of cands) { const t = String(v); if (ok(t)) out.push(t); if (out.length === 4) break; }
   for (let d = 1; out.length < 4 && d < 40; d++) { const t = nearWrong(ans, d); if (ok(t)) out.push(t); }
   return out;
@@ -8475,13 +8494,13 @@ const QGEN = {
     return { cat: "確率", q: `2つのサイコロをふる。${t}になる確率は？`, ans: fracStr(k, 36), wrong: [fracStr(36 - k, 36), fracStr(k + 1, 36), fracStr(Math.max(1, k - 2), 36), fracStr(k, 12)], ex: `36 マスのうち ${k} マス → ${k}/36 = ${fracStr(k, 36)}。`, link: "dice2" };
   },
   coin() { const n = 3 + rnd(3), k = 1 + rnd(n - 1); const num = nCr(n, k), den = 2 ** n; return { cat: "確率", q: `コインを ${n} 回投げて、表がちょうど ${k} 回出る確率は？`, ans: fracStr(num, den), wrong: [fracStr(1, den), fracStr(k, n), fracStr(num + 1, den), fracStr(nCr(n, k - 1) || 1, den)], ex: `反復試行：${C(n, k)}(1/2)<sup>${k}</sup>(1/2)<sup>${n - k}</sup> = ${num}/${den} = ${fracStr(num, den)}。`, link: "binom" }; },
-  atleast() { const n = 2 + rnd(3); return { cat: "確率", q: `コインを ${n} 回投げて、少なくとも1回は表が出る確率は？`, ans: fracStr(2 ** n - 1, 2 ** n), wrong: [fracStr(1, 2 ** n), "1/2", fracStr(n, 2 ** n), fracStr(2 ** n - 2, 2 ** n)], ex: `余事象「全部うら」は 1/${2 ** n}。1 − 1/${2 ** n} = ${fracStr(2 ** n - 1, 2 ** n)}。`, link: "dice2" }; },
+  atleast() { const n = 2 + rnd(3); return { cat: "確率", q: `コインを ${n} 回投げて、少なくとも1回は表が出る確率は？`, ans: fracStr(2 ** n - 1, 2 ** n), wrong: [fracStr(1, 2 ** n), "1/2", fracStr(n, 2 ** n), fracStr(2 ** n - 2, 2 ** n)], ex: `余事象「全部うら」は 1/${2 ** n}。1 − 1/${2 ** n} = ${fracStr(2 ** n - 1, 2 ** n)}。`, link: "binom" }; },
   divisors() { const L = [12, 18, 24, 36, 48, 60, 72, 90, 96, 100, 120, 144, 180, 200]; const n = L[rnd(L.length)]; const f = factorize(n); const a = f.reduce((t, [, e]) => t * (e + 1), 1); return { cat: "整数", q: `${n} の正の約数は何個？`, ans: a, wrong: [a - 1, a + 2, f.reduce((t, [, e]) => t * e, 1) + 1, a * 2], ex: `${n} = ${f.map(([p, e]) => e > 1 ? `${p}<sup>${e}</sup>` : p).join("×")} → ${f.map(([, e]) => `(${e}+1)`).join("")} = ${a} 個。`, link: "factor" }; },
-  gcdq() { const g = 3 + rnd(10), x = 2 + rnd(6); let y = 2 + rnd(6); while (gcd(x, y) !== 1 || y === x) y = 2 + rnd(7); const a = g * x, b = g * y; return { cat: "整数", q: `${a} と ${b} の最大公約数は？`, ans: g, wrong: [lcm(a, b), g * 2, Math.max(1, g - 1), x * y], ex: `互除法：gcd(${a}, ${b}) = ${g}。`, link: "euclid" }; },
+  gcdq() { const g = 3 + rnd(10), x = 2 + rnd(6); let y = 2 + rnd(6); while (gcd(x, y) !== 1 || y === x) y = 2 + rnd(7); const a = g * x, b = g * y; return { cat: "整数", q: `${a} と ${b} の最大公約数は？`, ans: g, wrong: [lcm(a, b), g * 2, Math.max(1, g - 1), x * y], ex: `互除法：${a} = ${b} × ${Math.floor(a / b)} + ${a % b} → ${b} と ${a % b} の最大公約数を考える → … くり返すと ${g}。`, link: "euclid" }; },
   bin() { const v = 5 + rnd(27); const s2 = v.toString(2); return { cat: "整数", q: `2 進法の ${s2}<sub>(2)</sub> を 10 進法で表すと？`, ans: v, wrong: [v + 1, v - 1, parseInt(s2, 10) % 100, v * 2], ex: `${s2.split("").map((d, i) => `${d}×${2 ** (s2.length - 1 - i)}`).join(" + ")} = ${v}。`, link: "base" }; },
   angle() { const x = 20 + rnd(14) * 5; return { cat: "図形", q: `円の中心角が ${2 * x}° のとき、同じ弧に対する円周角は？`, ans: x + "°", wrong: [2 * x + "°", (180 - x) + "°", (90 - x / 2) + "°", (x + 10) + "°"], ex: `円周角は中心角の半分：${2 * x}° ÷ 2 = ${x}°。`, link: "inscribed", fig: figAngle(x) }; },
   quad() { let x = 60 + rnd(14) * 5; if (x === 90) x = 95; return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", wrong: [x + "°", (360 - x) + "°", (90 - x / 2) + "°", (x / 2) + "°"], ex: `向かい合う角の和は 180°。180° − ${x}° = ${180 - x}°。`, link: "inscribed", fig: figQuad(x) }; },
-  power() { const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]]; const [a, b, cc, d] = L[rnd(L.length)]; return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: d, wrong: [a + b - cc, Math.round(b * cc / a), d + 2, cc + 1], ex: `方べきの定理：PA×PB = PC×PD → ${a}×${b} = ${cc}×PD → PD = ${d}。`, link: "power", fig: figPower(a, b, cc) }; },
+  power() { const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 3, 12]]; const [a, b, cc, d] = L[rnd(L.length)]; return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: d, wrong: [a + b - cc, Math.round(b * cc / a), d + 2, cc + 1], ex: `方べきの定理：PA×PB = PC×PD → ${a}×${b} = ${cc}×PD → PD = ${d}。`, link: "power", fig: figPower(a, b, cc) }; },
   bis() { const L = [[6, 4, 5], [8, 4, 6], [9, 6, 10], [6, 3, 6], [10, 6, 8]]; const [ab, ac, bc] = L[rnd(L.length)]; const bd = bc * ab / (ab + ac); const s1 = Number.isInteger(bd) ? String(bd) : fracStr(bc * ab, ab + ac); return { cat: "図形", q: `△ABC で AB = ${ab}、AC = ${ac}、BC = ${bc}。∠A の二等分線と BC の交点を D とするとき BD は？`, ans: s1, wrong: [fracStr(bc * ac, ab + ac), String(bc / 2), fracStr(ab * ac, bc), String(ab - ac)], ex: `BD：DC = AB：AC = ${ab}：${ac}。BD = ${bc} × ${ab}/(${ab}+${ac}) = ${s1}。`, link: "bisector", fig: figBis(ab, ac, bc) }; },
   poly() { const L = [["正四面体", 4, 6, 4], ["立方体", 8, 12, 6], ["正八面体", 6, 12, 8], ["正十二面体", 20, 30, 12], ["正二十面体", 12, 30, 20]]; const [t, v, e, f] = L[rnd(L.length)]; const ask = rnd(3); const nm = ["頂点", "辺", "面"][ask], a = [v, e, f][ask]; return { cat: "図形", q: `${t}の${nm}の数は？`, ans: a, wrong: [[v, e, f][(ask + 1) % 3], [v, e, f][(ask + 2) % 3], a + 2, a * 2], ex: `${t}：頂点 ${v}、辺 ${e}、面 ${f}。${v} − ${e} + ${f} = 2。`, link: "poly", fig: figPoly(t) }; },
   centroid() { const m = 3 * (2 + rnd(6)); return { cat: "図形", q: `△ABC の中線 AM の長さが ${m} のとき、頂点 A から重心 G までの長さ AG は？`, ans: m * 2 / 3, wrong: [m / 3, m / 2, m, m * 3 / 4], ex: `重心は中線を 2：1 に分ける。AG = ${m} × 2/3 = ${m * 2 / 3}。`, link: "centers", fig: figCentroid(m) }; },
@@ -8494,7 +8513,7 @@ sim({
   point: `<ul><li>場合の数・確率・図形・整数から 10 問。数字は毎回かわります。</li>
 <li>答えると解説と「この画面で確かめる」ボタンが出ます。</li>
 <li>8 問以上で 合格 のはんこ。最高点を記録します。</li></ul>`,
-  detail: `<p>まちがえた問題は、解説の下のボタンから、その内容をあつかう画面へ行って、動かしながら確かめよう。</p><p>クイズの内容（16 種類）：順列・組合せ・円順列・最短経路・三角形の数・サイコロ・コイン・余事象・約数の個数・最大公約数・2進法・円周角・内接四角形・方べき・角の二等分線・多面体・重心。</p>`,
+  detail: `<p>まちがえた問題は、解説の下のボタンから、その内容をあつかう画面へ行って、動かしながら確かめよう。</p><p>クイズの内容（17 種類）：順列・組合せ・円順列・最短経路・三角形の数・サイコロ・コイン・余事象・約数の個数・最大公約数・2進法・円周角・内接四角形・方べき・角の二等分線・多面体・重心。</p>`,
   build(c) { runQuiz(c, Object.keys(QGEN), "all"); },
 });
 [["cnt", "場合の数だけ", ["perm", "comb", "circ", "route", "tri"]], ["prob", "確率だけ", ["dice", "coin", "atleast"]], ["geo", "図形だけ", ["angle", "quad", "power", "bis", "poly", "centroid"]], ["int", "整数だけ", ["divisors", "gcdq", "bin"]]].forEach(([k, t, gens]) => {
