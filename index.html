@@ -496,6 +496,8 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 .rvtrail li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; } .rvtrail li span { color: var(--muted); } .rvtrail li i { font-style: normal; font-weight: 800; }
 .rvtrail li.ok i { color: var(--accent); } .rvtrail li.ng i, .rvtrail li.ng b { color: var(--warm); }
 @media (max-width: 600px) { .gq .choices.steps { grid-template-columns: 1fr; } .gq .choices.steps .choice { font-size: 16px; padding: 10px 8px 10px 28px; } }
+.stephow { border: 2px solid var(--warm); border-radius: 8px; background: var(--warm-soft); padding: 8px 12px; font-size: 14.5px; line-height: 1.6; text-align: left; max-width: 30em; color: var(--ink); }
+.gcount .stephow b { display: block; font-size: 15px; font-family: inherit; color: var(--warm); line-height: 1.4; }
 /* ===== 🎮 ゲーム ===== */
 .tbtn.coin b { font-family: var(--font-data); font-weight: 600; margin-left: 2px; }
 .plus { position: fixed; z-index: 99; transform: translateX(-50%); font-family: var(--font-data); font-weight: 600; color: var(--gold); font-size: 16px; pointer-events: none; animation: plus .9s ease-out forwards; }
@@ -7340,6 +7342,11 @@ const COMBO_BONUS = 3;                  // 5 コンボごとの おまけ秒数
 /* 持ち時間「おまかせ」：分野のむずかしさで決める */
 const AUTO_T = { all: 90, cnt: 90, prob: 120, geo: 90, int: 120, units: 150 };
 const startT = cfg => +cfg.t || AUTO_T[cfg.m] || 90;
+/* 🪜 解き方ステップのルール（短く） */
+const STEP_RULES_HTML = `<div class="stephow"><b>🪜 解き方ステップ</b>1 問を「考え方 → 式 → 計算」の 小さな 4 択で 順に答える</div><ul class="rules">
+  <li><span>✅</span><div><b>ステップが合う</b> → 点数と 時間が入る</div></li>
+  <li><span>❌</span><div><b>まちがい</b> → −2 秒。正しい答えを見て 次へ進める</div></li>
+  <li><span>🏁</span><div><b>全部合う（完答）</b> → ボーナス点</div></li></ul>`;
 /* ルール（スタート前と ゲームのトップに出す） */
 const RULES_HTML = `<ul class="rules">
   <li><span>✅</span><div><b>正解</b> → 時間がもどる（<span class="stars">★★★</span> むずかしい問題ほど たくさん）</div></li>
@@ -7434,7 +7441,7 @@ function drawQ() {
   const t = now();
   if (t < G.startAt) {
     const n = Math.ceil((G.startAt - t) / 1000);
-    el.innerHTML = `<div class="gcount"><small>${cfgName(G.cfg)}</small><b>${n > 3 ? "…" : n}</b>${RULES_HTML}</div>`;
+    el.innerHTML = `<div class="gcount"><small>${cfgName(G.cfg)}</small><b>${n > 3 ? "…" : n}</b>${stepOn(G.cfg) ? STEP_RULES_HTML : RULES_HTML}</div>`;
     drawHud(); return;
   }
   const q = G.q;
@@ -7604,7 +7611,7 @@ sim({
     w.appendChild(p0);
     /* ⏱ タイムアタック */
     const p1 = h("section", { class: "ghp" }, h("h3", {}, "⏱ タイムアタック"), h("p", { class: "note" }, "時間がなくなるまでに 何問とけるか。正解すると 時間がもどる。計算の はやさを きたえる"),
-      h("details", { class: "flow" }, h("summary", {}, "📜 ルール"), h("div", { html: RULES_HTML })));
+      h("details", { class: "flow" }, h("summary", {}, "📜 ルール"), h("div", { html: stepOn(ta) ? STEP_RULES_HTML : RULES_HTML })));
     const segP = c.seg(null, [[true, "🪜 解き方ステップ"], [false, "答えだけ"]].map(([v, t]) => ({ v, t })), ta.m === "units" ? false : !!ta.st, v => setOne("ta", taCfg, "st", v), p1);
     if (ta.m === "units") { segP.disable(true, true); p1.appendChild(h("p", { class: "note" }, "授業の類題は「答えだけ」です")); }
     else p1.appendChild(h("p", { class: "note" }, ta.st ? "🪜 1 問を「考え方 → 式 → 計算」の 小さな 4 択に分けて、合うたびに 点数が入る" : "さいごの答えを 4 択で えらぶ"));
@@ -8293,18 +8300,28 @@ function quizPlayer(c, box, code) {
    それぞれ { q, fig, steps: [{ ask, ans, wrong: [...] }], ans（さいごの答え）, ex, link, cat } を返す */
 const stp = (ask, ans, wrong) => ({ ask, ans: String(ans), wrong: wrong.map(String) });
 /* 選択肢をつくる：答えと同じ・同じ見た目のものを のぞいて 4 つ */
+/* 「56 通り」「3/4」「110°」のような 数だけの答え → その値（式やことばは NaN） */
+const pureNum = t => { const m = String(t).replace(/<[^>]+>/g, "").trim().match(/^(\d+(?:\.\d+)?(?:\/\d+)?)\s*(通り|個|°)?$/); return m ? numOf(m[1]) : NaN; };
+function okWrong(w, ans) {
+  const va = pureNum(ans), vw = pureNum(w);
+  if (Number.isFinite(va) && Number.isFinite(vw) && Math.abs(va - vw) < 1e-9) return false;     // 答えと同じ値（2 つ正解に見える）
+  if (/^\d+\/\d+$/.test(ans) && va <= 1 && vw > 1) return false;                              // 確率なのに 1 より大きい
+  const fr = String(w).match(/^(\d+)\/(\d+)$/); if (fr && gcd(+fr[1], +fr[2]) > 1) return false; // 約分していない
+  return true;
+}
 function stepChoices(st) {
   const out = [st.ans];
-  st.wrong.forEach(w => { if (w && !out.some(o => o.replace(/<[^>]+>/g, "") === w.replace(/<[^>]+>/g, "")) && !(numOf(w) > 0 && numOf(w) === numOf(st.ans))) out.push(w); });
+  st.wrong.forEach(w => { if (w && !out.some(o => o.replace(/<[^>]+>/g, "") === w.replace(/<[^>]+>/g, "")) && okWrong(w, st.ans)) out.push(w); });
   /* たりないとき：答えの中の数字を 少しずらす（「56 通り」→「57 通り」、「→ 3 個・↑ 3 個」→「→ 4 個・↑ 3 個」） */
   const plain = t => t.replace(/<[^>]+>/g, "");
   for (let d = 1; out.length < 4 && d < 40; d++) {
     let t = null;
     const m = st.ans.match(/^(\d+)(\s*\D*)$/);
-    if (m) t = nearWrong(m[1], d) + m[2];
-    else if (/\d/.test(st.ans)) { let k = 0; const which = (d - 1) % (st.ans.match(/\d+/g) || [1]).length; t = st.ans.replace(/\d+/g, x => k++ === which ? String(Math.max(1, +x + (d % 2 ? Math.ceil(d / 2) : -Math.ceil(d / 2)))) : x); }
-    else t = nearWrong(st.ans, d);
-    if (t && !out.some(o => plain(o) === plain(t))) out.push(t);
+    /* 数だけの答えのときだけ 近い数をつくる（式やことばは 3 択のままにする：へんな選択肢を つくらない） */
+    if (!Number.isFinite(pureNum(st.ans))) break;
+    if (/^\d+\/\d+$/.test(st.ans) || /^\d+°$/.test(st.ans)) t = nearWrong(st.ans, d);
+    else if (m) t = nearWrong(m[1], d) + m[2];
+    if (t && !out.some(o => plain(o) === plain(t)) && okWrong(t, st.ans)) out.push(t);
   }
   return shuffle(out.slice(0, 4));
 }
@@ -8351,18 +8368,19 @@ const STEPGEN = {
     const n = 3 + rnd(3), k = 1 + rnd(n - 1), num = nCr(n, k), den = 2 ** n;
     return { cat: "確率", q: `コインを ${n} 回投げて、表がちょうど ${k} 回出る確率は？`, ans: fracStr(num, den), link: "binom",
       ex: `表が出る ${k} 回を えらぶ：${C(n, k)} = ${num} 通り。1 つの ならびの確率は (1/2)<sup>${n}</sup> = 1/${den}。${num} × 1/${den} = ${fracStr(num, den)}。`,
-      steps: [stp(`表が出る ${k} 回の えらび方は？`, `${C(n, k)} = ${num} 通り`, [`${P(n, k)} = ${nPr(n, k)} 通り`, `${k} 通り`, `${n} 通り`]), stp("1 つの ならびの 確率は？", `(1/2)<sup>${n}</sup> = 1/${den}`, [`(1/2)<sup>${k}</sup> = 1/${2 ** k}`, "1/2", `${k}/${n}`]), stp("確率は？", fracStr(num, den), [fracStr(1, den), fracStr(k, n), fracStr(num, 2 ** k)])] };
+      steps: [stp(`${n} 回のうち 表が出る ${k} 回の えらび方は 何通り？`, `${C(n, k)} = ${num} 通り`, [nPr(n, k) !== num ? `${P(n, k)} = ${nPr(n, k)} 通り` : null, k !== num ? `${k} 通り` : null, n * k !== num ? `${n} × ${k} = ${n * k} 通り` : null, `2<sup>${n}</sup> = ${den} 通り`].filter(Boolean)), stp("「表・うら」の ならび 1 つの 確率は？", `(1/2)<sup>${n}</sup> = 1/${den}`, [`(1/2)<sup>${k}</sup> = 1/${2 ** k}`, `1/${2 * n}`, `${k}/${n}`, `1/${n}`]), stp("確率は？", fracStr(num, den), [fracStr(1, den), fracStr(k, n), fracStr(num + 1, den), fracStr(1, 2 ** k)])] };
   },
   atleast() {
     const n = 2 + rnd(3), d = 2 ** n;
     return { cat: "確率", q: `コインを ${n} 回投げて、少なくとも1回は表が出る確率は？`, ans: fracStr(d - 1, d), link: "dice2",
       ex: `「少なくとも 1 回」は 余事象（全部うら）を使う。全部うら = (1/2)<sup>${n}</sup> = 1/${d}。1 − 1/${d} = ${fracStr(d - 1, d)}。`,
-      steps: [stp("どう考える？", "1 −（全部うらの確率）", ["表 1 回の確率 × " + n, "表の確率を 全部たす", "1/2 のまま"]), stp("全部うらの確率は？", `1/${d}`, ["1/2", `1/${n}`, `1/${2 * n}`]), stp("答えは？", fracStr(d - 1, d), [fracStr(1, d), "1/2", fracStr(n, d)])] };
+      steps: [stp("どう考える？", "1 −（全部うらの確率）", ["表 1 回の確率 × " + n, "表の確率を 全部たす", "1/2 のまま"]), stp(`${n} 回とも うらの確率は？`, `1/${d}`, ["1/2", `1/${n}`, `1/${2 * n + 2}`, `1/${d * 2}`]), stp("答えは？", fracStr(d - 1, d), [fracStr(1, d), "1/2", fracStr(d - 1, 2 * d), fracStr(d - 3 > 0 ? d - 3 : 1, d)])] };
   },
   divisors() {
     const Ls = [12, 18, 24, 36, 48, 60, 72, 90, 96, 100, 120, 144, 180, 200], N = Ls[rnd(Ls.length)], f = factorize(N), a = f.reduce((t, [, e]) => t * (e + 1), 1);
     const fs2 = ff => ff.map(([p, e]) => e > 1 ? `${p}<sup>${e}</sup>` : String(p)).join(" × ");
-    const bad1 = fs2(f.map(([p, e], i) => [p, i === 0 ? e + 1 : e])), bad2 = fs2(f.map(([p, e], i) => [p, i === f.length - 1 ? Math.max(1, e - 1) : e])) + (f.length === 1 ? " × 3" : ""), bad3 = fs2(f.map(([p, e]) => [p, 1]));
+    const ok0 = fs2(f), cand = [fs2(f.map(([p, e], i) => [p, i === 0 ? e + 1 : e])), fs2(f.map(([p, e], i) => [p, i === f.length - 1 ? e + 1 : e])), fs2(f.map(([p]) => [p, 1])), fs2(f.map(([p, e], i) => [p, i === 0 ? Math.max(1, e - 1) : e])), fs2(f.map(([p, e]) => [p, e + 1]))].filter((x, i, a) => x !== ok0 && a.indexOf(x) === i);
+    const [bad1, bad2, bad3] = cand;
     return { cat: "整数", q: `${N} の正の約数は何個？`, ans: a + " 個", link: "factor",
       ex: `${N} = ${fs2(f)}。約数の個数は 指数に 1 をたして かける：${f.map(([, e]) => `(${e}+1)`).join("×")} = ${a} 個。`,
       steps: [stp(`${N} を素因数分解すると？`, fs2(f), [bad1, bad2, bad3]), stp("約数の個数の 式は？", f.map(([, e]) => `(${e}+1)`).join(" × "), [f.map(([, e]) => e).join(" × "), f.map(([, e]) => `(${e}+1)`).join(" + "), f.map(([p]) => p).join(" × ")]), stp("何個？", a + " 個", [f.reduce((t, [, e]) => t * e, 1) + " 個", a - 1 + " 個", a + 2 + " 個"])] };
@@ -8378,16 +8396,16 @@ const STEPGEN = {
     const v = 5 + rnd(27), s2 = v.toString(2), L2 = s2.length, terms = s2.split("").map((d, i) => d === "1" ? 2 ** (L2 - 1 - i) : 0).filter(Boolean);
     return { cat: "整数", q: `2 進法の ${s2}<sub>(2)</sub> を 10 進法で表すと？`, ans: String(v), link: "base",
       ex: `位の重みは 右から 1, 2, 4, 8, 16…。${s2.split("").map((d, i) => `${d}×${2 ** (L2 - 1 - i)}`).join(" + ")} = ${v}。`,
-      steps: [stp("いちばん左の位の 重みは？", 2 ** (L2 - 1), [2 ** L2, L2, 10 ** (L2 - 1)]), stp("1 の位の重みを たす式は？", terms.join(" + "), [terms.map(t => t * 2).join(" + "), s2.split("").map((d, i) => d === "1" ? L2 - i : 0).filter(Boolean).join(" + "), terms.slice(1).join(" + ") || "0"]), stp("10 進法で？", v, [v + 1, v - 1, v * 2])] };
+      steps: [stp("いちばん左の位の 重みは？", 2 ** (L2 - 1), [2 ** L2, L2, 10 ** (L2 - 1)]), stp("数字が 1 のところの 重みを たす式は？", terms.join(" + "), [terms.map(t => t * 2).join(" + "), s2.split("").map((d, i) => d === "1" ? L2 - i : 0).filter(Boolean).join(" + "), terms.slice(1).join(" + ") || "0"]), stp("10 進法で？", v, [v + 1, v - 1, v * 2])] };
   },
   angle() {
-    const x = 20 + rnd(14) * 5;
+    let x = 20 + rnd(14) * 5; if (x === 60) x = 65; // 中心角 120° だと「180° − 中心角」と同じ 60° になってしまう
     return { cat: "図形", q: `円の中心角が ${2 * x}° のとき、同じ弧に対する円周角は？`, ans: x + "°", link: "inscribed", fig: figAngle(x),
       ex: `円周角の定理：円周角 = 中心角 ÷ 2。${2 * x}° ÷ 2 = ${x}°。`,
       steps: [stp("使う きまりは？", "円周角 = 中心角 ÷ 2", ["円周角 = 中心角", "円周角 = 180° − 中心角", "円周角 = 中心角 × 2"]), stp("円周角は？", x + "°", [2 * x + "°", 180 - 2 * x > 0 ? (180 - 2 * x) + "°" : (x + 10) + "°", (x + 5) + "°"])] };
   },
   quad() {
-    const x = 60 + rnd(14) * 5;
+    let x = 60 + rnd(14) * 5; if (x === 90) x = 95; // 90° だと「向かい合う角は等しい」でも 同じ答えになってしまう
     return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", link: "inscribed", fig: figQuad(x),
       ex: `円に内接する四角形は 向かい合う角の和が 180°。∠C = 180° − ${x}° = ${180 - x}°。`,
       steps: [stp("使う きまりは？", "向かい合う角の和 = 180°", ["向かい合う角は 等しい", "向かい合う角の和 = 360°", "となりの角の和 = 180°"]), stp("∠C は？", (180 - x) + "°", [x + "°", (360 - x) + "°", (90 - x / 2) + "°"])] };
@@ -8403,7 +8421,7 @@ const STEPGEN = {
     const g0 = gcd(ab, ac);
     return { cat: "図形", q: `△ABC で AB = ${ab}、AC = ${ac}、BC = ${bc}。∠A の二等分線と BC の交点を D とするとき BD は？`, ans: s1, link: "bisector", fig: figBis(ab, ac, bc),
       ex: `角の二等分線：BD : DC = AB : AC = ${ab} : ${ac}。BD = ${bc} × ${ab}/(${ab}+${ac}) = ${s1}。`,
-      steps: [stp("BD : DC は？", `${ab / g0} : ${ac / g0}`, [`${ac / g0} : ${ab / g0}`, "1 : 1", `${ab} : ${bc}`]), stp("BD は？", s1, [fracStr(bc * ac, ab + ac), String(bc / 2), String(ab - ac)])] };
+      steps: [stp("BD : DC は？（二等分線の 比）", `${ab / g0} : ${ac / g0}`, [`${ac / g0} : ${ab / g0}`, "1 : 1", `${ab / g0} : ${(ab + ac) / g0}`]), stp("BD は？", s1, [fracStr(bc * ac, ab + ac), String(bc / 2), String(ab - ac)])] };
   },
   poly() {
     const L = [["正四面体", 4, 6, 4, "正三角形"], ["立方体", 8, 12, 6, "正方形"], ["正八面体", 6, 12, 8, "正三角形"], ["正十二面体", 20, 30, 12, "正五角形"], ["正二十面体", 12, 30, 20, "正三角形"]];
@@ -8462,7 +8480,7 @@ const QGEN = {
   gcdq() { const g = 3 + rnd(10), x = 2 + rnd(6); let y = 2 + rnd(6); while (gcd(x, y) !== 1 || y === x) y = 2 + rnd(7); const a = g * x, b = g * y; return { cat: "整数", q: `${a} と ${b} の最大公約数は？`, ans: g, wrong: [lcm(a, b), g * 2, Math.max(1, g - 1), x * y], ex: `互除法：gcd(${a}, ${b}) = ${g}。`, link: "euclid" }; },
   bin() { const v = 5 + rnd(27); const s2 = v.toString(2); return { cat: "整数", q: `2 進法の ${s2}<sub>(2)</sub> を 10 進法で表すと？`, ans: v, wrong: [v + 1, v - 1, parseInt(s2, 10) % 100, v * 2], ex: `${s2.split("").map((d, i) => `${d}×${2 ** (s2.length - 1 - i)}`).join(" + ")} = ${v}。`, link: "base" }; },
   angle() { const x = 20 + rnd(14) * 5; return { cat: "図形", q: `円の中心角が ${2 * x}° のとき、同じ弧に対する円周角は？`, ans: x + "°", wrong: [2 * x + "°", (180 - x) + "°", (90 - x / 2) + "°", (x + 10) + "°"], ex: `円周角は中心角の半分：${2 * x}° ÷ 2 = ${x}°。`, link: "inscribed", fig: figAngle(x) }; },
-  quad() { const x = 60 + rnd(14) * 5; return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", wrong: [x + "°", (360 - x) + "°", (90 - x / 2) + "°", (x / 2) + "°"], ex: `向かい合う角の和は 180°。180° − ${x}° = ${180 - x}°。`, link: "inscribed", fig: figQuad(x) }; },
+  quad() { let x = 60 + rnd(14) * 5; if (x === 90) x = 95; return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", wrong: [x + "°", (360 - x) + "°", (90 - x / 2) + "°", (x / 2) + "°"], ex: `向かい合う角の和は 180°。180° − ${x}° = ${180 - x}°。`, link: "inscribed", fig: figQuad(x) }; },
   power() { const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]]; const [a, b, cc, d] = L[rnd(L.length)]; return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: d, wrong: [a + b - cc, Math.round(b * cc / a), d + 2, cc + 1], ex: `方べきの定理：PA×PB = PC×PD → ${a}×${b} = ${cc}×PD → PD = ${d}。`, link: "power", fig: figPower(a, b, cc) }; },
   bis() { const L = [[6, 4, 5], [8, 4, 6], [9, 6, 10], [6, 3, 6], [10, 6, 8]]; const [ab, ac, bc] = L[rnd(L.length)]; const bd = bc * ab / (ab + ac); const s1 = Number.isInteger(bd) ? String(bd) : fracStr(bc * ab, ab + ac); return { cat: "図形", q: `△ABC で AB = ${ab}、AC = ${ac}、BC = ${bc}。∠A の二等分線と BC の交点を D とするとき BD は？`, ans: s1, wrong: [fracStr(bc * ac, ab + ac), String(bc / 2), fracStr(ab * ac, bc), String(ab - ac)], ex: `BD：DC = AB：AC = ${ab}：${ac}。BD = ${bc} × ${ab}/(${ab}+${ac}) = ${s1}。`, link: "bisector", fig: figBis(ab, ac, bc) }; },
   poly() { const L = [["正四面体", 4, 6, 4], ["立方体", 8, 12, 6], ["正八面体", 6, 12, 8], ["正十二面体", 20, 30, 12], ["正二十面体", 12, 30, 20]]; const [t, v, e, f] = L[rnd(L.length)]; const ask = rnd(3); const nm = ["頂点", "辺", "面"][ask], a = [v, e, f][ask]; return { cat: "図形", q: `${t}の${nm}の数は？`, ans: a, wrong: [[v, e, f][(ask + 1) % 3], [v, e, f][(ask + 2) % 3], a + 2, a * 2], ex: `${t}：頂点 ${v}、辺 ${e}、面 ${f}。${v} − ${e} + ${f} = 2。`, link: "poly", fig: figPoly(t) }; },
