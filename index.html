@@ -484,6 +484,18 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 .pd i { display: block; width: 100%; background: var(--chip); border: 1.5px solid var(--line); border-radius: 6px 6px 0 0; } .pd.p1 i { height: clamp(40px, 12cqh, 110px); background: var(--gold); } .pd.p2 i { height: clamp(28px, 8cqh, 75px); } .pd.p3 i { height: clamp(18px, 5cqh, 50px); }
 @media (max-width: 600px) { .qcch { grid-template-columns: 1fr; } .qch { font-size: 17px; padding: 9px 10px; min-height: 46px; } .qch .sh { width: 28px; height: 28px; font-size: 15px; } }
 @media (max-width: 900px) { .bq.rev { grid-template-columns: 1fr; } }
+/* 🪜 解き方ステップ */
+.trail { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; font-size: 14px; }
+.trail .ts { border: 1.5px solid var(--line); border-radius: 14px; padding: 2px 10px; background: var(--panel); font-weight: 700; }
+.trail .ts.ok { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); } .trail .ts.ng { border-color: var(--warm); color: var(--warm); background: var(--warm-soft); }
+.trail .ts.cur { border-color: var(--ink); background: var(--ink); color: var(--panel); } .trail .ts.fut { color: var(--muted); }
+.trail .arr { font-style: normal; color: var(--muted); }
+.stepask { font-size: 17px; font-weight: 700; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; } .stepask b { font-size: 12px; color: var(--panel); background: var(--warm); border-radius: 4px; padding: 1px 8px; }
+.gq .choices.steps .choice { font-family: var(--font-body); font-size: 17px; line-height: 1.4; padding: 12px 10px 12px 30px; }
+.rvtrail { margin: 0; padding-left: 1.4em; font-size: 14px; display: flex; flex-direction: column; gap: 2px; }
+.rvtrail li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; } .rvtrail li span { color: var(--muted); } .rvtrail li i { font-style: normal; font-weight: 800; }
+.rvtrail li.ok i { color: var(--accent); } .rvtrail li.ng i, .rvtrail li.ng b { color: var(--warm); }
+@media (max-width: 600px) { .gq .choices.steps { grid-template-columns: 1fr; } .gq .choices.steps .choice { font-size: 16px; padding: 10px 8px 10px 28px; } }
 /* ===== 🎮 ゲーム ===== */
 .tbtn.coin b { font-family: var(--font-data); font-weight: 600; margin-left: 2px; }
 .plus { position: fixed; z-index: 99; transform: translateX(-50%); font-family: var(--font-data); font-weight: 600; color: var(--gold); font-size: 16px; pointer-events: none; animation: plus .9s ease-out forwards; }
@@ -7348,7 +7360,9 @@ function makeQs(cfg, seed, n = 90) {
       const gens = GCATS[cfg.m] || Object.keys(QGEN); let bag = [];
       for (let i = 0; i < n; i++) {
         if (!bag.length) bag = shuffle(gens.slice());
-        const key = bag.pop(), g = QGEN[key](), ans = String(g.ans);
+        const key = bag.pop();
+        if (cfg.st && STEPGEN[key]) { const sq = stepQ(key); out.push(Object.assign(sq, { w: QDIFF[key] || 1 })); continue; }
+        const g = QGEN[key](), ans = String(g.ans);
         out.push({ q: g.q, ch: shuffle(distinct(g.ans, g.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? String(+w.toFixed(2)) : w))), ans, cat: g.cat, w: QDIFF[key] || 1, key, fig: g.fig || "", ex: g.ex || "", link: g.link || "" });
       }
     }
@@ -7361,7 +7375,9 @@ function makeQs(cfg, seed, n = 90) {
   for (let i = first.length; i < 8 && maxW > minW; i++) if (res[i] && res[i].w === maxW) { const j = res.findIndex((q, k) => k >= 8 && q.w < maxW); if (j > 0) [res[i], res[j]] = [res[j], res[i]]; }
   return res;
 }
-const cfgName = cfg => `${GNAME[cfg.m] || cfg.m}・持ち時間 ${startT(cfg)} 秒`;
+const stepOn = cfg => !!cfg.st && cfg.m !== "units";
+const cfgName = cfg => `${GNAME[cfg.m] || cfg.m}${stepOn(cfg) ? "・🪜 解き方ステップ" : ""}・持ち時間 ${startT(cfg)} 秒`;
+const bestKey = cfg => cfg.m + "-" + (+cfg.t || 0) + (stepOn(cfg) ? "-s" : "");
 
 /* ---------- タイムアタックの しくみ（ひとり・クラス対戦 共通） ---------- */
 let G = null, OFF = 0;
@@ -7372,7 +7388,7 @@ function newGame(cfg, seed, mode, startAt) {
   G = { cfg, T, log: [], missRun: 0, qs: makeQs(cfg, seed), qi: 0, score: 0, combo: 0, maxCombo: 0, ok: 0, miss: 0, gain: 0, mode, startAt, endAt: startAt + T * 1000, q: null, lock: false, over: false, pick: -1 };
   nextQ(); return G;
 }
-function nextQ() { G.q = G.qs[G.qi % G.qs.length]; G.qi++; G.qStart = now(); G.lock = false; G.pick = -1; G.hint = false; if (G.pad) G.pad.clear(); }
+function nextQ() { G.q = G.qs[G.qi % G.qs.length]; G.qi++; G.qStart = G.sStart = now(); G.lock = false; G.pick = -1; G.hint = false; G.si = 0; G.sres = []; if (G.pad) G.pad.clear(); }
 function playShell(box, title) {
   clear(box);
   box.appendChild(h("div", { class: "gplay" },
@@ -7422,11 +7438,48 @@ function drawQ() {
     drawHud(); return;
   }
   const q = G.q;
+  if (q.steps) { drawStepQ(el, q); drawHud(); const fb2 = $("#fBtn"); if (fb2) { fb2.disabled = G.hint || G.pick >= 0; fb2.classList.toggle("on", G.hint); } return; }
   el.innerHTML = `<div class="gcat"><span class="pill">${q.cat}</span><span class="stars" title="むずかしさ">${"★".repeat(q.w)}<i>${"★".repeat(3 - q.w)}</i>　正解で +${bonusSec(q.w, G.ok)} 秒</span><span class="r">✅ ${G.ok}　✕ ${G.miss}</span></div>
     <div class="gqtext${q.fig ? " hasfig" : ""}"><span>${termify(q.q)}</span></div>${q.fig ? `<div class="gfig">${q.fig}</div>` : ""}${G.hint ? hintHTML(q) : ""}
     <div class="choices">${q.ch.map((c2, i) => { const cls = G.pick < 0 ? "" : c2 === q.ans ? " right" : i === G.pick ? " wrong" : ""; return `<button type="button" class="choice${cls}" data-gp="${i}"${G.pick >= 0 ? " disabled" : ""}><span class="kb">${i + 1}</span>${c2}</button>`; }).join("")}</div>`;
   drawHud();
   const fb = $("#fBtn"); if (fb) { fb.disabled = G.hint || G.pick >= 0 || t < G.startAt; fb.classList.toggle("on", G.hint); }
+}
+/* 🪜 解き方ステップ：問題の下に「道すじ」と いまのステップの 4 択 */
+function drawStepQ(el, q) {
+  const n = q.steps.length, si = G.si, st = q.steps[si], done = G.pick >= 0;
+  const trail = q.steps.map((s2, j) => j < si || (j === si && done) ? `<span class="ts ${G.sres[j] ? "ok" : "ng"}">${G.sres[j] ? "✓" : "✕ →"} ${s2.ans}</span>` : `<span class="ts ${j === si ? "cur" : "fut"}">${j + 1}</span>`).join('<i class="arr">›</i>');
+  el.innerHTML = `<div class="gcat"><span class="pill">${q.cat}</span><span class="stars" title="むずかしさ">${"★".repeat(q.w)}<i>${"★".repeat(3 - q.w)}</i></span><span class="r">✅ 完答 ${G.ok}　✕ ${G.miss}</span></div>
+    <div class="gqtext${q.fig ? " hasfig" : ""}"><span>${termify(q.q)}</span></div>${q.fig ? `<div class="gfig">${q.fig}</div>` : ""}${G.hint ? hintHTML(q) : ""}
+    <div class="trail">${trail}</div>
+    <div class="stepask"><b>ステップ ${si + 1} / ${n}</b>${st.ask}</div>
+    <div class="choices steps">${st.ch.map((c2, i) => { const cls = !done ? "" : c2 === st.ans ? " right" : i === G.pick ? " wrong" : ""; return `<button type="button" class="choice${cls}" data-gp="${i}"${done ? " disabled" : ""}><span class="kb">${i + 1}</span>${c2}</button>`; }).join("")}</div>`;
+}
+const STEP_WRONG_WAIT = 1300, STEP_PENALTY = 2;
+function stepTrail(q) { return q.steps.map((s2, j) => ({ ask: s2.ask, ans: s2.ans, ok: G.sres[j] })); }
+function pickStep(i) {
+  const q = G.q, n = q.steps.length, st = q.steps[G.si], ok = st.ch[i] === st.ans;
+  G.pick = i; G.lock = true; G.sres[G.si] = ok;
+  const think = (now() - Math.max(G.sStart || 0, G.startAt)) / 1000, quick = Math.min(1, think / (G.si === 0 ? READ_SEC * q.w : 1.2));
+  const last = G.si === n - 1;
+  if (ok) {
+    G.combo++; G.missRun = 0; if (G.combo > G.maxCombo) G.maxCombo = G.combo;
+    const half = (G.hint ? 0.5 : 1) * quick, all = last && G.sres.every(Boolean);
+    let pts = Math.round(15 * q.w * mult() * half), sec = bonusSec(q.w, G.ok) / n * half;
+    if (all) { pts += Math.round(15 * q.w * mult() * (G.hint ? 0.5 : 1)); G.ok++; }
+    G.score += pts; G.stepOk = (G.stepOk || 0) + 1;
+    addTime(Math.round((sec + (G.combo % 5 === 0 ? COMBO_BONUS : 0)) * 10) / 10, all ? "完答！" : G.combo % 5 === 0 ? `${G.combo} コンボ！` : quick < 1 ? "早おし" : "");
+  } else {
+    G.combo = 0; G.miss++; G.missRun++;
+    const k = Math.min(3, G.missRun); addTime(-STEP_PENALTY * k, k > 1 ? "連続ミス" : "");
+  }
+  drawQ(); pushScore();
+  setTimeout(() => {
+    if (!G || G.over) return;
+    if (!last) { G.si++; G.pick = -1; G.lock = false; G.sStart = now(); drawQ(); return; }
+    G.log.push({ q, ok: G.sres.every(Boolean), pick: "", hint: G.hint, trail: stepTrail(q) });
+    nextQ(); drawQ();
+  }, ok ? 320 : STEP_WRONG_WAIT);
 }
 function hintHTML(q) {
   const fo = formulaOf(q.key), extra = q.hint ? [].concat(q.hint)[0] : "";
@@ -7435,6 +7488,7 @@ function hintHTML(q) {
 function useHint() { if (!G || G.over || G.hint || G.pick >= 0 || now() < G.startAt) return; G.hint = true; drawQ(); }
 function pickChoice(i) {
   const q = G.q; if (!G || G.lock || G.over || now() < G.startAt) return;
+  if (q.steps) return pickStep(i);
   G.pick = i; G.lock = true;
   G.log.push({ q, pick: q.ch[i], ok: q.ch[i] === q.ans, hint: G.hint });
   if (q.ch[i] === q.ans) {
@@ -7467,7 +7521,7 @@ function runClock(c, onEnd) {
     const t = now();
     if (t < G.startAt) { drawQ(); return; }
     if (wasCount) { wasCount = false; drawQ(); }
-    if (t >= G.endAt && !G.over) { if (G.pick < 0 && G.q) G.log.push({ q: G.q, pick: null, ok: false }); G.over = true; G.played = Math.round((t - G.startAt) / 1000); clearInterval(stop); onEnd(); return; }
+    if (t >= G.endAt && !G.over) { if (G.q && G.q.steps) G.log.push({ q: G.q, pick: null, ok: false, trail: stepTrail(G.q) }); else if (G.pick < 0 && G.q) G.log.push({ q: G.q, pick: null, ok: false }); G.over = true; G.played = Math.round((t - G.startAt) / 1000); clearInterval(stop); onEnd(); return; }
     drawHud();
   });
   drawQ();
@@ -7510,12 +7564,13 @@ function reviewBox(log) {
     log.forEach((x, n) => {
       if (filter === "ng" && x.ok) return;
       const q = x.q, target = q.link && SIMS.find(d => d.id === q.link);
-      const res = x.ok ? `<b class="okc">○ 正解</b>` : x.pick == null ? `<b class="ngc">− 時間切れ</b>` : `<b class="ngc">× あなた：${x.pick}</b>`;
+      const res = x.trail ? (x.ok ? `<b class="okc">○ 完答</b>` : `<b class="ngc">${x.trail.filter(t => t.ok).length} / ${x.trail.length} ステップ</b>`) : x.ok ? `<b class="okc">○ 正解</b>` : x.pick == null ? `<b class="ngc">− 時間切れ</b>` : `<b class="ngc">× あなた：${x.pick}</b>`;
       list.appendChild(h("div", { class: "rvitem" + (x.ok ? " ok" : " ng") },
         h("div", { class: "rvhead", html: `<span class="rvn">${n + 1}</span><span class="pill">${q.cat}</span><span class="stars">${"★".repeat(q.w)}</span>${x.hint ? `<span class="pill">💡 公式を使った</span>` : ""}` }),
         h("div", { class: "rvq", html: q.q }),
         q.fig ? h("div", { class: "gfig", html: q.fig }) : null,
         h("div", { class: "rvans", html: `${res}　正解：<b>${q.ans}</b>` }),
+        x.trail ? h("ol", { class: "rvtrail", html: x.trail.map(t => `<li class="${t.ok ? "ok" : t.ok === false ? "ng" : "na"}"><span>${t.ask}</span><b>${t.ans}</b><i>${t.ok ? "✓" : t.ok === false ? "✕" : "−"}</i></li>`).join("") }) : null,
         q.ex ? h("div", { class: "rvex", html: `<b>解説</b>${q.ex}` }) : null,
         (() => { const fo = formulaOf(q.key); return fo ? h("div", { class: "rvfo", html: `📐 ${fo[0]}：${fo[1]}` }) : null; })(),
         target ? h("a", { class: "btn", href: "#" + target.id, target: "_blank", rel: "noopener" }, target.cat === "unit" ? `📖 授業「${target.name}」で復習 ↗` : `🔍「${target.name}」で確かめる ↗`) : null));
@@ -7530,7 +7585,7 @@ function reviewBox(log) {
 /* ---------- ゲームのトップ ---------- */
 sim({
   id: "game", cat: "game", name: "ゲームのトップ", sub: "じっくりチャレンジ・タイムアタック・クラス対戦",
-  point: "<ul><li><b>🧗 じっくりチャレンジ</b>（おすすめ）：1 問ずつ 考える時間があり、答えると すぐ解説。❤ 3 つが なくなるまで どこまで進めるか。5 問連続正解で ❤ が もどる。</li><li><b>⏱ タイムアタック</b>：時間がなくなるまでに 何問とけるか。計算の はやさを きたえる。</li><li><b>🏆 クラス対戦</b>：先生の画面に 1 問ずつ出る「クイズ大会」と、全員いっせいの「早とき」。</li><li>やるほど 🪙 コインがたまって 段位が上がります。</li></ul>",
+  point: "<ul><li><b>🧗 じっくりチャレンジ</b>（おすすめ）：1 問ずつ 考える時間があり、答えると すぐ解説。❤ 3 つが なくなるまで どこまで進めるか。5 問連続正解で ❤ が もどる。</li><li><b>⏱ タイムアタック</b>：時間がなくなるまでに 何問とけるか。<b>🪜 解き方ステップ</b>では 1 問を「考え方 → 式 → 計算」の 小さな 4 択に分けて、合うたびに 点数と時間が入る（まちがえても 正しい道すじで 続けられる）。</li><li><b>🏆 クラス対戦</b>：先生の画面に 1 問ずつ出る「クイズ大会」と、全員いっせいの「早とき」。</li><li>やるほど 🪙 コインがたまって 段位が上がります。</li></ul>",
   detail: "<p>点数は 正しさが いちばん大事です（正解なら 500 点以上、はやいと 最大 1000 点。むずかしい問題・連続正解で ふえる）。</p><p>クラス対戦は Google の無料データベース（Firebase Realtime Database）を使います。部屋の中身は 部屋番号を知っている人なら見られるので、ニックネームで参加させてください。</p>",
   build(c) {
     const box = c.html(), w = h("div", { class: "ghub" }), ta = taCfg(), cl = clCfg();
@@ -7550,8 +7605,11 @@ sim({
     /* ⏱ タイムアタック */
     const p1 = h("section", { class: "ghp" }, h("h3", {}, "⏱ タイムアタック"), h("p", { class: "note" }, "時間がなくなるまでに 何問とけるか。正解すると 時間がもどる。計算の はやさを きたえる"),
       h("details", { class: "flow" }, h("summary", {}, "📜 ルール"), h("div", { html: RULES_HTML })));
+    const segP = c.seg(null, [[true, "🪜 解き方ステップ"], [false, "答えだけ"]].map(([v, t]) => ({ v, t })), ta.m === "units" ? false : !!ta.st, v => setOne("ta", taCfg, "st", v), p1);
+    if (ta.m === "units") { segP.disable(true, true); p1.appendChild(h("p", { class: "note" }, "授業の類題は「答えだけ」です")); }
+    else p1.appendChild(h("p", { class: "note" }, ta.st ? "🪜 1 問を「考え方 → 式 → 計算」の 小さな 4 択に分けて、合うたびに 点数が入る" : "さいごの答えを 4 択で えらぶ"));
     const segT = c.seg(null, [[0, `おまかせ（${AUTO_T[ta.m]} 秒）`], [60, "60 秒"], [90, "90 秒"], [120, "120 秒"], [180, "180 秒"]].map(([v, t]) => ({ v, t })), +ta.t || 0, v => setOne("ta", taCfg, "t", v), p1);
-    p1.appendChild(h("div", { class: "rv go" }, h("button", { type: "button", class: "btn main big", onclick: () => { location.hash = "ta"; } }, "▶ スタート"), h("span", { class: "bestv" }, "ベスト ", h("b", {}, fmtN(RW.best[ta.m + "-" + (+ta.t || 0)] || 0)), " 点")));
+    p1.appendChild(h("div", { class: "rv go" }, h("button", { type: "button", class: "btn main big", onclick: () => { location.hash = "ta"; } }, "▶ スタート"), h("span", { class: "bestv" }, "ベスト ", h("b", {}, fmtN(RW.best[bestKey(ta)] || 0)), " 点")));
     w.appendChild(p1);
     /* 🏆 クラス対戦 */
     const p2 = h("section", { class: "ghp wide" }, h("h3", {}, "🏆 クラス対戦"), h("p", { class: "note" }, "先生の画面に 問題が出る。部屋番号と ニックネームを入れて 参加しよう"));
@@ -7565,12 +7623,12 @@ sim({
     w.appendChild(h("p", { class: "note", style: "grid-column:1/-1;text-align:center" }, "🐢 時間を気にせず 1 問ずつ練習するなら ", h("a", { href: "#quiz" }, "10 問クイズ")));
     w.appendChild(rewardsBox());
     c.out(`🪙 <span class="big hl">${fmtN(RW.coins)}</span>　段位 <span class="mt">${levelOf(RW.coins).name}</span>`);
-    [segM, segS, segT].forEach(sg => sg.el.classList.add("gseg"));
+    [segM, segS, segT, segP].forEach(sg => sg.el.classList.add("gseg"));
   },
 });
 
 /* ---------- ひとりで タイムアタック ---------- */
-const taCfg = () => { const o = Object.assign({ m: "all", t: 0 }, store.get("ta", {})); if (o.v !== 2) { o.t = 0; o.v = 2; } return o; };
+const taCfg = () => { const o = Object.assign({ m: "all", t: 0, st: true }, store.get("ta", {})); if (o.v !== 2) { o.t = 0; o.v = 2; } if (o.st == null) o.st = true; return o; };
 sim({
   id: "ta", cat: "game", name: "タイムアタック", sub: "時間がなくなるまでに 何点とれる？", lesson: true, keepHash: true, hidden: true,
   build(c) {
@@ -7582,7 +7640,7 @@ sim({
     runClock(c, endSolo);
     c.out(`⏱ <span class="mt">${cfgName(cfg)}</span>`);
     function endSolo() {
-      const key = G.cfg.m + "-" + (+G.cfg.t || 0), prev = RW.best[key] || 0, rec = G.score > prev;
+      const key = bestKey(G.cfg), prev = RW.best[key] || 0, rec = G.score > prev;
       if (rec) RW.best[key] = G.score;
       const coins = afterGame(); rwSave(); earn(coins);
       const text = `数学Aラボ ⏱タイムアタック（${cfgName(G.cfg)}）\n${fmtN(G.score)}点！ ${G.ok} 問正解（≒ ${ruler(G.ok)}）\n${G.played} 秒 生きのこり・最大 ${G.maxCombo} コンボ・段位「${levelOf(RW.coins).name}」\n${baseURL()}`;
@@ -7750,7 +7808,7 @@ sim({
     }
     function makeRoom(note) {
       note.textContent = "部屋をつくっています…";
-      const cfg = { m: taCfg().m || "all", t: 0, mode: "quiz", n: 10, sp: "n" };
+      const cfg = { m: taCfg().m || "all", t: 0, mode: "quiz", n: 10, sp: "n", st: true };
       const tryOne = n => {
         const cd = String(1000 + Math.floor(Math.random() * 9000));
         return api("GET", ROOM(cd)).then(v => {
@@ -7773,6 +7831,7 @@ sim({
         ${quiz ? `<div class="rv"><span class="fl">問題数</span>${seg("n", [[5, "5 問"], [10, "10 問"], [15, "15 問"]], cfg.n || 10, busy)}</div>
         <div class="rv"><span class="fl">考える</span>${seg("sp", [["s", "短め"], ["n", "ふつう"], ["l", "長め"]], cfg.sp || "n", busy)}</div>
         <p class="note" style="margin:0">考える時間：★ 40 秒・★★ 75 秒・★★★ 120 秒（ふつう）</p>` : `<div class="rv"><span class="fl">時間</span>${seg("t", [[0, "おまかせ"], [60, "60秒"], [90, "90秒"], [120, "120秒"], [180, "180秒"]], +cfg.t || 0, busy)}</div>
+        <div class="rv"><span class="fl">答え方</span>${seg("st", [[1, "🪜 解き方ステップ"], [0, "答えだけ"]], cfg.st === false || cfg.st === 0 ? 0 : 1, busy)}</div>
         <p class="note" style="margin:0">持ち時間 ${startT(cfg)} 秒。正解すると時間がもどるので、終わる時間は 人によってちがいます</p>`}</div>
         <div class="hbtns"><span class="ppl">👥 <b>${n}</b> 人</span><button type="button" class="btn main big" data-h="start"${busy ? " disabled" : ""}>${r.round ? "▶ 第" + (r.round + 1) + "回戦 スタート" : "▶ スタート"}</button></div>
         ${busy ? `<div class="hbtns sm"><button type="button" class="btn" data-h="stop">⏹ ここで結果発表</button></div>` : ""}<div class="hbtns sm"><button type="button" class="btn" data-h="copy">🔗 参加リンクをコピー</button><button type="button" class="btn" data-h="close">部屋を閉じる</button></div><div class="tnote" id="hnote" style="margin:0"></div>`;
@@ -7781,7 +7840,7 @@ sim({
     const seg = (key, opts, cur, dis) => `<div class="seg gseg">${opts.map(([v, t]) => `<button type="button" data-hc="${key}:${v}" aria-pressed="${String(cur) === String(v)}"${dis ? " disabled" : ""}>${t}</button>`).join("")}</div>`;
     c.on(box, "click", e => {
       const b = e.target.closest("button"); if (!b || b.disabled) return;
-      if (b.dataset.hc) { const [k, v] = b.dataset.hc.split(":"); api("PATCH", ROOM(code) + "/cfg", { [k]: k === "t" || k === "n" ? +v : v }).catch(() => { }); return; }
+      if (b.dataset.hc) { const [k, v] = b.dataset.hc.split(":"); api("PATCH", ROOM(code) + "/cfg", { [k]: k === "t" || k === "n" ? +v : k === "st" ? v === "1" : v }).catch(() => { }); return; }
       if (b.dataset.qh) { if (H.room) QH.action(H.room, b.dataset.qh); return; }
       if (b.dataset.tab) { H.tab = b.dataset.tab; QH.key = ""; drawBoard(); return; }
       if (b.dataset.h === "start") { const r = H.room; if (!r || r.state === "play" || r.state === "quiz") return; if (r.cfg.mode !== "race") { QH.start(r).catch(() => { }); return; } api("PATCH", ROOM(code), { kind: "race", state: "play", round: (r.round || 0) + 1, seed: Math.floor(Math.random() * 1e9), startAt: Math.round(now() + 5000) }).catch(() => { }); }
@@ -7983,7 +8042,7 @@ sim({
   build(c) {
     clear($("#text"));
     const box = c.html(), cfg = clCfg();
-    const qs = makeQs(cfg, Math.floor(Math.random() * 1e9), 80);
+    const qs = makeQs(Object.assign({}, cfg, { st: false }), Math.floor(Math.random() * 1e9), 80);
     const S = c.state = { i: -1, lives: 3, score: 0, streak: 0, best: 0, ok: 0, log: [], q: null, start: 0, lim: 0, answered: false, hint: false, pad: null };
     const wrap = h("div", { class: "climb" });
     box.appendChild(wrap);
@@ -8066,10 +8125,10 @@ sim({
    players/{pid}: { n, s, k(連続), c(最大連続), w(正解), m(まちがい), r(回), a: { r, i, c(えらんだ番号), t(秒) } } */
 function quizHost(code, H) {
   const QH = { qs: null, seedKey: "", prevRank: {}, rankAt: -1 };
-  const qsOf = r => { const k = r.seed + ":" + r.cfg.m + ":" + r.cfg.n; if (QH.seedKey !== k) { QH.seedKey = k; QH.qs = makeQs(r.cfg, r.seed, r.cfg.n || 10); } return QH.qs; };
+  const qsOf = r => { const k = r.seed + ":" + r.cfg.m + ":" + r.cfg.n; if (QH.seedKey !== k) { QH.seedKey = k; QH.qs = makeQs(Object.assign({}, r.cfg, { st: false }), r.seed, r.cfg.n || 10); } return QH.qs; };
   const answeredOf = r => playersOf(r).filter(p => p.a && p.a.r === r.round && p.a.i === r.qi);
   QH.start = r => {
-    const cfg = r.cfg, seed = Math.floor(Math.random() * 1e9), qs = makeQs(cfg, seed, cfg.n || 10), t0 = Math.round(now() + 4000);
+    const cfg = r.cfg, seed = Math.floor(Math.random() * 1e9), qs = makeQs(Object.assign({}, cfg, { st: false }), seed, cfg.n || 10), t0 = Math.round(now() + 4000);
     QH.prevRank = {};
     return api("PATCH", ROOM(code), { kind: "quiz", state: "quiz", round: (r.round || 0) + 1, seed, qi: 0, phase: "ask", qStart: t0, qEnd: t0 + qLimit(qs[0].w, cfg.sp) * 1000 });
   };
@@ -8131,7 +8190,7 @@ function quizHost(code, H) {
 /* ---------- 🏆 クラス対戦「クイズ大会」：生徒の画面 ---------- */
 function quizPlayer(c, box, code) {
   const QP = { qs: null, seedKey: "", round: 0, mine: {}, scored: {}, log: [], hint: false, sc: null, lastKey: "" };
-  const qsOf = r => { const k = r.seed + ":" + r.cfg.m + ":" + r.cfg.n; if (QP.seedKey !== k) { QP.seedKey = k; QP.qs = makeQs(r.cfg, r.seed, r.cfg.n || 10); } return QP.qs; };
+  const qsOf = r => { const k = r.seed + ":" + r.cfg.m + ":" + r.cfg.n; if (QP.seedKey !== k) { QP.seedKey = k; QP.qs = makeQs(Object.assign({}, r.cfg, { st: false }), r.seed, r.cfg.n || 10); } return QP.qs; };
   const me = () => ROOM(code) + "/players/" + pid();
   QP.update = r => {
     QP.room = r;
@@ -8225,6 +8284,145 @@ function quizPlayer(c, box, code) {
   };
   QP.tick = () => { if (QP.room && QP.room.state === "quiz" && QP.room.phase === "ask") draw(); };
   return QP;
+}
+</script>
+<script>
+"use strict";
+/* ===================== 🪜 解き方ステップ（タイムアタック用） =====================
+   1 問を「考え方 → 式 → 計算」の小さな 4 択に分ける。ステップが合うたびに 点数が入る。
+   それぞれ { q, fig, steps: [{ ask, ans, wrong: [...] }], ans（さいごの答え）, ex, link, cat } を返す */
+const stp = (ask, ans, wrong) => ({ ask, ans: String(ans), wrong: wrong.map(String) });
+/* 選択肢をつくる：答えと同じ・同じ見た目のものを のぞいて 4 つ */
+function stepChoices(st) {
+  const out = [st.ans];
+  st.wrong.forEach(w => { if (w && !out.some(o => o.replace(/<[^>]+>/g, "") === w.replace(/<[^>]+>/g, "")) && !(numOf(w) > 0 && numOf(w) === numOf(st.ans))) out.push(w); });
+  /* たりないとき：答えの中の数字を 少しずらす（「56 通り」→「57 通り」、「→ 3 個・↑ 3 個」→「→ 4 個・↑ 3 個」） */
+  const plain = t => t.replace(/<[^>]+>/g, "");
+  for (let d = 1; out.length < 4 && d < 40; d++) {
+    let t = null;
+    const m = st.ans.match(/^(\d+)(\s*\D*)$/);
+    if (m) t = nearWrong(m[1], d) + m[2];
+    else if (/\d/.test(st.ans)) { let k = 0; const which = (d - 1) % (st.ans.match(/\d+/g) || [1]).length; t = st.ans.replace(/\d+/g, x => k++ === which ? String(Math.max(1, +x + (d % 2 ? Math.ceil(d / 2) : -Math.ceil(d / 2)))) : x); }
+    else t = nearWrong(st.ans, d);
+    if (t && !out.some(o => plain(o) === plain(t))) out.push(t);
+  }
+  return shuffle(out.slice(0, 4));
+}
+const KIND4 = ["順列（ならべる）", "組合せ（えらぶだけ）", "円順列（まるくならべる）", "重複順列（同じものを何回も使える）"];
+const STEPGEN = {
+  perm() {
+    const n = 4 + rnd(5), r = 2 + rnd(2), a = nPr(n, r);
+    return { cat: "場合の数", q: `${n} 人から ${r} 人をえらんで、1列にならべる方法は何通り？`, ans: a + " 通り", link: "perm",
+      ex: `ならべる → 順列。${P(n, r)} = ${Array.from({ length: r }, (_, i) => n - i).join("×")} = ${a} 通り。`,
+      steps: [stp("どの考え方？", KIND4[0], KIND4.slice(1)), stp("式は？", P(n, r), [C(n, r), `${n}<sup>${r}</sup>`, `${n} × ${r}`]), stp("計算すると？", a + " 通り", [nCr(n, r) + " 通り", n ** r + " 通り", nPr(n, r - 1) + " 通り"])] };
+  },
+  comb() {
+    const n = 5 + rnd(5), r = 2 + rnd(2), a = nCr(n, r);
+    return { cat: "場合の数", q: `${n} 人の中から ${r} 人の係をえらぶ方法は何通り？`, ans: a + " 通り", link: "comb",
+      ex: `えらぶだけ → 組合せ。${C(n, r)} = ${P(n, r)} ÷ ${r}! = ${nPr(n, r)} ÷ ${fact(r)} = ${a} 通り。`,
+      steps: [stp("どの考え方？", KIND4[1], [KIND4[0], KIND4[2], KIND4[3]]), stp("式は？", `${P(n, r)} ÷ ${r}!`, [P(n, r), `${P(n, r)} × ${r}!`, `${n}<sup>${r}</sup> ÷ ${r}!`]), stp("計算すると？", a + " 通り", [nPr(n, r) + " 通り", nCr(n, r - 1) + " 通り", n * r + " 通り"])] };
+  },
+  circ() {
+    const n = 4 + rnd(4), a = fact(n - 1);
+    return { cat: "場合の数", q: `${n} 人がまるいテーブルにすわる方法は何通り？（回して同じものは1通り）`, ans: a + " 通り", link: "perm",
+      ex: `円順列：1 人を固定して のこり ${n - 1} 人をならべる。(${n}−1)! = ${a} 通り。`,
+      steps: [stp("どの考え方？", "1 人を固定して のこりをならべる", ["全員を 1 列にならべる", "全員を えらぶだけ", "1 人ずつ 2 通りずつ"]), stp("式は？", `(${n} − 1)!`, [`${n}!`, `${n}! ÷ 2`, `(${n} − 1)! ÷ 2`]), stp("計算すると？", a + " 通り", [fact(n) + " 通り", fact(n - 1) / 2 + " 通り", fact(n - 2) + " 通り"])] };
+  },
+  route() {
+    const w = 3 + rnd(3), hh = 2 + rnd(2), a = nCr(w + hh, w);
+    return { cat: "場合の数", q: `横 ${w} 区画・たて ${hh} 区画の碁盤の目の道で、左下から右上へ行く最短の道は何通り？`, ans: a + " 通り", link: "route", fig: figRoute(w, hh),
+      ex: `→ ${w} 個と ↑ ${hh} 個の ならべ方。全部で ${w + hh} 個のうち → の場所をえらぶ：${C(w + hh, w)} = ${a} 通り。`,
+      steps: [stp("最短の道は、→ と ↑ が何個ずつ？", `→ ${w} 個・↑ ${hh} 個`, [`→ ${hh} 個・↑ ${w} 個`, `→ ${w + 1} 個・↑ ${hh + 1} 個`, `→ ${w * hh} 個`]), stp("式は？", C(w + hh, w), [P(w + hh, w), `${w} × ${hh}`, `2<sup>${w + hh}</sup>`]), stp("計算すると？", a + " 通り", [w * hh + " 通り", nPr(w + hh, w) + " 通り", 2 ** (w + hh) + " 通り"])] };
+  },
+  tri() {
+    const n = 6 + rnd(5), a = nCr(n, 3);
+    return { cat: "場合の数", q: `円周上の ${n} 個の点から 3 点をえらんでできる三角形は何個？`, ans: a + " 個", link: "comb", fig: figTri(n),
+      ex: `3 点をえらべば 三角形が 1 つ決まる（順番は関係ない）。${C(n, 3)} = ${a} 個。`,
+      steps: [stp("三角形は 何で決まる？", "3 点のえらび方（順番なし）", ["3 点のならべ方（順番あり）", "2 点のえらび方", "辺の長さ"]), stp("式は？", C(n, 3), [P(n, 3), C(n, 2), `${n} × 3`]), stp("計算すると？", a + " 個", [nPr(n, 3) + " 個", nCr(n, 2) + " 個", n * 3 + " 個"])] };
+  },
+  dice() {
+    const L = [["和が 7", (a, b) => a + b === 7], ["和が 10 以上", (a, b) => a + b >= 10], ["同じ目", (a, b) => a === b], ["少なくとも1つが 6", (a, b) => a === 6 || b === 6], ["積が偶数", (a, b) => a * b % 2 === 0], ["差が 2", (a, b) => Math.abs(a - b) === 2]];
+    const [t, f] = L[rnd(L.length)]; let k = 0; for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) if (f(a, b)) k++;
+    return { cat: "確率", q: `2つのサイコロをふる。${t}になる確率は？`, ans: fracStr(k, 36), link: "dice2",
+      ex: `全部で 6 × 6 = 36 通り（2 つのサイコロを 区別する）。${t}は ${k} 通り。${k}/36 = ${fracStr(k, 36)}。`,
+      steps: [stp("全部の出方は 何通り？", "36 通り", ["12 通り", "21 通り", "6 通り"]), stp(`${t}になるのは 何通り？`, k + " 通り", [k + 1 + " 通り", Math.max(1, k - 1) + " 通り", 36 - k + " 通り"]), stp("確率は？", fracStr(k, 36), [fracStr(36 - k, 36), fracStr(k, 21), fracStr(k + 1, 36)])] };
+  },
+  coin() {
+    const n = 3 + rnd(3), k = 1 + rnd(n - 1), num = nCr(n, k), den = 2 ** n;
+    return { cat: "確率", q: `コインを ${n} 回投げて、表がちょうど ${k} 回出る確率は？`, ans: fracStr(num, den), link: "binom",
+      ex: `表が出る ${k} 回を えらぶ：${C(n, k)} = ${num} 通り。1 つの ならびの確率は (1/2)<sup>${n}</sup> = 1/${den}。${num} × 1/${den} = ${fracStr(num, den)}。`,
+      steps: [stp(`表が出る ${k} 回の えらび方は？`, `${C(n, k)} = ${num} 通り`, [`${P(n, k)} = ${nPr(n, k)} 通り`, `${k} 通り`, `${n} 通り`]), stp("1 つの ならびの 確率は？", `(1/2)<sup>${n}</sup> = 1/${den}`, [`(1/2)<sup>${k}</sup> = 1/${2 ** k}`, "1/2", `${k}/${n}`]), stp("確率は？", fracStr(num, den), [fracStr(1, den), fracStr(k, n), fracStr(num, 2 ** k)])] };
+  },
+  atleast() {
+    const n = 2 + rnd(3), d = 2 ** n;
+    return { cat: "確率", q: `コインを ${n} 回投げて、少なくとも1回は表が出る確率は？`, ans: fracStr(d - 1, d), link: "dice2",
+      ex: `「少なくとも 1 回」は 余事象（全部うら）を使う。全部うら = (1/2)<sup>${n}</sup> = 1/${d}。1 − 1/${d} = ${fracStr(d - 1, d)}。`,
+      steps: [stp("どう考える？", "1 −（全部うらの確率）", ["表 1 回の確率 × " + n, "表の確率を 全部たす", "1/2 のまま"]), stp("全部うらの確率は？", `1/${d}`, ["1/2", `1/${n}`, `1/${2 * n}`]), stp("答えは？", fracStr(d - 1, d), [fracStr(1, d), "1/2", fracStr(n, d)])] };
+  },
+  divisors() {
+    const Ls = [12, 18, 24, 36, 48, 60, 72, 90, 96, 100, 120, 144, 180, 200], N = Ls[rnd(Ls.length)], f = factorize(N), a = f.reduce((t, [, e]) => t * (e + 1), 1);
+    const fs2 = ff => ff.map(([p, e]) => e > 1 ? `${p}<sup>${e}</sup>` : String(p)).join(" × ");
+    const bad1 = fs2(f.map(([p, e], i) => [p, i === 0 ? e + 1 : e])), bad2 = fs2(f.map(([p, e], i) => [p, i === f.length - 1 ? Math.max(1, e - 1) : e])) + (f.length === 1 ? " × 3" : ""), bad3 = fs2(f.map(([p, e]) => [p, 1]));
+    return { cat: "整数", q: `${N} の正の約数は何個？`, ans: a + " 個", link: "factor",
+      ex: `${N} = ${fs2(f)}。約数の個数は 指数に 1 をたして かける：${f.map(([, e]) => `(${e}+1)`).join("×")} = ${a} 個。`,
+      steps: [stp(`${N} を素因数分解すると？`, fs2(f), [bad1, bad2, bad3]), stp("約数の個数の 式は？", f.map(([, e]) => `(${e}+1)`).join(" × "), [f.map(([, e]) => e).join(" × "), f.map(([, e]) => `(${e}+1)`).join(" + "), f.map(([p]) => p).join(" × ")]), stp("何個？", a + " 個", [f.reduce((t, [, e]) => t * e, 1) + " 個", a - 1 + " 個", a + 2 + " 個"])] };
+  },
+  gcdq() {
+    const g = 3 + rnd(10), x = 3 + rnd(6); let y = 2 + rnd(x - 2); while (gcd(x, y) !== 1) y = 2 + rnd(x - 2);
+    const a = g * x, b = g * y, q1 = Math.floor(a / b), r1 = a % b;
+    return { cat: "整数", q: `${a} と ${b} の最大公約数は？（互除法）`, ans: String(g), link: "euclid",
+      ex: `${a} = ${b} × ${q1} + ${r1} → gcd(${a}, ${b}) = gcd(${b}, ${r1})。これを くり返すと ${g}。`,
+      steps: [stp(`${a} ÷ ${b} の 余りは？`, r1, [q1, r1 + g, b - r1]), stp(`gcd(${a}, ${b}) = gcd(${b}, □)。□ は？`, r1, [q1, a - b * 2 > 0 ? a - b * 2 : r1 + 1, a]), stp("最大公約数は？", g, [lcm(a, b), g * 2, r1])] };
+  },
+  bin() {
+    const v = 5 + rnd(27), s2 = v.toString(2), L2 = s2.length, terms = s2.split("").map((d, i) => d === "1" ? 2 ** (L2 - 1 - i) : 0).filter(Boolean);
+    return { cat: "整数", q: `2 進法の ${s2}<sub>(2)</sub> を 10 進法で表すと？`, ans: String(v), link: "base",
+      ex: `位の重みは 右から 1, 2, 4, 8, 16…。${s2.split("").map((d, i) => `${d}×${2 ** (L2 - 1 - i)}`).join(" + ")} = ${v}。`,
+      steps: [stp("いちばん左の位の 重みは？", 2 ** (L2 - 1), [2 ** L2, L2, 10 ** (L2 - 1)]), stp("1 の位の重みを たす式は？", terms.join(" + "), [terms.map(t => t * 2).join(" + "), s2.split("").map((d, i) => d === "1" ? L2 - i : 0).filter(Boolean).join(" + "), terms.slice(1).join(" + ") || "0"]), stp("10 進法で？", v, [v + 1, v - 1, v * 2])] };
+  },
+  angle() {
+    const x = 20 + rnd(14) * 5;
+    return { cat: "図形", q: `円の中心角が ${2 * x}° のとき、同じ弧に対する円周角は？`, ans: x + "°", link: "inscribed", fig: figAngle(x),
+      ex: `円周角の定理：円周角 = 中心角 ÷ 2。${2 * x}° ÷ 2 = ${x}°。`,
+      steps: [stp("使う きまりは？", "円周角 = 中心角 ÷ 2", ["円周角 = 中心角", "円周角 = 180° − 中心角", "円周角 = 中心角 × 2"]), stp("円周角は？", x + "°", [2 * x + "°", 180 - 2 * x > 0 ? (180 - 2 * x) + "°" : (x + 10) + "°", (x + 5) + "°"])] };
+  },
+  quad() {
+    const x = 60 + rnd(14) * 5;
+    return { cat: "図形", q: `円に内接する四角形 ABCD で ∠A = ${x}° のとき、∠C は？`, ans: (180 - x) + "°", link: "inscribed", fig: figQuad(x),
+      ex: `円に内接する四角形は 向かい合う角の和が 180°。∠C = 180° − ${x}° = ${180 - x}°。`,
+      steps: [stp("使う きまりは？", "向かい合う角の和 = 180°", ["向かい合う角は 等しい", "向かい合う角の和 = 360°", "となりの角の和 = 180°"]), stp("∠C は？", (180 - x) + "°", [x + "°", (360 - x) + "°", (90 - x / 2) + "°"])] };
+  },
+  power() {
+    const L = [[3, 8, 4, 6], [2, 9, 3, 6], [4, 6, 3, 8], [2, 12, 4, 6], [3, 10, 5, 6], [4, 9, 6, 6]], [a, b, cc, d] = L[rnd(L.length)];
+    return { cat: "図形", q: `点 P を通る2本の直線が円と A・B、C・D で交わる。PA = ${a}、PB = ${b}、PC = ${cc} のとき PD は？`, ans: String(d), link: "power", fig: figPower(a, b, cc),
+      ex: `方べきの定理：PA × PB = PC × PD → ${a} × ${b} = ${cc} × PD → PD = ${a * b} ÷ ${cc} = ${d}。`,
+      steps: [stp("使う式は？", "PA × PB = PC × PD", ["PA + PB = PC + PD", "PA × PC = PB × PD", "PA : PB = PD : PC"]), stp("PA × PB は？", a * b, [a + b, a * b + cc, b * cc]), stp("PD は？", d, [a + b - cc, d + 2, cc + 1])] };
+  },
+  bis() {
+    const L = [[6, 4, 5], [8, 4, 6], [9, 6, 10], [6, 3, 6], [10, 6, 8]], [ab, ac, bc] = L[rnd(L.length)], bd = bc * ab / (ab + ac), s1 = Number.isInteger(bd) ? String(bd) : fracStr(bc * ab, ab + ac);
+    const g0 = gcd(ab, ac);
+    return { cat: "図形", q: `△ABC で AB = ${ab}、AC = ${ac}、BC = ${bc}。∠A の二等分線と BC の交点を D とするとき BD は？`, ans: s1, link: "bisector", fig: figBis(ab, ac, bc),
+      ex: `角の二等分線：BD : DC = AB : AC = ${ab} : ${ac}。BD = ${bc} × ${ab}/(${ab}+${ac}) = ${s1}。`,
+      steps: [stp("BD : DC は？", `${ab / g0} : ${ac / g0}`, [`${ac / g0} : ${ab / g0}`, "1 : 1", `${ab} : ${bc}`]), stp("BD は？", s1, [fracStr(bc * ac, ab + ac), String(bc / 2), String(ab - ac)])] };
+  },
+  poly() {
+    const L = [["正四面体", 4, 6, 4, "正三角形"], ["立方体", 8, 12, 6, "正方形"], ["正八面体", 6, 12, 8, "正三角形"], ["正十二面体", 20, 30, 12, "正五角形"], ["正二十面体", 12, 30, 20, "正三角形"]];
+    const [t, v, e, f, sh] = L[rnd(L.length)], ask = rnd(3), nm = ["頂点", "辺", "面"][ask], a = [v, e, f][ask];
+    return { cat: "図形", q: `${t}の${nm}の数は？`, ans: String(a), link: "poly", fig: figPoly(t),
+      ex: `${t}：面は ${sh} が ${f} 枚、頂点 ${v}、辺 ${e}。頂点 − 辺 + 面 = ${v} − ${e} + ${f} = 2。`,
+      steps: [stp("面の形は？", sh, ["正三角形", "正方形", "正五角形", "正六角形"].filter(x => x !== sh)), stp(`${nm}の数は？`, a, [[v, e, f][(ask + 1) % 3], [v, e, f][(ask + 2) % 3], a + 2])] };
+  },
+  centroid() {
+    const m = 3 * (2 + rnd(6));
+    return { cat: "図形", q: `△ABC の中線 AM の長さが ${m} のとき、頂点 A から重心 G までの長さ AG は？`, ans: String(m * 2 / 3), link: "centers", fig: figCentroid(m),
+      ex: `重心は中線を 頂点から 2 : 1 に分ける。AG = ${m} × 2/3 = ${m * 2 / 3}。`,
+      steps: [stp("AG : GM は？", "2 : 1", ["1 : 1", "1 : 2", "3 : 1"]), stp("AG は？", m * 2 / 3, [m / 3, m / 2, m])] };
+  },
+};
+/* ステップの問題を ゲーム用に（選択肢をまぜる） */
+function stepQ(key) {
+  const g = STEPGEN[key]();
+  return Object.assign({ key }, g, { steps: g.steps.map(st => Object.assign({}, st, { ch: stepChoices(st) })) });
 }
 </script>
 <script>
