@@ -7455,11 +7455,13 @@ function makeQs(cfg, seed, n = 90) {
       const ids = Object.keys(VARIANTS);
       for (let i = 0; i < n; i++) { const id = ids[Math.floor(R() * ids.length)], v = VARIANTS[id](); out.push({ q: v.problem, ch: shuffle(v.choices.slice()), ans: v.choices[0], cat: unitName(id), w: QDIFF[id] || 2, key: id, fig: v.fig || "", hint: v.hint, ex: v.more || "", link: id }); }
     } else {
-      const gens = GCATS[cfg.m] || Object.keys(QGEN); let bag = [];
+      const gens = GCATS[cfg.m] || [].concat(GCATS.cnt, GCATS.prob, GCATS.geo, GCATS.int); let bag = [];
       for (let i = 0; i < n; i++) {
         if (!bag.length) bag = shuffle(gens.slice());
         const key = bag.pop();
         if (cfg.st && STEPGEN[key]) { const sq = stepQ(key); out.push(Object.assign(sq, { w: QDIFF[key] || 1 })); continue; }
+        /* 「解き方ステップ」にしかない型を 答えだけモードで出すとき：さいごのステップの 選択肢を使う */
+        if (!QGEN[key]) { const sq = stepQ(key), last = sq.steps[sq.steps.length - 1]; out.push({ q: sq.q, ch: last.ch.slice(), ans: last.ans, cat: sq.cat, w: QDIFF[key] || 1, key, fig: sq.fig || "", ex: sq.ex || "", link: sq.link || "" }); continue; }
         const g = QGEN[key](), ans = String(g.ans);
         out.push({ q: g.q, ch: shuffle(distinct(g.ans, g.wrong.map(w => typeof w === "number" && !Number.isInteger(w) ? String(+w.toFixed(2)) : w))), ans, cat: g.cat, w: QDIFF[key] || 1, key, fig: g.fig || "", ex: g.ex || "", link: g.link || "" });
       }
@@ -8555,6 +8557,212 @@ function stepQ(key) {
   const g = STEPGEN[key]();
   return Object.assign({ key }, g, { steps: g.steps.map(st => Object.assign({}, st, { ch: stepChoices(st) })) });
 }
+</script>
+<script>
+"use strict";
+/* ===================== 🪜 解き方ステップ：問題のバリエーション =====================
+   ① いままでの型に「場面」を足す（順列：人・役・数字カード・本、組合せ：係・トッピング・チーム・線分 など）
+   ② 新しい型を足す（となり合う・両はし・重複順列・同じものをふくむ順列・ベン図・余事象の個数・玉の確率・
+      条件付き確率・独立な試行・接線の方べき・直径と円周角・約数の和・最小公倍数・2 進法へ） */
+const pickOne = a => a[rnd(a.length)];
+const tsu = (v, u = "通り") => `${v} ${u}`;
+/* 「… = 6 通り」のように さいごの数が 答えと同じになる まちがい選択肢は のぞく（正解が 2 つに見えるので） */
+const tail = t => (String(t).match(/(\d+)\s*(通り|個|人分)?$/) || [])[1];
+const diffEnd = (ans, ws) => ws.filter(w => w && tail(w) !== tail(ans));
+
+/* ---------- 順列：場面いろいろ ---------- */
+STEPGEN.perm = () => {
+  const kind = rnd(4);
+  let n, r, q, who, unit = "通り";
+  if (kind === 1) { n = 4 + rnd(4); r = 2 + rnd(2); const roles = ["委員長", "副委員長", "書記"].slice(0, r); q = `${n} 人の中から ${roles.join("・")} を 1 人ずつ えらぶ方法は何通り？`; who = `${n} 人から ${r} 人を（役つきで）ならべる`; }
+  else if (kind === 2) { n = 4 + rnd(4); r = 2 + rnd(2); q = `1 〜 ${n} の数字カード ${n} 枚から ${r} 枚をならべて、${r} けたの整数をつくる。何通り？`; who = `${n} 枚から ${r} 枚を ならべる`; }
+  else if (kind === 3) { n = 5 + rnd(4); r = 2 + rnd(2); q = `ちがう本 ${n} 冊から ${r} 冊をえらんで、本だなに 1 列にならべる方法は何通り？`; who = `${n} 冊から ${r} 冊を ならべる`; }
+  else { n = 4 + rnd(5); r = 2 + rnd(2); q = `${n} 人から ${r} 人をえらんで、1列にならべる方法は何通り？`; who = `${n} 人から ${r} 人を ならべる`; }
+  const a = nPr(n, r);
+  return { cat: "場合の数", q, ans: tsu(a, unit), link: "perm",
+    ex: `${kind === 1 ? "役がちがう → ならべるのと同じ。" : "ならべる → 順列。"}${P(n, r)} = ${Array.from({ length: r }, (_, i) => n - i).join("×")} = ${a} 通り。`,
+    steps: [stp("どの考え方？", KIND4[0], KIND4.slice(1)), stp(`${who} 式は？`, P(n, r), [C(n, r), `${n}<sup>${r}</sup>`, `${n} × ${r}`]), stp(`${P(n, r)} を 計算すると？`, tsu(a), [tsu(nCr(n, r)), tsu(n ** r), tsu(nPr(n, r - 1))])] };
+};
+/* ---------- 組合せ：場面いろいろ ---------- */
+STEPGEN.comb = () => {
+  const kind = rnd(5);
+  let n, r, q, who, unit = "通り";
+  if (kind === 1) { n = 5 + rnd(4); r = 2 + rnd(2); q = `${n} 種類のトッピングから ${r} 種類をえらぶ方法は何通り？`; who = `${n} 種類から ${r} 種類を えらぶ`; }
+  else if (kind === 2) { n = 6 + rnd(4); r = 3 + rnd(2); q = `${n} 人の中から ${r} 人のチームをつくる方法は何通り？`; who = `${n} 人から ${r} 人を えらぶ`; }
+  else if (kind === 3) { n = 5 + rnd(5); r = 2; unit = "本"; q = `円周上の ${n} 個の点のうち 2 点を結んでできる 線分は何本？`; who = `${n} 個の点から 2 点を えらぶ`; }
+  else if (kind === 4) { n = 6 + rnd(4); r = 2 + rnd(2); q = `${n} 枚のちがうカードから ${r} 枚をえらぶ方法は何通り？`; who = `${n} 枚から ${r} 枚を えらぶ`; }
+  else { n = 5 + rnd(5); r = 2 + rnd(2); q = `${n} 人の中から ${r} 人の係をえらぶ方法は何通り？`; who = `${n} 人から ${r} 人を えらぶ`; }
+  const a = nCr(n, r);
+  return { cat: "場合の数", q, ans: tsu(a, unit), link: "comb",
+    ex: `${kind === 3 ? "線分は 2 点のえらび方で決まる（順番なし）。" : "えらぶだけ → 組合せ。"}${C(n, r)} = ${P(n, r)} ÷ ${r}! = ${nPr(n, r)} ÷ ${fact(r)} = ${a} ${unit}。`,
+    steps: [stp("どの考え方？", KIND4[1], [KIND4[0], KIND4[2], KIND4[3]]), stp(`${who} 式は？`, `${P(n, r)} ÷ ${r}!`, [P(n, r), `${P(n, r)} × ${r}!`, `${n}<sup>${r}</sup> ÷ ${r}!`]), stp(`${P(n, r)} ÷ ${r}! を 計算すると？`, tsu(a, unit), [tsu(nPr(n, r), unit), tsu(nCr(n, r - 1) || n + 1, unit), tsu(n * r, unit)])] };
+};
+/* ---------- 円順列：場面いろいろ ---------- */
+STEPGEN.circ = () => {
+  const n = 4 + rnd(4), a = fact(n - 1), kind = rnd(3);
+  const q = [`${n} 人がまるいテーブルにすわる方法は何通り？（回して同じものは1通り）`, `${n} 人が 手をつないで 輪をつくる方法は何通り？（回して同じものは1通り）`, `${n} 色のちがう玉を 円形のお皿のふちに ならべる方法は何通り？（回して同じものは1通り）`][kind];
+  const who = [`${n} 人`, `${n} 人`, `${n} 色の玉`][kind];
+  return { cat: "場合の数", q, ans: tsu(a), link: "perm",
+    ex: `円順列：1 つを固定して のこり ${n - 1} 個をならべる。(${n}−1)! = ${a} 通り。`,
+    steps: [stp("どの考え方？", "1 つを固定して のこりをならべる", ["全部を 1 列にならべる", "全部を えらぶだけ", "1 つずつ 2 通りずつ"]), stp(`${who}の 円順列の 式は？`, `(${n} − 1)!`, [`${n}!`, `${n}! ÷ 2`, `(${n} − 1)! ÷ 2`]), stp(`(${n} − 1)! を 計算すると？`, tsu(a), [tsu(fact(n)), tsu(fact(n - 1) / 2), tsu(fact(n - 2))])] };
+};
+/* ---------- 三角形・四角形の数 ---------- */
+const triOld = STEPGEN.tri;
+STEPGEN.tri = () => {
+  if (rnd(2)) return triOld();
+  const n = 6 + rnd(4), a = nCr(n, 4);
+  return { cat: "場合の数", q: `円周上の ${n} 個の点から 4 点をえらんでできる四角形は何個？`, ans: tsu(a, "個"), link: "comb", fig: figTri(n),
+    ex: `円周上の 4 点をえらべば 四角形が 1 つ決まる（順番は関係ない）。${C(n, 4)} = ${a} 個。`,
+    steps: [stp("四角形は 何で決まる？", "4 点のえらび方（順番なし）", ["4 点のならべ方（順番あり）", "3 点のえらび方", "辺の長さ"]), stp(`${n} 個の点から 4 点を えらぶ 式は？`, C(n, 4), [P(n, 4), C(n, 3), `${n} × 4`]), stp(`${C(n, 4)} を 計算すると？`, tsu(a, "個"), [tsu(nPr(n, 4), "個"), tsu(nCr(n, 3), "個"), tsu(n * 4, "個")])] };
+};
+
+/* ---------- 新しい型 ---------- */
+Object.assign(STEPGEN, {
+  adj() {
+    const n = 4 + rnd(3), a = fact(n - 1) * 2;
+    return { cat: "場合の数", q: `A・B をふくむ ${n} 人が 1 列にならぶ。A と B が となり合う ならび方は何通り？`, ans: tsu(a), link: "u-perm",
+      ex: `A と B を ひとかたまりにすると ${n - 1} 人分をならべる：(${n}−1)! = ${fact(n - 1)}。かたまりの中は AB・BA の 2 通り。${fact(n - 1)} × 2 = ${a} 通り。`,
+      steps: [stp("どう考える？", "A と B を ひとかたまりにする", ["A と B を 両はしにおく", "全体から A と B を のぞく", "A と B を 先に えらぶ"]),
+        stp("かたまりを 1 人と考えると、何人分を ならべる？", `${n - 1} 人分`, [`${n} 人分`, `${n - 2} 人分`, `${n + 1} 人分`]),
+        stp("かたまりの中（A と B）の ならび方は？", "2 通り（AB・BA）", ["1 通り", "3 通り", "4 通り"]),
+        stp(`${n - 1}! × 2 を 計算すると？`, tsu(a), [tsu(fact(n - 1)), tsu(fact(n)), tsu(fact(n) * 2)])] };
+  },
+  ends() {
+    const g = 2 + rnd(2), b = 2 + rnd(2), n = g + b, e = nPr(g, 2), m = fact(n - 2), a = e * m;
+    return { cat: "場合の数", q: `女子 ${g} 人・男子 ${b} 人が 1 列にならぶ。両はしが 女子になる ならび方は何通り？`, ans: tsu(a), link: "u-perm",
+      ex: `条件のある 両はしから 先に決める：女子 ${g} 人から 2 人をならべる ${P(g, 2)} = ${e} 通り。まん中は のこり ${n - 2} 人：${n - 2}! = ${m} 通り。${e} × ${m} = ${a} 通り。`,
+      steps: [stp("先に 決めるのは？", "両はし（条件のある場所）", ["まん中", "男子のならび", "全体のならび"]),
+        stp(`両はしに 女子 ${g} 人から 2 人を ならべる方法は？`, `${P(g, 2)} = ${e} 通り`, diffEnd(`${e} 通り`, [`${C(g, 2)} = ${nCr(g, 2)} 通り`, `${g} 通り`, "1 通り", `${g}! × 2 = ${fact(g) * 2} 通り`, `${g * g} 通り`])),
+        stp(`のこり ${n - 2} 人を まん中に ならべる方法は？`, `${n - 2}! = ${m} 通り`, diffEnd(`${m} 通り`, [`${n}! = ${fact(n)} 通り`, `${b}! = ${fact(b)} 通り`, `${n - 2} 通り`, `${n - 1}! = ${fact(n - 1)} 通り`])),
+        stp(`${e} × ${m} ＝ ？`, tsu(a), [tsu(e + m), tsu(fact(n)), tsu(a / 2)])] };
+  },
+  rep() {
+    const kind = rnd(3);
+    let m, n, q, who;
+    if (kind === 0) { n = 3 + rnd(3); m = 2; q = `${n} 人が A・B の 2 つの部屋に 入る方法は何通り？（だれも入らない部屋があってもよい）`; who = `${n} 人が それぞれ ${m} 通り`; }
+    else if (kind === 1) { n = 3 + rnd(4); m = 2; q = `○ か × で答える問題が ${n} 問ある。答え方は何通り？`; who = `${n} 問が それぞれ ${m} 通り`; }
+    else { n = 2 + rnd(3); m = 3; q = `1・2・3 の数字を 何回使ってもよいとして、${n} けたの整数をつくる。何通り？`; who = `${n} けたが それぞれ ${m} 通り`; }
+    const a = m ** n;
+    return { cat: "場合の数", q, ans: tsu(a), link: "u-perm",
+      ex: `同じものを何回も使える → 重複順列。${who}なので ${m}<sup>${n}</sup> = ${a} 通り。`,
+      steps: [stp("どの考え方？", KIND4[3], KIND4.slice(0, 3)), stp(`${who}。式は？`, `${m}<sup>${n}</sup>`, [m !== n ? `${n}<sup>${m}</sup>` : null, `${m} × ${n}`, P(Math.max(m, n), Math.min(m, n)), `${m} + ${n}`, C(Math.max(m, n) + 1, Math.min(m, n))].filter(Boolean)), stp(`${m}<sup>${n}</sup> を 計算すると？`, tsu(a), [tsu(n ** m), tsu(m * n), tsu(a / m)])] };
+  },
+  same() {
+    const sets = [[2, 3], [2, 2], [3, 2], [2, 4], [3, 3], [1, 2, 2], [2, 2, 1], [1, 1, 3]], cnt = pickOne(sets), L = ["A", "B", "C"];
+    const n = cnt.reduce((x, y) => x + y, 0), word = cnt.map((c2, i) => Array(c2).fill(L[i]).join("・")).join("・"), big = Math.max(...cnt), den = cnt.filter(c2 => c2 > 1).map(c2 => `${c2}!`).join(" × "), a = fact(n) / cnt.reduce((x, c2) => x * fact(c2), 1);
+    return { cat: "場合の数", q: `${word} の ${n} 文字を 1 列にならべる方法は何通り？`, ans: tsu(a), link: "u-comb",
+      ex: `全部ちがうとみると ${n}! 通り。同じ文字どうしの入れかえ（${den}）は 同じならびなので わる：${n}! ÷ (${den}) = ${a} 通り。`,
+      steps: [stp("どう考える？", "全部のならべ方 ÷ 同じ文字の入れかえ", ["全部のならべ方 そのまま", "同じ文字の数を かける", "文字の種類の数だけ"]),
+        stp("式は？", `${n}! ÷ (${den})`, [`${n}!`, `${n}! ÷ ${big}!`, `${n}! × ${den}`]), stp(`${n}! ÷ (${den}) を 計算すると？`, tsu(a), [tsu(fact(n)), tsu(fact(n) / fact(big)), tsu(a * 2)])] };
+  },
+  setor() {
+    const [a, b] = pickOne([[2, 3], [2, 5], [3, 4], [3, 5], [4, 6], [2, 7], [3, 7], [4, 5]]), N = (4 + rnd(7)) * 10, L = lcm(a, b);
+    const na = Math.floor(N / a), nb = Math.floor(N / b), nab = Math.floor(N / L), ans = na + nb - nab;
+    return { cat: "場合の数", q: `1 から ${N} までの整数のうち、${a} または ${b} でわり切れる数は いくつ？`, ans: tsu(ans, "個"), link: "u-set",
+      ex: `${a} の倍数 ${na} 個、${b} の倍数 ${nb} 個。両方（${L} の倍数）${nab} 個は 2 回数えているので ひく：${na} + ${nb} − ${nab} = ${ans} 個。`,
+      steps: [stp(`${a} の倍数は いくつ？（${N} ÷ ${a}）`, tsu(na, "個"), [tsu(na + 1, "個"), tsu(nb, "個"), tsu(Math.floor(N / (a + 1)), "個")]),
+        stp(`${b} の倍数は いくつ？（${N} ÷ ${b}）`, tsu(nb, "個"), [tsu(nb + 1, "個"), tsu(na, "個"), tsu(Math.max(1, nb - 1), "個")]),
+        stp(`${a} でも ${b} でも わり切れる数（${L} の倍数）は？`, tsu(nab, "個"), [tsu(Math.floor(N / (a * b)) !== nab ? Math.floor(N / (a * b)) : nab + 1, "個"), tsu(nab + 2, "個"), tsu(Math.max(1, nab - 1), "個")]),
+        stp(`${na} + ${nb} − ${nab} ＝ ？`, tsu(ans, "個"), [tsu(na + nb, "個"), tsu(ans - nab, "個"), tsu(N - ans, "個")])] };
+  },
+  comp() {
+    const a = 3 + rnd(5), N = (5 + rnd(10)) * 10, na = Math.floor(N / a), ans = N - na;
+    return { cat: "場合の数", q: `1 から ${N} までの整数のうち、${a} の倍数で<b>ない</b>数は いくつ？`, ans: tsu(ans, "個"), link: "u-set",
+      ex: `「〜でない」は 全体からひく（補集合）。${a} の倍数は ${N} ÷ ${a} → ${na} 個。${N} − ${na} = ${ans} 個。`,
+      steps: [stp("どう考える？", "全体 − （" + a + " の倍数）", [a + " の倍数を数える", "全体 ÷ " + a, "全体 + " + a + " の倍数"]),
+        stp(`${a} の倍数は いくつ？`, tsu(na, "個"), [tsu(na + 1, "個"), tsu(Math.max(1, na - 1), "個"), tsu(ans, "個")]), stp(`${N} − ${na} ＝ ？`, tsu(ans, "個"), [tsu(na, "個"), tsu(ans + 1, "個"), tsu(ans - 1, "個")])] };
+  },
+  balls() {
+    const r = 3 + rnd(3), w = 2 + rnd(3), n = r + w, t = nCr(n, 2), s = nCr(r, 2);
+    return { cat: "確率", q: `赤玉 ${r} 個・白玉 ${w} 個が入った袋から、同時に 2 個とり出す。2 個とも赤の確率は？`, ans: fracStr(s, t), link: "u-prob",
+      ex: `同じ色の玉も 区別して数える。全部：${C(n, 2)} = ${t} 通り。赤 2 個：${C(r, 2)} = ${s} 通り。${s}/${t} = ${fracStr(s, t)}。`,
+      steps: [stp(`全部の とり出し方は？（${n} 個から 2 個）`, `${C(n, 2)} = ${t} 通り`, diffEnd(`${t} 通り`, [`${P(n, 2)} = ${nPr(n, 2)} 通り`, `${n} 通り`, `2 通り`, `${n * 2} 通り`])),
+        stp(`赤 2 個の とり出し方は？（赤 ${r} 個から 2 個）`, `${C(r, 2)} = ${s} 通り`, diffEnd(`${s} 通り`, [`${P(r, 2)} = ${nPr(r, 2)} 通り`, `${r} 通り`, "1 通り", `${r} × 2 = ${r * 2} 通り`, `${r * r} 通り`])),
+        stp(`${s} ÷ ${t} ＝ ？`, fracStr(s, t), [fracStr(r, n), fracStr(r * r, n * n), fracStr(s + 1, t)])] };
+  },
+  cond() {
+    const [A, nA, B] = pickOne([["男子", "女子", "めがね"], ["運動部", "運動部でない人", "自転車通学"], ["1 年生", "2 年生", "犬を飼っている"]]);
+    let a, x, b, y; for (let k = 0; k < 40; k++) { a = 10 + rnd(15); x = 2 + rnd(a - 4); b = 10 + rnd(15); y = 1 + rnd(b - 2); if (fracStr(x, a) !== fracStr(x, a + b) && fracStr(x, a) !== fracStr(x, x + y)) break; }
+    return { cat: "確率", q: `${A} ${a} 人のうち ${B}は ${x} 人、${nA} ${b} 人のうち ${B}は ${y} 人。<b>${A}をえらんだとき</b>、${B}である確率は？`, ans: fracStr(x, a), link: "u-cond",
+      ex: `「${A}をえらんだとき」→ 分母は ${A}の ${a} 人（全体の ${a + b} 人ではない）。その中の ${B} ${x} 人。${x}/${a} = ${fracStr(x, a)}。`,
+      steps: [stp("分母は？（条件にあう人数）", `${A} ${a} 人`, [`全体 ${a + b} 人`, `${B} ${x + y} 人`, `${nA} ${b} 人`]),
+        stp("分子は？", `${A}で ${B} ${x} 人`, [`${B} ${x + y} 人`, `${nA}で ${B} ${y} 人`, `${A}で ${B}でない ${a - x} 人`]),
+        stp(`${x} ÷ ${a} ＝ ？`, fracStr(x, a), [fracStr(x, a + b), fracStr(x, x + y), fracStr(y, b) !== fracStr(x, a) ? fracStr(y, b) : fracStr(x + 1, a)])] };
+  },
+  indep() {
+    const ev = [["偶数", 3], ["奇数", 3], ["3 の倍数", 2], ["5 以上", 2], ["1", 1], ["4 以下", 4], ["6", 1]];
+    const e1 = pickOne(ev); let e2 = pickOne(ev); while (e2 === e1) e2 = pickOne(ev);
+    const p1 = fracStr(e1[1], 6), p2 = fracStr(e2[1], 6), ans = fracStr(e1[1] * e2[1], 36);
+    return { cat: "確率", q: `サイコロを 2 回ふる。1 回目が ${e1[0]}、2 回目が ${e2[0]} になる確率は？`, ans, link: "u-binom",
+      ex: `1 回目と 2 回目は おたがいに影響しない（独立）→ かける。${p1} × ${p2} = ${ans}。`,
+      steps: [stp("1 回目と 2 回目の 確率は どう組み合わせる？", "かける（独立）", ["たす", "大きい方を使う", "ひく"]),
+        stp(`1 回目が ${e1[0]} の確率は？`, p1, [fracStr(e1[1], 36), fracStr(6 - e1[1] || 1, 6), "1/2" !== p1 ? "1/2" : "1/3"]),
+        stp(`2 回目が ${e2[0]} の確率は？`, p2, [fracStr(e2[1], 36), fracStr(6 - e2[1] || 1, 6), "1/2" !== p2 ? "1/2" : "1/3"]),
+        stp(`${p1} × ${p2} ＝ ？`, ans, [fracStr(e1[1] + e2[1], 12), fracStr(e1[1] + e2[1], 36), fracStr(Math.max(e1[1], e2[1]), 6)])] };
+  },
+  tangent() {
+    const [a, b] = pickOne([[1, 4], [2, 8], [1, 9], [4, 9], [3, 12], [2, 18], [1, 16], [4, 16], [9, 16], [3, 27]]), t = Math.sqrt(a * b);
+    return { cat: "図形", q: `円の外の点 P から 接線 PT と、円と A・B で交わる直線をひく。PA = ${a}、PB = ${b} のとき PT は？`, ans: String(t), link: "u-power",
+      ex: `方べきの定理（接線）：PT² = PA × PB = ${a} × ${b} = ${a * b}。PT = ${t}。`,
+      steps: [stp("使う式は？", "PT² = PA × PB", ["PT = PA + PB", "PT² = PA + PB", "PT = PA × PB"]), stp(`PA × PB ＝ ${a} × ${b} ＝ ？`, a * b, [a + b, a * b + a, b * 2]), stp(`PT² = ${a * b} だから PT は？`, t, [a * b, (a + b) / 2 !== t ? (a + b) / 2 : t + 1, t + 1].filter(Number.isInteger))] };
+  },
+  diam() {
+    const x = 15 + rnd(13) * 5;
+    return { cat: "図形", q: `AB は円 O の直径、C は円周上の点。∠CAB = ${x}° のとき ∠ABC は？`, ans: (90 - x) + "°", link: "u-circle", fig: figDiam(x),
+      ex: `直径に対する円周角は 90° → ∠ACB = 90°。三角形の内角の和 180° より ∠ABC = 180° − 90° − ${x}° = ${90 - x}°。`,
+      steps: [stp("使う きまりは？", "直径に対する 円周角は 90°", ["直径に対する 円周角は 180°", "円周角は 中心角と同じ", "向かい合う角の和は 180°"]), stp(`∠ACB = 90° だから ∠ABC ＝ 180° − 90° − ${x}° ＝ ？`, (90 - x) + "°", [x + "°", (180 - x) + "°", (90 - x + 10) + "°"])] };
+  },
+  sumdiv() {
+    const N = pickOne([12, 18, 20, 24, 28, 36, 40, 45, 48, 50, 72, 100]), f = factorize(N);
+    const fs2 = ff => ff.map(([p, e]) => e > 1 ? `${p}<sup>${e}</sup>` : String(p)).join(" × ");
+    const term = ([p, e]) => `(${Array.from({ length: e + 1 }, (_, i) => i === 0 ? "1" : i === 1 ? String(p) : `${p}<sup>${i}</sup>`).join("+")})`;
+    const sum = f.reduce((s2, [p, e]) => s2 * ((p ** (e + 1) - 1) / (p - 1)), 1), cnt = f.reduce((s2, [, e]) => s2 * (e + 1), 1);
+    return { cat: "整数", q: `${N} の正の約数の 和は？`, ans: String(sum), link: "u-div",
+      ex: `${N} = ${fs2(f)}。約数の和 = ${f.map(term).join("")} = ${sum}（展開すると 約数が 1 回ずつ 全部 出てくる）。`,
+      steps: [stp(`${N} を素因数分解すると？`, fs2(f), [fs2(f.map(([p, e], i) => [p, i === 0 ? e + 1 : e])), fs2(f.map(([p]) => [p, 1])), fs2(f.map(([p, e], i) => [p, i === f.length - 1 ? e + 1 : e]))]),
+        stp("約数の和の 式は？", f.map(term).join(""), [f.map(([, e]) => `(${e}+1)`).join(""), f.map(([p, e]) => `(1+${p}<sup>${e}</sup>)`).join(""), f.map(([p, e]) => `(${p}+${e})`).join("")]),
+        stp(`${f.map(term).join("")} を 計算すると？`, sum, [cnt, sum - 1, sum + N])] };
+  },
+  lcmq() {
+    const g = 2 + rnd(6), x = 2 + rnd(5); let y = 2 + rnd(6); while (gcd(x, y) !== 1 || y === x) y = 2 + rnd(7);
+    const a = g * x, b = g * y, L = a * b / g;
+    return { cat: "整数", q: `${a} と ${b} の 最小公倍数は？`, ans: String(L), link: "u-div",
+      ex: `最大公約数は ${g}。最小公倍数 = ${a} × ${b} ÷ ${g} = ${L}。`,
+      steps: [stp(`${a} と ${b} の 最大公約数は？`, g, [g * 2, Math.max(1, g - 1), x * y]), stp("最小公倍数の 式は？", `${a} × ${b} ÷ ${g}`, [`${a} × ${b}`, `${a} + ${b}`, g !== 2 ? `${a} × ${b} ÷ 2` : `${a} × ${b} ÷ 4`, `(${a} + ${b}) ÷ ${g}`]), stp(`${a} × ${b} ÷ ${g} ＝ ？`, L, [a * b, L + g, L - g])] };
+  },
+  tobin() {
+    const N = 10 + rnd(31), s2 = N.toString(2), top = 2 ** (s2.length - 1);
+    return { cat: "整数", q: `10 進法の ${N} を 2 進法で表すと？`, ans: s2, link: "u-base",
+      ex: `2 でわった余りを 下から読む。または、${N} = ${s2.split("").map((d, i) => d === "1" ? 2 ** (s2.length - 1 - i) : 0).filter(Boolean).join(" + ")} → ${s2}<sub>(2)</sub>。`,
+      steps: [stp("どうやって 2 進法にする？", "2 でわった余りを 下から読む", ["2 でわった商を 上から読む", "2 をかけていく", "10 でわった余りを読む"]),
+        stp(`${N} 以下で いちばん大きい 2 のべき（いちばん左の位の重み）は？`, top, [top * 2, top / 2, s2.length]),
+        stp("2 進法で？", s2, [...new Set([N ^ 1, N ^ 2, N ^ 4, N + 8].map(v => v.toString(2)))].slice(0, 3))] };
+  },
+});
+
+/* むずかしさ・分野・公式・復習先 */
+Object.assign(QDIFF, { adj: 2, ends: 2, rep: 1, same: 2, setor: 3, comp: 1, balls: 2, cond: 2, indep: 2, tangent: 2, diam: 1, sumdiv: 2, lcmq: 1, tobin: 2 });
+GCATS.cnt.push("adj", "ends", "rep", "same", "setor", "comp");
+GCATS.prob.push("balls", "cond", "indep");
+GCATS.geo.push("tangent", "diam");
+GCATS.int.push("sumdiv", "lcmq", "tobin");
+Object.assign(KEY_UNIT, { adj: "u-perm", ends: "u-perm", rep: "u-perm", same: "u-comb", setor: "u-set", comp: "u-set", balls: "u-prob", cond: "u-cond", indep: "u-binom", tangent: "u-power", diam: "u-circle", sumdiv: "u-div", lcmq: "u-div", tobin: "u-base" });
+Object.assign(FORMULA, {
+  adj: ["となり合う", "ひとかたまりにして ならべる × かたまりの中の入れかえ"],
+  ends: ["場所に条件", "条件のある場所（両はし）から 先に決める"],
+  rep: ["重複順列", "それぞれ m 通りを n 回 → m<sup>n</sup>"],
+  same: ["同じものをふくむ順列", "n! ÷ (同じものの個数の ! の積)"],
+  setor: ["和集合の個数", "n(A∪B) = n(A) + n(B) − n(A∩B)"],
+  comp: ["補集合の個数", "n(A でない) = 全体 − n(A)"],
+  balls: ["確率", "（あてはまる取り出し方）÷（全部の取り出し方）。同じ色も区別する"],
+  cond: ["条件付き確率", "P<sub>A</sub>(B) = n(A∩B) ÷ n(A)　分母は「条件 A」"],
+  indep: ["独立な試行", "P(A かつ B) = P(A) × P(B)"],
+  tangent: ["方べきの定理（接線）", "PT² = PA × PB"],
+  diam: ["直径と円周角", "直径に対する円周角は 90°"],
+  sumdiv: ["約数の和", "N = p<sup>a</sup>q<sup>b</sup> → (1+p+…+p<sup>a</sup>)(1+q+…+q<sup>b</sup>)"],
+  lcmq: ["最小公倍数", "a × b ÷ (最大公約数)"],
+  tobin: ["10 進法 → 2 進法", "2 でわった余りを 下から読む"],
+});
 </script>
 <script>
 "use strict";
