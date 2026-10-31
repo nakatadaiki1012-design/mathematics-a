@@ -404,6 +404,7 @@ body.fz2 .fband, body.fz2 .card-body, body.fz2 .lib { zoom: 1.3; }
 /* 計算スペースを開いているあいだは、左の一覧・右の説明をしまって ゲームの画面を広くする */
 body.gscr .app > .lib, body.gscr .app > .card { display: none !important; }
 @media (min-width: 901px) { body.gscr .app { grid-template-columns: minmax(0, 1fr); } }
+@media (min-width: 901px) { body.gplaying .app { grid-template-columns: 230px minmax(0, 1fr); } body.gplaying .app > .card { display: none; } body.gplaying .gfig.small .qfig { max-height: 210px; } }
 @media (max-width: 900px) { body.gscr .stage-wrap.html-mode .stage-area { height: calc(100dvh - 118px); min-height: 0; } body.gscr .stage-wrap.html-mode .stage { position: absolute; inset: 0; } body.gscr .stage-wrap.html-mode .hstage { position: absolute; } body.gscr .stage-wrap.html-mode { overflow: hidden; } }
 /* せまいとき：上に問題（長いときは問題の中だけスクロール）、下の残り全部が計算スペース。1画面に収める */
 .gplay.scr:not(.wide) { height: 100%; gap: 6px; }
@@ -7770,11 +7771,14 @@ sim({
     newGame(cfg, Math.floor(Math.random() * 1e9), "solo", Date.now() + 3200);
     playShell(box, "スコア");
     bindPlay(c, box, () => { G = null; open("game"); });
+    /* パソコン：あそんでいるあいだは 右の説明パネル（空き）をしまって 問題を広く */
+    document.body.classList.add("gplaying"); c.cleanups.push(() => document.body.classList.remove("gplaying"));
     runClock(c, endSolo);
     c.out(`⏱ <span class="mt">${cfgName(cfg)}</span>`);
     function endSolo() {
       const key = bestKey(G.cfg), prev = RW.best[key] || 0, rec = G.score > prev;
       if (rec) RW.best[key] = G.score;
+      document.body.classList.remove("gplaying");
       const coins = afterGame(); rwSave(); earn(coins);
       const text = `数学Aラボ ⏱タイムアタック（${cfgName(G.cfg)}）\n${fmtN(G.score)}点！ ${G.ok} 問正解（≒ ${ruler(G.ok)}）\n${G.played} 秒 生きのこり・最大 ${G.maxCombo} コンボ・段位「${levelOf(RW.coins).name}」\n${baseURL()}`;
       const note = h("div", { style: "font-size:14px;min-height:1.4em" });
