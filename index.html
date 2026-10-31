@@ -698,7 +698,10 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
   .secnav button { padding: 9px 9px; font-size: 14px; }
   .secnav .ico { display: none; }
   /* 横にスクロールできることが わかるように 右はしを うすくする */
-  .secnav { -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent); mask-image: linear-gradient(90deg, #000 78%, transparent); padding-right: 18px; }
+  .secnav { padding-right: 18px; }
+  .secnav.more-r { -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent); mask-image: linear-gradient(90deg, #000 78%, transparent); }
+  .secnav.more-l { -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%); mask-image: linear-gradient(90deg, transparent, #000 22%); }
+  .secnav.more-l.more-r { -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
   .card.empty { display: none; }
   .app { display: flex; flex-direction: column; gap: 6px; padding: 6px 8px 8px; }
   .lib { flex: none; flex-direction: row; overflow-x: auto; padding: 5px 6px; gap: 4px; scrollbar-width: none; }
@@ -1040,6 +1043,10 @@ function renderNav(def) {
   /* スマホ：上のメニューは 横にスクロールする。いまの分野が 見えるように */
   const curTab = nav.querySelector('[aria-current="true"]');
   if (curTab && window.innerWidth <= 900) setTimeout(() => { const nr = nav.getBoundingClientRect(), tr = curTab.getBoundingClientRect(); if (tr.left < nr.left || tr.right > nr.right - 30) nav.scrollLeft += tr.left - nr.left - 24; }, 0);
+  /* 左右に まだメニューがあるとき、その側を うすくして「横に動かせる」と分かるように */
+  const edge = () => { nav.classList.toggle("more-l", nav.scrollLeft > 4); nav.classList.toggle("more-r", nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 4); };
+  if (!nav.dataset.edge) { nav.dataset.edge = "1"; nav.addEventListener("scroll", edge, { passive: true }); addEventListener("resize", edge); }
+  setTimeout(edge, 50);
   const lib = clear($("#lib"));
   const cat = CATS.find(c => c.id === def.cat);
   let lastKind = null, num = 0;
