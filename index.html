@@ -497,6 +497,7 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 .sprob { display: flex; gap: 8px; align-items: baseline; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 6px 10px; font-size: 15.5px; line-height: 1.55; font-weight: 600; }
 .sprob > b { flex: none; font-size: 11px; color: var(--panel); background: var(--muted); border-radius: 3px; padding: 1px 6px; }
 .gfig.small .qfig { max-height: 150px; }
+.ftab { border-collapse: collapse; font-size: 14px; margin: 2px auto; } .ftab th, .ftab td { white-space: nowrap; border: 1px solid var(--line, #ccc); padding: 3px 8px; text-align: center; } .ftab th { font-weight: 600; background: var(--chip); } .ftab td { font-variant-numeric: tabular-nums; }
 .ws { display: flex; flex-direction: column; gap: 6px; }
 .wshd { font-size: 12px; font-weight: 700; color: var(--muted); }
 .wsr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 8px; font-size: 14.5px; padding: 4px 10px; border-radius: 6px; }
@@ -7148,6 +7149,16 @@ function figPower(a, b, c, legend) {
     [[A, "A"], [B, "B"], [C2, "C"], [D, "D"]].map(([p, t]) => fdot(p) + ftext(away(p, O, 13), t, { b: true })).join("") + fdot(P) + ftext([P[0] - 4, P[1] + 15], "P", { b: true }) +
     ftext([8, 16], legend ? legend[0] : `PA = ${a}　PB = ${b}`, { a: "start", s: 13 }) + ftext([8, 34], legend ? legend[1] : `PC = ${c}　PD = <tspan style="fill:var(--warm);font-weight:700">?</tspan>`, { a: "start", s: 13 }));
 }
+/* 接線の方べき（PT が接線、P から A・B を通る直線） */
+function figTangent(a, b) {
+  const O = [205, 104], R = 62, P = [28, 150], w = [O[0] - P[0], O[1] - P[1]], d = Math.hypot(w[0], w[1]), L = Math.sqrt(d * d - R * R), th = -Math.asin(R / d);
+  const u = [w[0] / d, w[1] / d], T = [P[0] + L * (u[0] * Math.cos(th) - u[1] * Math.sin(th)), P[1] + L * (u[0] * Math.sin(th) + u[1] * Math.cos(th))];
+  const v = [O[0] - P[0], O[1] + 30 - P[1]], vl = Math.hypot(v[0], v[1]), e = [v[0] / vl, v[1] / vl], bb = e[0] * (P[0] - O[0]) + e[1] * (P[1] - O[1]), cc = (P[0] - O[0]) ** 2 + (P[1] - O[1]) ** 2 - R * R, s2 = Math.sqrt(bb * bb - cc);
+  const A = [P[0] + e[0] * (-bb - s2), P[1] + e[1] * (-bb - s2)], B = [P[0] + e[0] * (-bb + s2), P[1] + e[1] * (-bb + s2)];
+  return fsvg(fcirc(O, R) + fline(P, B) + fline(P, A, { c: F_AC, w: 3.2 }) + fline(P, T, { c: F_HL, w: 3.2 }) +
+    [[A, "A"], [B, "B"], [T, "T"]].map(([p, t]) => fdot(p) + ftext(away(p, O, 13), t, { b: true })).join("") + fdot(P) + ftext([P[0] - 4, P[1] + 15], "P", { b: true }) +
+    ftext([8, 16], `PA = ${a}　PB = ${b}`, { a: "start", s: 13 }) + ftext([8, 34], `PT = <tspan style="fill:var(--warm);font-weight:700">?</tspan>（接線）`, { a: "start", s: 13 }));
+}
 /* 直径に対する円周角（AB が直径、∠CAB = a） */
 function figDiam(a) {
   const O = [150, 102], R = 84, A = onC(O, R, 180), B = onC(O, R, 0), C2 = onC(O, R, 2 * a);
@@ -8681,9 +8692,9 @@ Object.assign(STEPGEN, {
         stp(`${s} ÷ ${t} ＝ ？`, fracStr(s, t), [fracStr(r, n), fracStr(r * r, n * n), fracStr(s + 1, t)])] };
   },
   cond() {
-    const [A, nA, B] = pickOne([["男子", "女子", "めがね"], ["運動部", "運動部でない人", "自転車通学"], ["1 年生", "2 年生", "犬を飼っている"]]);
+    const [A, nA, B, sB] = pickOne([["男子", "女子", "めがね", "めがね"], ["運動部", "運動部でない人", "自転車通学", "自転車"], ["1 年生", "2 年生", "犬を飼っている", "犬あり"]]), sA = A === "運動部" ? "運動部" : A, snA = nA === "運動部でない人" ? "その他" : nA;
     let a, x, b, y; for (let k = 0; k < 40; k++) { a = 10 + rnd(15); x = 2 + rnd(a - 4); b = 10 + rnd(15); y = 1 + rnd(b - 2); if (fracStr(x, a) !== fracStr(x, a + b) && fracStr(x, a) !== fracStr(x, x + y)) break; }
-    return { cat: "確率", q: `${A} ${a} 人のうち ${B}は ${x} 人、${nA} ${b} 人のうち ${B}は ${y} 人。<b>${A}をえらんだとき</b>、${B}である確率は？`, ans: fracStr(x, a), link: "u-cond",
+    return { cat: "確率", q: `${A} ${a} 人のうち ${B}は ${x} 人、${nA} ${b} 人のうち ${B}は ${y} 人。<b>${A}をえらんだとき</b>、${B}である確率は？`, ans: fracStr(x, a), link: "u-cond", fig: `<table class="ftab"><tr><th></th><th>${sB}</th><th>ちがう</th><th>計</th></tr><tr><th>${sA}</th><td>${x}</td><td>${a - x}</td><td>${a}</td></tr><tr><th>${snA}</th><td>${y}</td><td>${b - y}</td><td>${b}</td></tr><tr><th>計</th><td>${x + y}</td><td>${a + b - x - y}</td><td>${a + b}</td></tr></table>`,
       ex: `「${A}をえらんだとき」→ 分母は ${A}の ${a} 人（全体の ${a + b} 人ではない）。その中の ${B} ${x} 人。${x}/${a} = ${fracStr(x, a)}。`,
       steps: [stp("分母は？（条件にあう人数）", `${A} ${a} 人`, [`全体 ${a + b} 人`, `${B} ${x + y} 人`, `${nA} ${b} 人`]),
         stp("分子は？", `${A}で ${B} ${x} 人`, [`${B} ${x + y} 人`, `${nA}で ${B} ${y} 人`, `${A}で ${B}でない ${a - x} 人`]),
@@ -8702,13 +8713,13 @@ Object.assign(STEPGEN, {
   },
   tangent() {
     const [a, b] = pickOne([[1, 4], [2, 8], [1, 9], [4, 9], [3, 12], [2, 18], [1, 16], [4, 16], [9, 16], [3, 27]]), t = Math.sqrt(a * b);
-    return { cat: "図形", q: `円の外の点 P から 接線 PT と、円と A・B で交わる直線をひく。PA = ${a}、PB = ${b} のとき PT は？`, ans: String(t), link: "u-power",
+    return { cat: "図形", q: `円の外の点 P から 接線 PT と、円と A・B で交わる直線をひく。PA = ${a}、PB = ${b} のとき PT は？`, ans: String(t), link: "u-power", fig: figTangent(a, b),
       ex: `方べきの定理（接線）：PT² = PA × PB = ${a} × ${b} = ${a * b}。PT = ${t}。`,
       steps: [stp("使う式は？", "PT² = PA × PB", ["PT = PA + PB", "PT² = PA + PB", "PT = PA × PB"]), stp(`PA × PB ＝ ${a} × ${b} ＝ ？`, a * b, [a + b, a * b + a, b * 2]), stp(`PT² = ${a * b} だから PT は？`, t, [a * b, (a + b) / 2 !== t ? (a + b) / 2 : t + 1, t + 1].filter(Number.isInteger))] };
   },
   diam() {
     const x = 15 + rnd(13) * 5;
-    return { cat: "図形", q: `AB は円 O の直径、C は円周上の点。∠CAB = ${x}° のとき ∠ABC は？`, ans: (90 - x) + "°", link: "u-circle", fig: figDiam(x),
+    return { cat: "図形", q: `AB は円 O の直径、C は円周上の点。∠CAB = ${x}° のとき ∠ABC（図の x）は？`, ans: (90 - x) + "°", link: "u-circle", fig: figDiam(x),
       ex: `直径に対する円周角は 90° → ∠ACB = 90°。三角形の内角の和 180° より ∠ABC = 180° − 90° − ${x}° = ${90 - x}°。`,
       steps: [stp("使う きまりは？", "直径に対する 円周角は 90°", ["直径に対する 円周角は 180°", "円周角は 中心角と同じ", "向かい合う角の和は 180°"]), stp(`∠ACB = 90° だから ∠ABC ＝ 180° − 90° − ${x}° ＝ ？`, (90 - x) + "°", [x + "°", (180 - x) + "°", (90 - x + 10) + "°"])] };
   },
