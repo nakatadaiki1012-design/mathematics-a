@@ -8831,19 +8831,25 @@ sim({
   point: `<ul><li>場合の数・確率・図形・整数から 10 問。数字は毎回かわります。</li>
 <li>答えると解説と「この画面で確かめる」ボタンが出ます。</li>
 <li>8 問以上で 合格 のはんこ。最高点を記録します。</li></ul>`,
-  detail: `<p>まちがえた問題は、解説の下のボタンから、その内容をあつかう画面へ行って、動かしながら確かめよう。</p><p>クイズの内容（17 種類）：順列・組合せ・円順列・最短経路・三角形の数・サイコロ・コイン・余事象・約数の個数・最大公約数・2進法・円周角・内接四角形・方べき・角の二等分線・多面体・重心。</p>`,
-  build(c) { runQuiz(c, Object.keys(QGEN), "all"); },
+  detail: `<p>まちがえた問題は、解説の下のボタンから、その内容をあつかう画面へ行って、動かしながら確かめよう。</p><p>クイズの内容（31 種類）：順列・組合せ・円順列・となり合う／両はし・重複順列・同じものをふくむ順列・最短経路・三角形の数・倍数の個数（または／でない）・サイコロ・コイン・余事象・玉の確率・条件付き確率・独立な試行・約数の個数と和・最大公約数・最小公倍数・2進法・円周角・直径・内接四角形・方べき（接線も）・角の二等分線・多面体・重心。</p>`,
+  build(c) { runQuiz(c, [].concat(GCATS.cnt, GCATS.prob, GCATS.geo, GCATS.int), "all"); },
 });
-[["cnt", "場合の数だけ", ["perm", "comb", "circ", "route", "tri"]], ["prob", "確率だけ", ["dice", "coin", "atleast"]], ["geo", "図形だけ", ["angle", "quad", "power", "bis", "poly", "centroid"]], ["int", "整数だけ", ["divisors", "gcdq", "bin"]]].forEach(([k, t, gens]) => {
+[["cnt", "場合の数だけ", GCATS.cnt], ["prob", "確率だけ", GCATS.prob], ["geo", "図形だけ", GCATS.geo], ["int", "整数だけ", GCATS.int]].forEach(([k, t, gens]) => {
   sim({ id: "quiz-" + k, cat: "game", name: t, sub: "10 問", point: `<ul><li>${t.replace("だけ", "")}の問題を 10 問。</li><li>8 問以上で合格。</li></ul>`, detail: `<p>数字は毎回かわります。くり返しチャレンジしよう。</p>`, build(c) { runQuiz(c, gens, k); } });
 });
+/* QGEN にない型（解き方ステップ用に作った型）は、さいごのステップを 答えの 4 択にする */
+function anyQ(k) {
+  if (QGEN[k]) return QGEN[k]();
+  const sq = stepQ(k), last = sq.steps[sq.steps.length - 1];
+  return { key: k, q: sq.q, ans: last.ans, wrong: last.ch.filter(x => x !== last.ans), cat: sq.cat, fig: sq.fig || "", ex: sq.ex || "", link: sq.link || "" };
+}
 function runQuiz(c, gens, key) {
   const box = c.html();
   const best = store.get("best:" + key, null);
   let qs = [], i = 0, score = 0, log = [];
   function start() {
     qs = []; const bag = [];
-    for (let k = 0; k < 10; k++) { if (!bag.length) bag.push(...shuffle(gens.slice())); qs.push(QGEN[bag.pop()]()); }
+    for (let k = 0; k < 10; k++) { if (!bag.length) bag.push(...shuffle(gens.slice())); qs.push(anyQ(bag.pop())); }
     i = 0; score = 0; log = []; show();
   }
   function show() {
