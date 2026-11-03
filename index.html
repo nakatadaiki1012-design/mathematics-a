@@ -573,7 +573,7 @@ button.qch { box-shadow: 3px 3px 0 var(--sc); cursor: pointer; } button.qch:acti
 @keyframes tpop { from { opacity: 0; transform: translate(-50%, 0); } 20% { opacity: 1; } to { opacity: 0; transform: translate(-50%, 34px); } }
 .stars { color: var(--gold); letter-spacing: 1px; } .stars i { font-style: normal; color: var(--line); }
 .rk .fin { font-style: normal; font-size: .6em; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 3px; }
-.gq { flex: 1; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.gq { flex: 1; display: flex; flex-direction: column; gap: 12px; min-height: 0; } .gq.clsteps { flex: none; margin-bottom: 10px; }
 .gcount { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; min-height: 240px; }
 .gcount b { font-family: var(--font-data); font-size: clamp(60px, 18vh, 160px); line-height: 1; color: var(--warm); } .gcount small { color: var(--muted); font-size: 14px; max-width: 30em; }
 .gcat { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); } .gcat .pill { border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; }
@@ -8215,7 +8215,7 @@ sim({
       let fb = "";
       if (S.answered) {
         const r = S.last;
-        fb = `<div class="clfb ${r.ok ? "ok" : "ng"}"><div class="big">${r.ok ? `✅ ${q.steps ? "完答" : "正解"}！ <b>+${fmtN(r.pts)}</b>` : r.pick == null ? "⏱ 時間切れ… ❤ −1" : q.steps ? `❌ ${r.pick} 正解　❤ −1` : "❌ ざんねん… ❤ −1"}</div>
+        fb = `<div class="clfb ${r.ok ? "ok" : "ng"}"><div class="big">${r.ok ? `✅ ${q.steps ? "完答" : "正解"}！ <b>+${fmtN(r.pts)}</b>` : r.pick == null ? "⏱ 時間切れ… ❤ −1" : q.steps ? `❌ ${r.pick} 正解 <span style="white-space:nowrap">❤ −1</span>` : "❌ ざんねん… ❤ −1"}</div>
           ${r.ok ? `<div class="sub">${r.heal ? "❤ 5 問連続正解で ハートが 1 つ もどった！　" : ""}${S.streak >= 2 ? `🔥 ${S.streak} 問連続（次は 点数 ×${(1 + 0.1 * Math.min(5, S.streak)).toFixed(1)}）` : ""}</div>` : `<div class="sub">${q.steps && r.pts ? `合ったステップの分 <b>+${fmtN(r.pts)}</b> 点　` : ""}正解は <b>${q.ans}</b></div>`}
           ${explainHTML(q)}
           <div class="rv" style="justify-content:center;margin-top:8px"><button type="button" class="btn main big" data-cl="next">${S.lives > 0 ? "次の問題 ▶" : "結果を見る ▶"}</button></div></div>`;
@@ -8238,7 +8238,7 @@ sim({
         if (j === S.si) return `<div class="wsr cur"><div class="curhd"><span class="no">${NUM[j]}</span><span class="sask">${s2.ask}</span><span class="here">いまここ</span></div><div class="choices steps">${s2.ch.map((c2, i) => `<button type="button" class="choice" data-qa="${i}"><span class="kb">${i + 1}</span>${c2}</button>`).join("")}</div></div>`;
         return `<div class="wsr fut"><span class="no">${NUM[j]}</span><span class="sask">次のステップ</span></div>`;
       }).join("");
-      return `<div class="sprob"><b>問題</b><span>${termify(q.q)}</span></div>${q.fig ? `<div class="gfig small">${q.fig}</div>` : ""}<div class="ws"><div class="wshd">🪜 解き方（${q.steps.length} ステップ）</div>${rows}</div>`;
+      return `<div class="gq clsteps"><div class="sprob"><b>問題</b><span>${termify(q.q)}</span></div>${q.fig ? `<div class="gfig small">${q.fig}</div>` : ""}<div class="ws"><div class="wshd">🪜 解き方（${q.steps.length} ステップ）</div>${rows}</div></div>`;
     }
     function stepAns(i) {
       if (S.answered) return;
